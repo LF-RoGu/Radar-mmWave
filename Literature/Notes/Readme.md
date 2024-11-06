@@ -3,6 +3,7 @@
 ## Useful links
 Video to install Linux and embedded systems package for Visual Studio and start developing:\
 https://www.youtube.com/watch?v=77w9UB_auN8&ab_channel=MicrosoftVisualStudio
+\
 https://learn.microsoft.com/en-us/cpp/build/walkthrough-build-debug-wsl2?view=msvc-170
 
 Connecting and routing USB devices to WSL:\
