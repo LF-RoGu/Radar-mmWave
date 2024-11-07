@@ -123,6 +123,7 @@ void readConfigFileAndSend(int configPortFd, const std::string& filePath) {
         while (read(configPortFd, &c, 1) > 0) {
             if (c == '\n' || c == '\r') {
                 if (response.find("Done") != std::string::npos) {
+                    std::cout << response << std::endl;
                     break;
                 }
                 if (!response.empty()) {
