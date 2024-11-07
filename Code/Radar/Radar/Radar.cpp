@@ -44,7 +44,7 @@ int main() {
     }
 
     // Load and send configuration file
-    readConfigFileAndSend(configPortFd, "configs/xwr68xx_AOP_profile_2024_10_31T16_15_25_003.cfg");
+    readConfigFileAndSend(configPortFd, "../configs/xwr68xx_AOP_profile_2024_10_31T16_15_25_003.cfg");
 
     // Read data from data port until we have enough samples
     while (values.size() < numBytes) {
