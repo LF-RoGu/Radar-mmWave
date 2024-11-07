@@ -73,4 +73,5 @@ To release the USB device from WSL, run:
 
 ### Documentation of UART packages
 https://dev.ti.com/tirex/explore/node?node=A__ADnbI7zK9bSRgZqeAxprvQ__com.ti.mmwave_industrial_toolbox__VLyFKFf__4.12
+\
 https://dev.ti.com/tirex/explore/node?node=A__ADnbI7zK9bSRgZqeAxprvQ__radar_toolbox__1AslXXD__LATEST
