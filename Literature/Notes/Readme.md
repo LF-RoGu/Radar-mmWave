@@ -68,5 +68,9 @@ Replace <BUSID> with the actual BUSID of the device you want to attach, such as 
 
 7. Detach the USB Device When Finished
 To release the USB device from WSL, run:
-```powershell
-usbipd detach --busid <BUSID>
+   ```powershell
+   usbipd detach --busid <BUSID>
+
+### Documentation of UART packages
+https://dev.ti.com/tirex/explore/node?node=A__ADnbI7zK9bSRgZqeAxprvQ__com.ti.mmwave_industrial_toolbox__VLyFKFf__4.12
+https://dev.ti.com/tirex/explore/node?node=A__ADnbI7zK9bSRgZqeAxprvQ__radar_toolbox__1AslXXD__LATEST
