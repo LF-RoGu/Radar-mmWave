@@ -10,3 +10,7 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # TODO: Fügen Sie bei Bedarf Tests hinzu, und installieren Sie Ziele.
+target_link_libraries(Radar PUBLIC IWR6843)
+target_include_directories(Radar PUBLIC
+                           "${PROJECT_BINARY_DIR}"
+                           "${PROJECT_SOURCE_DIR}/modules/radar_sensor")

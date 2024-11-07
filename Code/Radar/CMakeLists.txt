@@ -14,3 +14,4 @@ project ("Radar")
 # Schließen Sie Unterprojekte ein.
 add_subdirectory ("Radar")
 add_subdirectory("Radar/configs")
+add_subdirectory("Radar/modules/radar_sensor")

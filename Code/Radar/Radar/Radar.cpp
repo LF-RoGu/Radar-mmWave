@@ -19,6 +19,9 @@ using namespace std;
 #include <algorithm>
 #include <stdint.h>
 
+
+#include "modules/radar_sensor/IWR6843.h"
+
 // Constants
 const int numBytes = 100 * 40;
 std::vector<uint8_t> values;
