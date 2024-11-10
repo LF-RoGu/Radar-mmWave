@@ -22,7 +22,7 @@ set(SOURCES
     "RadarFrame.cpp" "RadarFrame.h")
 
 # Add the executable for the project
-add_executable(Radar ${SOURCES} "RadarFrame.cpp")
+add_executable(Radar ${SOURCES} "Radar.cpp")
 
 # Add any required libraries here if needed
 # target_link_libraries(Radar <library_name>)
