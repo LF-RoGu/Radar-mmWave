@@ -6,7 +6,10 @@
 #include <string>
 #include <iostream>
 
-const int numBytes = 100 * 40;
+// Define reading modes
+#define CONTINUOUS_READING 1       // 1 for continuous, 0 for limited frames
+#define FIXED_FRAME_COUNT 10       // Set the number of frames to read if continuous is disabled
+
 
 struct FrameHeader {
     uint32_t syncWord;

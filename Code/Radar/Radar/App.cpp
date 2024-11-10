@@ -18,14 +18,22 @@ int runRadarApplication() {
     // Assuming you have a data buffer filled with the raw data
     uint8_t rawData[1024];
 
+    // Attempt to parse a frame from the data
     if (radarFrame.parseFrameHeader(rawData, offset)) {
         if (radarFrame.parseTLVs(rawData, offset)) {
             std::cout << "Number of Detected Objects: " << radarFrame.detectedObjects.size() << "\n";
         }
+        else {
+            std::cerr << "Error parsing TLVs.\n";
+            return -1;
+        }
+    }
+    else {
+        std::cerr << "Error parsing frame header.\n";
+        return -1;
     }
 
     close(dataPortFd);
     close(configPortFd);
-
     return 0;
 }
