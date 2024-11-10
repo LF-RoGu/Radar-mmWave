@@ -1,12 +1,28 @@
-﻿# CMakeList.txt: CMake-Projekt für "Radar". Schließen Sie die Quelle ein, und definieren Sie
-# projektspezifische Logik hier.
-#
+﻿# CMakeLists.txt for "Radar" project
 
-# Fügen Sie der ausführbaren Datei dieses Projekts eine Quelle hinzu.
-add_executable (Radar "Radar.cpp" "Radar.h")
+# Define the minimum CMake version and project name
+cmake_minimum_required(VERSION 3.12)
+project(Radar)
 
+# Set C++ standard to C++20 if CMake version is greater than 3.12
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Radar PROPERTY CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
-# TODO: Fügen Sie bei Bedarf Tests hinzu, und installieren Sie Ziele.
+# Include directories for headers
+include_directories(${CMAKE_SOURCE_DIR})
+
+# Add individual source files and headers
+set(SOURCES
+    "Radar.cpp" "Radar.h"
+    "SerialPort.cpp" "SerialPort.h"
+    "Decode.cpp" "Decode.h"
+    "ReadData.cpp" "ReadData.h"
+    "App.cpp" "App.h"
+    "RadarFrame.cpp" "RadarFrame.h")
+
+# Add the executable for the project
+add_executable(Radar ${SOURCES} "RadarFrame.cpp")
+
+# Add any required libraries here if needed
+# target_link_libraries(Radar <library_name>)
