@@ -15,11 +15,11 @@ include_directories(${CMAKE_SOURCE_DIR})
 # Add individual source files and headers
 set(SOURCES
     "Radar.cpp" "Radar.h"
-    "SerialPort.cpp" "SerialPort.h"
-    "Decode.cpp" "Decode.h"
-    "ReadData.cpp" "ReadData.h"
-    "App.cpp" "App.h"
-    "RadarFrame.cpp" "RadarFrame.h")
+     
+     
+     
+    "radar_sensor/sensor_data/TLVFrame.cpp" "radar_sensor/sensor_data/TLVFrame.h"
+    "radar_sensor/sensor_data/SensorData.cpp" "radar_sensor/sensor_data/SensorData.h")
 
 # Add the executable for the project
 add_executable(Radar ${SOURCES})

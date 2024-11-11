@@ -1,17 +1,24 @@
-#ifndef RADARFRAME_H
-#define RADARFRAME_H
+#ifndef TLVFRAME_H
+#define TLVFRAME_H
 
-#include <cstdint>
-#include <vector>
-#include "Radar.h"  // For FrameHeader, TlvHeader, and DetectedObject
+#include "lib/SensorDataStr.h"  // For FrameHeader, TlvHeader, and DetectedObject
+#include <errno.h> // Error number definitions
 
-// RadarFrame structure to manage parsing of radar data frames
-struct RadarFrame {
+// RadarFrame class to manage parsing of radar data frames
+class TLVheader {
+public:
+    //Contructor
+    
+    //Attributes
     FrameHeader frameHeader;                  // Holds the frame header information
-    std::vector<TlvHeader> tlvHeaders;        // List of TLV headers in the frame
-    std::vector<DetectedObject> detectedObjects; // List of detected objects from TLVs
+    std::vector<TLVHeader> tlvHeaders;        // List of TLV headers in the frame
 
-    /**
+    //Parts
+
+    //Setters & Getters
+
+    //Methods
+        /**
      * Function: toLittleEndian32
      * Description: Converts 4 bytes in little-endian order to a 32-bit integer.
      * Input:
@@ -57,6 +64,7 @@ struct RadarFrame {
      *  - bool: returns true if detected objects are successfully parsed
      */
     bool parseDetectedObjects(const uint8_t* data, size_t& offset, uint32_t length);
+
 };
 
-#endif // RADARFRAME_H
+#endif // TLVFRAME_H
