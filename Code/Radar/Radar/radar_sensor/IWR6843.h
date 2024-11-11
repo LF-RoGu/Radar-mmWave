@@ -11,10 +11,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <string>
-#include <algorithm>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -28,10 +27,13 @@ private:
 
 	int configSerialPort(int port_fd, int baudRate);
 	int sendConfigFile(int port_fd, string configFilePath);
+	vector<size_t> findIndexesOfMagicWord();
+	vector<vector<uint8_t>> splitIntoSublistsByIndexes(const vector<size_t>& indexes);
 
 public:
 	IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
+	int poll();
 };
 
 #endif // !IWR6843_H

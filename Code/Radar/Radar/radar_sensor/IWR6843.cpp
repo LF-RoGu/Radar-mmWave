@@ -35,6 +35,61 @@ int IWR6843::init(string configPort, string dataPort, string configFilePath)
 	return 1;
 }
 
+int IWR6843::poll()
+{
+	//Checking if bytes are available
+	int bytesAvailable = 0;
+	if (ioctl(dataPort_fd, FIONREAD, &bytesAvailable) == -1)
+	{
+		return -1;
+	}
+
+	//Returning 0 if there are no bytes available
+	if (bytesAvailable < 1)
+	{
+		return 0;
+	}
+
+	//Creating a temporary buffer and determining whether to read in the whole buffer or what is available (preventing overflow)
+	uint8_t buffer[1024];
+	int bytesToRead = min(bytesAvailable, (int)sizeof(buffer));
+
+	//Reading bytes
+	int bytesRead = read(dataPort_fd, buffer, bytesToRead);
+
+	//Appending the read bytes to the end of the vector
+	dataBuffer.emplace_back(dataBuffer.end(), buffer, buffer + bytesRead);
+
+	//Finding the indexes of the magic words (starting points of frames) in the buffer
+	vector<size_t> indexesOfMagicWords = findIndexesOfMagicWord();
+
+	//Returning 0 if size is below 2 (no full frame available)
+	if (indexesOfMagicWords.size() < 2)
+	{
+		return 0;
+	}
+
+	//Deleting beginning of data until magic word if first index is unequal to 0 (garbage Data)
+	if (indexesOfMagicWords.at(0) != 0)
+	{
+		dataBuffer.erase(dataBuffer.begin(), dataBuffer.begin() + indexesOfMagicWords.at(0));
+	}
+
+	//Extracting sublists containing one frame
+	vector<vector<uint8_t>> sublists = splitIntoSublistsByIndexes(indexesOfMagicWords);
+
+	/*
+	
+		ToDo: Add elements to vector of decoded items
+	
+	*/
+
+	//Removing the elements of the dataBuffer that were processed
+	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
+
+	return 0;
+}
+
 int IWR6843::configSerialPort(int port_fd, int baudRate)
 {
 	struct termios tty;
@@ -121,4 +176,37 @@ int IWR6843::sendConfigFile(int port_fd, string configFilePath)
 	}
 
 	return 1;
+}
+
+
+vector<size_t> IWR6843::findIndexesOfMagicWord()
+{
+	const vector<uint8_t> pattern = { 0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 0x07 };
+	
+	std::vector<size_t> indexes;
+	auto it = dataBuffer.begin();
+	while ((it = search(it, dataBuffer.end(), pattern.begin(), pattern.end())) != dataBuffer.end())
+	{
+		indexes.push_back(distance(dataBuffer.begin(), it));
+		++it;
+	}
+
+	return indexes;
+}
+
+
+vector<vector<uint8_t>> IWR6843::splitIntoSublistsByIndexes(const vector<size_t>& indexes)
+{
+	vector<vector<uint8_t>> sublists;
+
+	// Loop through all but the last index to form sublists between consecutive indexes
+	for (size_t j = 0; j < indexes.size() - 1; ++j) {
+		size_t start = indexes[j];
+		size_t end = indexes[j + 1];
+
+		// Create a sublist from dataBuffer[start] to dataBuffer[end-1]
+		sublists.emplace_back(dataBuffer.begin() + start, dataBuffer.begin() + end);
+	}
+
+	return sublists;
 }
