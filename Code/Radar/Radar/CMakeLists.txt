@@ -19,7 +19,8 @@ set(SOURCES
     "Decode.cpp" "Decode.h"
     "ReadData.cpp" "ReadData.h"
     "App.cpp" "App.h"
-    "RadarFrame.cpp" "RadarFrame.h")
+    "RadarFrame.cpp" "RadarFrame.h"
+    "radar_sensor/IWR6843.cpp" "radar_sensor/IWR6843.h")
 
 # Add the executable for the project
 add_executable(Radar ${SOURCES})

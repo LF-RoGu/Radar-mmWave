@@ -14,6 +14,7 @@
 #include <string>
 #include <algorithm>
 #include <stdint.h>
+#include <sys/ioctl.h>
 
 using namespace std;
 
@@ -22,8 +23,12 @@ class IWR6843
 {
 private:
 	vector<uint8_t> dataBuffer;
-	int fd_configPort;
-	int fd_dataPort;
+	int configPort_fd;
+	int dataPort_fd;
+
+	int configSerialPort(int port_fd, int baudRate);
+	int sendConfigFile(int port_fd, string configFilePath);
+
 public:
 	IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
