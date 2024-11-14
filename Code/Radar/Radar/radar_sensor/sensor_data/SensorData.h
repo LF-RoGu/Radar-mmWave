@@ -8,6 +8,12 @@
 class sensorData
 {
 public:
+	/**
+	 * Function: sensorData
+	 * Description: Constructor for the sensorData class.
+	 * Input: None
+	 * Output: None
+	 */
 	sensorData();
 
 	/**

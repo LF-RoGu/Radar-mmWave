@@ -18,7 +18,7 @@ public:
     //Setters & Getters
 
     //Methods
-        /**
+    /**
      * Function: toLittleEndian32
      * Description: Converts 4 bytes in little-endian order to a 32-bit integer.
      * Input:
