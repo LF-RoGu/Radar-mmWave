@@ -58,7 +58,7 @@ int IWR6843::poll()
 	int bytesRead = read(dataPort_fd, buffer, bytesToRead);
 
 	//Appending the read bytes to the end of the vector
-	dataBuffer.emplace_back(dataBuffer.end(), buffer, buffer + bytesRead);
+	dataBuffer.insert(dataBuffer.end(), buffer, buffer + bytesRead);
 
 	//Finding the indexes of the magic words (starting points of frames) in the buffer
 	vector<size_t> indexesOfMagicWords = findIndexesOfMagicWord();
@@ -86,7 +86,6 @@ int IWR6843::poll()
 
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
-
 	return 0;
 }
 
@@ -197,15 +196,17 @@ vector<size_t> IWR6843::findIndexesOfMagicWord()
 
 vector<vector<uint8_t>> IWR6843::splitIntoSublistsByIndexes(const vector<size_t>& indexes)
 {
+	//Preparing a return vector
 	vector<vector<uint8_t>> sublists;
 
-	// Loop through all but the last index to form sublists between consecutive indexes
-	for (size_t j = 0; j < indexes.size() - 1; ++j) {
-		size_t start = indexes[j];
-		size_t end = indexes[j + 1];
+	//Looping through all but the last index to form sublists between consecutive indexes
+	for (size_t i = 0; i < indexes.size() - 1; ++i) {
+		size_t start = indexes[i];
+		size_t end = indexes[i + 1];
 
-		// Create a sublist from dataBuffer[start] to dataBuffer[end-1]
-		sublists.emplace_back(dataBuffer.begin() + start, dataBuffer.begin() + end);
+		//Creating a sublist from dataBuffer[start] to dataBuffer[end-1] and pushing it into return vector
+		vector<uint8_t> sublist(dataBuffer.begin() + start, dataBuffer.begin() + end - 1);
+		sublists.push_back(sublist);
 	}
 
 	return sublists;
