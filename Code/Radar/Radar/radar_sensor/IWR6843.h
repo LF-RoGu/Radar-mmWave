@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <algorithm>
+#include "sensor_data/UARTFrame.h"
 
 using namespace std;
 

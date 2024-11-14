@@ -17,8 +17,7 @@ include_directories(include radar_sensor/sensor_data/lib radar_sensor)
 set(SOURCES
     "Radar.cpp" "Radar.h"
     "radar_sensor/IWR6843.cpp" "radar_sensor/IWR6843.h"
-    "radar_sensor/sensor_data/TLVFrame.cpp" "radar_sensor/sensor_data/TLVFrame.h"
-    "radar_sensor/sensor_data/SensorData.cpp" "radar_sensor/sensor_data/SensorData.h"
+    "radar_sensor/sensor_data/UARTFrame.cpp" "radar_sensor/sensor_data/TLVFrame.h"
 )
 
 # Add the executable for the project

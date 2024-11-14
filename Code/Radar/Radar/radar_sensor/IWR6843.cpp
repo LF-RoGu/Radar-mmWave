@@ -84,6 +84,11 @@ int IWR6843::poll()
 	
 	*/
 
+	for (uint16_t index; index < sublists.size(); index++)
+	{
+		//TLVheader();
+	}
+
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
 	return 0;

@@ -8,7 +8,7 @@
 #define CONTINUOUS_READING 1       // 1 for continuous, 0 for limited frames
 #define FIXED_FRAME_COUNT 10       // Number of frames to read if continuous is disabled
 
-struct FrameHeader {
+struct FrameHeaderData {
     uint16_t magicWord_u16;
     uint32_t version_u32;
     uint32_t totalPacketLength_u32;
@@ -20,7 +20,7 @@ struct FrameHeader {
     uint32_t subFrameNumber_u32;
 };
 
-struct TLVHeader {
+struct TLVHeaderData {
     uint32_t type_u32;
     uint32_t length_u32;
 };
