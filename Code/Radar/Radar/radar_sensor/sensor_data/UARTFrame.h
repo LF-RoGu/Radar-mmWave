@@ -8,8 +8,8 @@
 
 class UARTframe {
 private:
+    std::vector<uint8_t> UARTFrame_temp;
     std::vector<uint8_t> UARTFrame_vec;  // Raw UART frame data
-
 public:
     // Constructor
     UARTframe(const std::vector<uint8_t>& uartFrame);
@@ -56,12 +56,14 @@ public:
      */
     bool parseDetectedObjects(const uint8_t* data, size_t& offset, uint32_t length);
 
-    class FrameHeader {
+    class Frame_header 
+    {
+        Frame_header(FrameHeaderData uartFrame);
     private:
         FrameHeaderData FrameHeader_str;
 
     public:
-        bool magicWordCheck();
+        bool magicWordCheck() const;
 
         void setVersion(uint32_t var);
         void setPacketLength(uint32_t var);
@@ -71,6 +73,7 @@ public:
         void setNumObjDetecter(uint32_t var);
         void setNumTLV(uint32_t var);
         void setSubframeNum(uint32_t var);
+        void setFrames();
 
         uint32_t getVersion();
         uint32_t getPacketLength();
@@ -80,6 +83,7 @@ public:
         uint32_t getNumObjDetecter();
         uint32_t getNumTLV();
         uint32_t getSubframeNum();
+        FrameHeaderData getFrames();
     };
 };
 

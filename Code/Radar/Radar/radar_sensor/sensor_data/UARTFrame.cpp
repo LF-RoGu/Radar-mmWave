@@ -1,20 +1,21 @@
 #include "UARTFrame.h"
 
 // Define the expected magic word in little-endian format (example value)
-#define MAGIC_WORD 0x0708050604030201
+const uint16_t MAGIC_WORD[4] = { 0x0102, 0x0304, 0x0506, 0x0708 };
 
 // Constructor
 UARTframe::UARTframe(const std::vector<uint8_t>& uartFrame) {
     setUARTFrame(uartFrame);
-    parseFrameHeader(getUARTFrame());
+    FrameHeaderData headerData = parseFrameHeader(getUARTFrame());
+    // Create a FrameHeader instance using the parsed headerData
 }
 
 void UARTframe::setUARTFrame(const std::vector<uint8_t>& uartFrame) {
-    UARTFrame_vec = uartFrame;
+    UARTFrame_temp = uartFrame;
 }
 
 const std::vector<uint8_t>& UARTframe::getUARTFrame() const {
-    return UARTFrame_vec;
+    return UARTFrame_temp;
 }
 
 // Converts up to 4 bytes in little-endian order to a 32-bit integer
@@ -37,80 +38,104 @@ uint64_t UARTframe::toLittleEndian64(const uint8_t* data, uint8_t size) {
 
 // Function to parse the Frame Header from the raw data
 FrameHeaderData UARTframe::parseFrameHeader(const std::vector<uint8_t>& data) {
-    FrameHeaderData header;
+    FrameHeaderData headerData;
     size_t offset = 0;
 
     // Parse each field with the correct byte size and update offset
-    header.magicWord_u16 = toLittleEndian64(&data[offset], 8);  // 8 bytes
+    uint64_t magicWord = toLittleEndian64(&data[offset], 8);    // 8 bytes
+    for (int i = 0; i < 4; ++i) {
+        headerData.magicWord_u16[i] = (magicWord >> (16 * i)) & 0xFFFF;  // Extract each 2-byte segment
+    }
     offset += 8;
-    header.version_u32 = toLittleEndian32(&data[offset], 4);    // 4 bytes
+    headerData.version_u32 = toLittleEndian32(&data[offset], 4);    // 4 bytes
     offset += 4;
-    header.totalPacketLength_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
+    headerData.totalPacketLength_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
     offset += 4;
-    header.platform_u32 = toLittleEndian32(&data[offset], 4);   // 4 bytes
+    headerData.platform_u32 = toLittleEndian32(&data[offset], 4);   // 4 bytes
     offset += 4;
-    header.frameNumber_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
+    headerData.frameNumber_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
     offset += 4;
-    header.timeCpuCycles_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
+    headerData.timeCpuCycles_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
     offset += 4;
-    header.numDetectedObj_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
+    headerData.numDetectedObj_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
     offset += 4;
-    header.numTLVs_u32 = toLittleEndian32(&data[offset], 4);    // 4 bytes
+    headerData.numTLVs_u32 = toLittleEndian32(&data[offset], 4);    // 4 bytes
     offset += 4;
-    header.subFrameNumber_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
+    headerData.subFrameNumber_u32 = toLittleEndian32(&data[offset], 4); // 4 bytes
 
-    return header;
+    return headerData;
 }
 
-bool UARTframe::FrameHeader::magicWordCheck() {
-    return FrameHeader_str.magicWord_u16 == MAGIC_WORD;
+UARTframe::Frame_header::Frame_header(FrameHeaderData uartFrame) {
+    // Set each field using the setters
+    setVersion(uartFrame.version_u32);
+    setPacketLength(uartFrame.totalPacketLength_u32);
+    setPlatform(uartFrame.platform_u32);
+    setFrameNumber(uartFrame.frameNumber_u32);
+    setTime(uartFrame.timeCpuCycles_u32);
+    setNumObjDetecter(uartFrame.numDetectedObj_u32);
+    setNumTLV(uartFrame.numTLVs_u32);
+    setSubframeNum(uartFrame.subFrameNumber_u32);
 }
 
-void UARTframe::FrameHeader::setVersion(uint32_t var) {
+bool UARTframe::Frame_header::magicWordCheck() const {
+    for (int i = 0; i < 4; ++i) {
+        if (FrameHeader_str.magicWord_u16[i] != MAGIC_WORD[i]) {
+            return false;  // Return false if any part of the magic word doesn't match
+        }
+    }
+    return true;  // Return true if all parts of the magic word match
+}
+
+void UARTframe::Frame_header::setVersion(uint32_t var) {
     FrameHeader_str.version_u32 = var;
 }
 
-void UARTframe::FrameHeader::setPacketLength(uint32_t var) {
+void UARTframe::Frame_header::setPacketLength(uint32_t var) {
     FrameHeader_str.totalPacketLength_u32 = var;
 }
 
-void UARTframe::FrameHeader::setPlatform(uint32_t var) {
+void UARTframe::Frame_header::setPlatform(uint32_t var) {
     FrameHeader_str.platform_u32 = var;
 }
 
-void UARTframe::FrameHeader::setFrameNumber(uint32_t var) {
+void UARTframe::Frame_header::setFrameNumber(uint32_t var) {
     FrameHeader_str.frameNumber_u32 = var;
 }
 
-void UARTframe::FrameHeader::setTime(uint32_t var) {
+void UARTframe::Frame_header::setTime(uint32_t var) {
     FrameHeader_str.timeCpuCycles_u32 = var;
 }
 
-void UARTframe::FrameHeader::setNumObjDetecter(uint32_t var) {
+void UARTframe::Frame_header::setNumObjDetecter(uint32_t var) {
     FrameHeader_str.numDetectedObj_u32 = var;
 }
 
-void UARTframe::FrameHeader::setNumTLV(uint32_t var) {
+void UARTframe::Frame_header::setNumTLV(uint32_t var) {
     FrameHeader_str.numTLVs_u32 = var;
 }
 
-void UARTframe::FrameHeader::setSubframeNum(uint32_t var) {
+void UARTframe::Frame_header::setSubframeNum(uint32_t var) {
     FrameHeader_str.subFrameNumber_u32 = var;
 }
 
-uint32_t UARTframe::FrameHeader::getVersion() {
+void UARTframe::Frame_header::setFrames()
+{
+}
+
+uint32_t UARTframe::Frame_header::getVersion() {
     return FrameHeader_str.version_u32;
 }
 
-uint32_t UARTframe::FrameHeader::getPacketLength() {
+uint32_t UARTframe::Frame_header::getPacketLength() {
     return FrameHeader_str.totalPacketLength_u32;
 }
 
-uint32_t UARTframe::FrameHeader::getPlatform() {
+uint32_t UARTframe::Frame_header::getPlatform() {
     return FrameHeader_str.platform_u32;
 }
 
-uint32_t UARTframe::FrameHeader::getFrameNumber() {
+uint32_t UARTframe::Frame_header::getFrameNumber() {
     return FrameHeader_str.frameNumber_u32;
 }
 
@@ -128,4 +153,9 @@ uint32_t UARTframe::FrameHeader::getNumTLV() {
 
 uint32_t UARTframe::FrameHeader::getSubframeNum() {
     return FrameHeader_str.subFrameNumber_u32;
+}
+
+FrameHeaderData UARTframe::FrameHeader::getFrames()
+{
+    return FrameHeaderData();
 }

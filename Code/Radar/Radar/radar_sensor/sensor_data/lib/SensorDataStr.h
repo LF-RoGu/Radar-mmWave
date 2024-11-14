@@ -9,7 +9,7 @@
 #define FIXED_FRAME_COUNT 10       // Number of frames to read if continuous is disabled
 
 struct FrameHeaderData {
-    uint16_t magicWord_u16;
+    uint16_t magicWord_u16[4];
     uint32_t version_u32;
     uint32_t totalPacketLength_u32;
     uint32_t platform_u32;
