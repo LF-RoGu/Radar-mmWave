@@ -12,10 +12,12 @@ private:
 
 public:
     // Constructor
-    UARTframe(const std::vector<uint8_t>& tlvFrame);
+    UARTframe(const std::vector<uint8_t>& uartFrame);
 
     // Sets the UART frame data
-    void setUARTFrame(const std::vector<uint8_t>& constUARTFrame);
+    void setUARTFrame(const std::vector<uint8_t>& uartFrame);
+
+    const std::vector<uint8_t>& getUARTFrame() const;
 
     // Converts up to 4 bytes in little-endian order to a 32-bit integer
     static uint32_t toLittleEndian32(const uint8_t* data, uint8_t size);

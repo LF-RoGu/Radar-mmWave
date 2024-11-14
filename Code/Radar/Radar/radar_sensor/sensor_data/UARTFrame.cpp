@@ -4,12 +4,17 @@
 #define MAGIC_WORD 0x0708050604030201
 
 // Constructor
-UARTframe::UARTframe(const std::vector<uint8_t>& tlvPayload) {
-    setUARTFrame(tlvPayload);
+UARTframe::UARTframe(const std::vector<uint8_t>& uartFrame) {
+    setUARTFrame(uartFrame);
+    parseFrameHeader(getUARTFrame());
 }
 
-void UARTframe::setUARTFrame(const std::vector<uint8_t>& constUARTFrame) {
-    UARTFrame_vec = constUARTFrame;
+void UARTframe::setUARTFrame(const std::vector<uint8_t>& uartFrame) {
+    UARTFrame_vec = uartFrame;
+}
+
+const std::vector<uint8_t>& UARTframe::getUARTFrame() const {
+    return UARTFrame_vec;
 }
 
 // Converts up to 4 bytes in little-endian order to a 32-bit integer
