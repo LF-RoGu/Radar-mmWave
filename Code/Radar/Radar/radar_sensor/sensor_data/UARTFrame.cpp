@@ -192,14 +192,10 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         std::vector<DetectedPoints> points;
         for (size_t i = 0; i < length / sizeof(DetectedPoints); ++i) {
             DetectedPoints point;
-            point.x_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
-            offset += sizeof(float);
-            point.y_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
-            offset += sizeof(float);
-            point.z_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
-            offset += sizeof(float);
-            point.doppler_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
-            offset += sizeof(float);
+            point.x_f = EndianUtils::readFloatFromLittleEndian(data, offset);
+            point.y_f = EndianUtils::readFloatFromLittleEndian(data, offset);
+            point.z_f = EndianUtils::readFloatFromLittleEndian(data, offset);
+            point.doppler_f = EndianUtils::readFloatFromLittleEndian(data, offset);
             points.push_back(point);
         }
         setDetectedPoints(points);
@@ -210,7 +206,7 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         std::vector<RangeProfilePoint> points;
         for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
             RangeProfilePoint point;
-            point.rangePoint = (data[offset]) | (data[offset + 1] << 8);
+            point.rangePoint = EndianUtils::readLittleEndian16(data, offset);
             offset += sizeof(uint16_t);
             points.push_back(point);
         }
@@ -222,7 +218,7 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         std::vector<NoiseProfilePoint> points;
         for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
             NoiseProfilePoint point;
-            point.noisePoint = (data[offset]) | (data[offset + 1] << 8);
+            point.noisePoint = EndianUtils::readLittleEndian16(data, offset);
             offset += sizeof(uint16_t);
             points.push_back(point);
         }
@@ -235,10 +231,8 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         size_t numRangeBins = length / (4 * sizeof(uint16_t));
         for (size_t i = 0; i < numRangeBins; ++i) {
             AzimuthHeatmapPoint point;
-            point.imag = (data[offset]) | (data[offset + 1] << 8);
-            offset += sizeof(int16_t);
-            point.real = (data[offset]) | (data[offset + 1] << 8);
-            offset += sizeof(int16_t);
+            point.imag = EndianUtils::readLittleEndianInt16(data, offset);
+            point.real = EndianUtils::readLittleEndianInt16(data, offset);
             points.push_back(point);
         }
         setAzimuthHeatmapPoints(points);
@@ -249,10 +243,8 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         std::vector<SideInfoPoint> points;
         for (size_t i = 0; i < length / 4; ++i) {
             SideInfoPoint point;
-            point.snr = (data[offset]) | (data[offset + 1] << 8);
-            offset += sizeof(uint16_t);
-            point.noise = (data[offset]) | (data[offset + 1] << 8);
-            offset += sizeof(uint16_t);
+            point.snr = EndianUtils::readLittleEndianInt16(data, offset);
+            point.noise = EndianUtils::readLittleEndianInt16(data, offset);
             points.push_back(point);
         }
         setSideInfoPoints(points);

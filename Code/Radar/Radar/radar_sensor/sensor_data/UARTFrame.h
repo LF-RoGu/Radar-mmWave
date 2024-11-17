@@ -2,6 +2,7 @@
 #define UARTFRAME_H
 
 #include "SensorDataStr.h"
+#include "EndianUtils.h"
 #include <vector>
 #include <cstdint>
 #include <iostream>
