@@ -33,4 +33,66 @@ struct DetectedPoints {
     float doppler_f;
 };
 
+struct RangeProfilePoint {
+    uint16_t rangePoint;
+};
+
+struct NoiseProfilePoint {
+    uint16_t noisePoint;
+};
+
+struct AzimuthHeatmapPoint {
+    int16_t imag;
+    int16_t real;
+};
+
+struct SideInfoPoint {
+    uint16_t snr;
+    uint16_t noise;
+};
+
+struct AzimuthElevationHeatmapPoint {
+    int16_t imag;
+    int16_t real;
+};
+
+struct SphericalCoordinate {
+    float range;
+    float azimuth;
+    float elevation;
+    float doppler;
+};
+
+struct TargetData {
+    float tid;
+    float posX;
+    float posY;
+    float posZ;
+    float velX;
+    float velY;
+    float velZ;
+    float accX;
+    float accY;
+    float accZ;
+    float ec[9];
+    float g;
+    float confidenceLevel;
+};
+
+struct PointCloudUnit {
+    float elevationUnit;
+    float azimuthUnit;
+    float dopplerUnit;
+    float rangeUnit;
+    float snrUnit;
+};
+
+struct CompressedPoint {
+    int8_t elevation;
+    int8_t azimuth;
+    int16_t doppler;
+    uint16_t range;
+    uint16_t snr;
+};
+
 #endif // SENSORDATASTR_H

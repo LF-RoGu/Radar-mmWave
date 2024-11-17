@@ -200,21 +200,94 @@ public:
  * @brief Derived class for parsing TLV (Type-Length-Value) headers.
  */
 class TLV_frame : public UART_frame {
+private:
 public:
     /**
      * Default constructor for TLV_header.
      */
     TLV_frame();
+};
+
+class TLV_header : public TLV_frame
+{
+private:
+    TLVHeaderData TLVHeaderData_str;
+public:
+    /**
+     * Default constructor for TLV_header.
+     */
+    TLV_header();
 
     /**
-     * Parses TLV headers from raw data and processes them.
+     * Parses the TLV header from raw data.
      * Input:
      *  - data: Pointer to the raw data buffer containing TLVs.
      *  - offset: Reference to the current offset in the data buffer.
      * Output:
-     *  - bool: True if all TLVs are successfully parsed and processed, false otherwise.
+     *  - void: Updates TLVHeaderData_str with the parsed data.
      */
-    bool parseTLVHeader(const uint8_t* data, size_t& offset);
+    void parseTLVHeader(const uint8_t* data, size_t& offset);
+
+    /**
+     * Returns the Type identifier.
+     * @return uint32_t Type value.
+     */
+    uint32_t getType() const;
+
+    /**
+     * Returns the Length of the payload.
+     * @return uint32_t Length value.
+     */
+    uint32_t getLength() const;
+};
+
+class TLV_payload : public TLV_frame
+{
+private:
+    // Updated parsePayload function to handle different TLV types
+    std::vector<DetectedPoints> detectedPoints_vect;
+    std::vector<RangeProfilePoint> RangeProfilePoint_vect;
+    std::vector<NoiseProfilePoint> NoiseProfilePoint_vect;
+    std::vector<AzimuthHeatmapPoint> AzimuthHeatmapPoint_vect;
+    std::vector<SideInfoPoint> SideInfoPoint_vect;
+    std::vector<AzimuthElevationHeatmapPoint> AzimuthElevationHeatmapPoint_vect;
+    std::vector<SphericalCoordinate> SphericalCoordinate_vect;
+    std::vector<TargetData> TargetData_vect;
+    std::vector<PointCloudUnit> PointCloudUnit_vect;
+    std::vector<CompressedPoint> CompressedPoint_vect;
+    std::vector<bool> presenceDetection_vect;
+public:
+    /**
+     * Default constructor for TLV_payload.
+     */
+    TLV_payload();
+
+    void parsePayload(const uint8_t* data, size_t& offset, const TLVHeaderData& header);
+
+    // Setters for vectors
+    void setDetectedPoints(const std::vector<DetectedPoints>& points);
+    void setRangeProfilePoints(const std::vector<RangeProfilePoint>& points);
+    void setNoiseProfilePoints(const std::vector<NoiseProfilePoint>& points);
+    void setAzimuthHeatmapPoints(const std::vector<AzimuthHeatmapPoint>& points);
+    void setSideInfoPoints(const std::vector<SideInfoPoint>& points);
+    void setSphericalCoordinates(const std::vector<SphericalCoordinate>& coordinates);
+    void setTargetData(const std::vector<TargetData>& targets);
+    void setPointCloudUnits(const std::vector<PointCloudUnit>& units);
+    void setCompressedPointCloud(const std::vector<CompressedPoint>& points);
+    void setPresenceDetection(const std::vector<bool>& presence);
+
+    // Getters for vectors
+    std::vector<DetectedPoints> getDetectedPoints() const;
+    std::vector<RangeProfilePoint> getRangeProfilePoints() const;
+    std::vector<NoiseProfilePoint> getNoiseProfilePoints() const;
+    std::vector<AzimuthHeatmapPoint> getAzimuthHeatmapPoints() const;
+    std::vector<SideInfoPoint> getSideInfoPoints() const;
+    std::vector<SphericalCoordinate> getSphericalCoordinates() const;
+    std::vector<TargetData> getTargetData() const;
+    std::vector<PointCloudUnit> getPointCloudUnits() const;
+    std::vector<CompressedPoint> getCompressedPointCloud() const;
+    std::vector<bool> getPresenceDetection() const;
+
 };
 
 #endif // UARTFRAME_H

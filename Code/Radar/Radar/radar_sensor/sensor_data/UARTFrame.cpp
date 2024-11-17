@@ -150,9 +150,197 @@ uint32_t Frame_header::getSubframeNum() const
 }
 
 
-TLV_frame::TLV_frame() {}
+TLV_frame::TLV_frame() 
+{
+}
 
-bool TLV_frame::parseTLVHeader(const uint8_t* data, size_t& offset) {
-    // TLV parsing logic should be implemented here
-    return true;
+TLV_header::TLV_header()
+{
+}
+
+void TLV_header::parseTLVHeader(const uint8_t* data, size_t& offset)
+{
+    TLVHeaderData_str.type_u32 = toLittleEndian32(&data[offset], 4);
+    offset += 4;
+
+    TLVHeaderData_str.length_u32 = toLittleEndian32(&data[offset], 4);
+    offset += 4;
+}
+
+uint32_t TLV_header::getType() const
+{
+    return TLVHeaderData_str.type_u32;
+}
+
+uint32_t TLV_header::getLength() const
+{
+    return TLVHeaderData_str.length_u32;
+}
+
+TLV_payload::TLV_payload()
+{
+}
+
+void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHeaderData& header) {
+    // Implement parsing logic based on the type and length from the header
+    uint32_t type = header.type_u32;
+    uint32_t length = header.length_u32;
+
+    switch (type) {
+    case 1: // Detected points
+    {
+        std::vector<DetectedPoints> points;
+        for (size_t i = 0; i < length / sizeof(DetectedPoints); ++i) {
+            DetectedPoints point;
+            point.x_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
+            offset += sizeof(float);
+            point.y_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
+            offset += sizeof(float);
+            point.z_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
+            offset += sizeof(float);
+            point.doppler_f = (float)((data[offset]) | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
+            offset += sizeof(float);
+            points.push_back(point);
+        }
+        setDetectedPoints(points);
+    }
+    break;
+    case 2: // Range Profile
+    {
+        std::vector<RangeProfilePoint> points;
+        for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
+            RangeProfilePoint point;
+            point.rangePoint = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(uint16_t);
+            points.push_back(point);
+        }
+        setRangeProfilePoints(points);
+    }
+    break;
+    case 3: // Noise Profile
+    {
+        std::vector<NoiseProfilePoint> points;
+        for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
+            NoiseProfilePoint point;
+            point.noisePoint = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(uint16_t);
+            points.push_back(point);
+        }
+        setNoiseProfilePoints(points);
+    }
+    break;
+    case 4: // Azimuth Static Heatmap
+    {
+        std::vector<AzimuthHeatmapPoint> points;
+        size_t numRangeBins = length / (4 * sizeof(uint16_t));
+        for (size_t i = 0; i < numRangeBins; ++i) {
+            AzimuthHeatmapPoint point;
+            point.imag = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(int16_t);
+            point.real = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(int16_t);
+            points.push_back(point);
+        }
+        setAzimuthHeatmapPoints(points);
+    }
+    break;
+    case 7: // Side Info for Detected Points
+    {
+        std::vector<SideInfoPoint> points;
+        for (size_t i = 0; i < length / 4; ++i) {
+            SideInfoPoint point;
+            point.snr = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(uint16_t);
+            point.noise = (data[offset]) | (data[offset + 1] << 8);
+            offset += sizeof(uint16_t);
+            points.push_back(point);
+        }
+        setSideInfoPoints(points);
+    }
+    break;
+    default:
+        std::cerr << "Unknown TLV type: " << type << "\n";
+        offset += length; // Skip unknown TLV
+        break;
+    }
+}
+
+void TLV_payload::setDetectedPoints(const std::vector<DetectedPoints>& points) {
+    detectedPoints_vect = points;
+}
+
+void TLV_payload::setRangeProfilePoints(const std::vector<RangeProfilePoint>& points) {
+    RangeProfilePoint_vect = points;
+}
+
+void TLV_payload::setNoiseProfilePoints(const std::vector<NoiseProfilePoint>& points) {
+    NoiseProfilePoint_vect = points;
+}
+
+void TLV_payload::setAzimuthHeatmapPoints(const std::vector<AzimuthHeatmapPoint>& points) {
+    AzimuthHeatmapPoint_vect = points;
+}
+
+void TLV_payload::setSideInfoPoints(const std::vector<SideInfoPoint>& points) {
+    SideInfoPoint_vect = points;
+}
+
+void TLV_payload::setSphericalCoordinates(const std::vector<SphericalCoordinate>& coordinates) {
+    SphericalCoordinate_vect = coordinates;
+}
+
+void TLV_payload::setTargetData(const std::vector<TargetData>& targets) {
+    TargetData_vect = targets;
+}
+
+void TLV_payload::setPointCloudUnits(const std::vector<PointCloudUnit>& units) {
+    PointCloudUnit_vect = units;
+}
+
+void TLV_payload::setCompressedPointCloud(const std::vector<CompressedPoint>& points) {
+    CompressedPoint_vect = points;
+}
+
+void TLV_payload::setPresenceDetection(const std::vector<bool>& presence) {
+    presenceDetection_vect = presence;
+}
+
+std::vector<DetectedPoints> TLV_payload::getDetectedPoints() const {
+    return detectedPoints_vect;
+}
+
+std::vector<RangeProfilePoint> TLV_payload::getRangeProfilePoints() const {
+    return RangeProfilePoint_vect;
+}
+
+std::vector<NoiseProfilePoint> TLV_payload::getNoiseProfilePoints() const {
+    return NoiseProfilePoint_vect;
+}
+
+std::vector<AzimuthHeatmapPoint> TLV_payload::getAzimuthHeatmapPoints() const {
+    return AzimuthHeatmapPoint_vect;
+}
+
+std::vector<SideInfoPoint> TLV_payload::getSideInfoPoints() const {
+    return SideInfoPoint_vect;
+}
+
+std::vector<SphericalCoordinate> TLV_payload::getSphericalCoordinates() const {
+    return SphericalCoordinate_vect;
+}
+
+std::vector<TargetData> TLV_payload::getTargetData() const {
+    return TargetData_vect;
+}
+
+std::vector<PointCloudUnit> TLV_payload::getPointCloudUnits() const {
+    return PointCloudUnit_vect;
+}
+
+std::vector<CompressedPoint> TLV_payload::getCompressedPointCloud() const {
+    return CompressedPoint_vect;
+}
+
+std::vector<bool> TLV_payload::getPresenceDetection() const {
+    return presenceDetection_vect;
 }

@@ -21,7 +21,7 @@ set(SOURCES
 )
 
 # Add the executable for the project
-add_executable(Radar ${SOURCES})
+add_executable(Radar ${SOURCES} "radar_sensor/sensor_data/lib/EndianUtils.h" "radar_sensor/sensor_data/lib/EndianUtils.cpp")
 
 # Add any required libraries here if needed
 # target_link_libraries(Radar <library_name>)
