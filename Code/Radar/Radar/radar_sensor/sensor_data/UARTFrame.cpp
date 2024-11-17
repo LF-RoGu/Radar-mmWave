@@ -4,23 +4,6 @@ constexpr uint64_t MAGIC_WORD = 0x0708050603040102;
 
 UART_frame::UART_frame() {}
 
-uint32_t UART_frame::toLittleEndian32(const uint8_t* data, uint8_t size) 
-{
-    uint32_t result = 0;
-    for (uint8_t i = 0; i < size && i < 4; ++i) {
-        result |= static_cast<uint32_t>(data[i]) << (8 * i);
-    }
-    return result;
-}
-
-uint64_t UART_frame::toLittleEndian64(const uint8_t* data, uint8_t size) 
-{
-    uint64_t result = 0;
-    for (uint8_t i = 0; i < size && i < 8; ++i) {
-        result |= static_cast<uint64_t>(data[i]) << (8 * i);
-    }
-    return result;
-}
 
 Frame_header::Frame_header(const std::vector<uint8_t>& data) 
 {
@@ -29,10 +12,11 @@ Frame_header::Frame_header(const std::vector<uint8_t>& data)
 
 FrameHeaderData Frame_header::parseFrameHeader(const std::vector<uint8_t>& data) 
 {
+    EndianUtils EndianUtils_c;
     FrameHeaderData headerData;
     size_t offset = 0;
 
-    uint64_t magicWord = toLittleEndian64(&data[offset], 8);
+    uint64_t magicWord = EndianUtils_c.toLittleEndian64(&data[offset], 8);
     // Check if the magic word matches the expected value
     if (magicWord != MAGIC_WORD) {
         std::cerr << "Error: Invalid magic word detected! Aborting frame parsing.\n";
@@ -43,28 +27,28 @@ FrameHeaderData Frame_header::parseFrameHeader(const std::vector<uint8_t>& data)
     }
     offset += 8;
 
-    setVersion(toLittleEndian32(&data[offset], 4));
+    setVersion(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setPacketLength(toLittleEndian32(&data[offset], 4));
+    setPacketLength(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setPlatform(toLittleEndian32(&data[offset], 4));
+    setPlatform(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setFrameNumber(toLittleEndian32(&data[offset], 4));
+    setFrameNumber(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setTime(toLittleEndian32(&data[offset], 4));
+    setTime(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setNumObjDetecter(toLittleEndian32(&data[offset], 4));
+    setNumObjDetecter(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setNumTLV(toLittleEndian32(&data[offset], 4));
+    setNumTLV(EndianUtils_c.toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    setSubframeNum(toLittleEndian32(&data[offset], 4));
+    setSubframeNum(EndianUtils_c.toLittleEndian32(&data[offset], 4));
 
     return headerData;
 }
@@ -160,10 +144,11 @@ TLV_header::TLV_header()
 
 void TLV_header::parseTLVHeader(const uint8_t* data, size_t& offset)
 {
-    TLVHeaderData_str.type_u32 = toLittleEndian32(&data[offset], 4);
+    EndianUtils EndianUtils_c;
+    TLVHeaderData_str.type_u32 = EndianUtils_c.toLittleEndian32(&data[offset], 4);
     offset += 4;
 
-    TLVHeaderData_str.length_u32 = toLittleEndian32(&data[offset], 4);
+    TLVHeaderData_str.length_u32 = EndianUtils_c.toLittleEndian32(&data[offset], 4);
     offset += 4;
 }
 
@@ -189,65 +174,27 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
     switch (type) {
     case 1: // Detected points
     {
-        std::vector<DetectedPoints> points;
-        for (size_t i = 0; i < length / sizeof(DetectedPoints); ++i) {
-            DetectedPoints point;
-            point.x_f = EndianUtils::readFloatFromLittleEndian(data, offset);
-            point.y_f = EndianUtils::readFloatFromLittleEndian(data, offset);
-            point.z_f = EndianUtils::readFloatFromLittleEndian(data, offset);
-            point.doppler_f = EndianUtils::readFloatFromLittleEndian(data, offset);
-            points.push_back(point);
-        }
-        setDetectedPoints(points);
+
     }
     break;
     case 2: // Range Profile
     {
-        std::vector<RangeProfilePoint> points;
-        for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
-            RangeProfilePoint point;
-            point.rangePoint = EndianUtils::readLittleEndian16(data, offset);
-            offset += sizeof(uint16_t);
-            points.push_back(point);
-        }
-        setRangeProfilePoints(points);
+
     }
     break;
     case 3: // Noise Profile
     {
-        std::vector<NoiseProfilePoint> points;
-        for (size_t i = 0; i < length / sizeof(uint16_t); ++i) {
-            NoiseProfilePoint point;
-            point.noisePoint = EndianUtils::readLittleEndian16(data, offset);
-            offset += sizeof(uint16_t);
-            points.push_back(point);
-        }
-        setNoiseProfilePoints(points);
+
     }
     break;
     case 4: // Azimuth Static Heatmap
     {
-        std::vector<AzimuthHeatmapPoint> points;
-        size_t numRangeBins = length / (4 * sizeof(uint16_t));
-        for (size_t i = 0; i < numRangeBins; ++i) {
-            AzimuthHeatmapPoint point;
-            point.imag = EndianUtils::readLittleEndianInt16(data, offset);
-            point.real = EndianUtils::readLittleEndianInt16(data, offset);
-            points.push_back(point);
-        }
-        setAzimuthHeatmapPoints(points);
+
     }
     break;
     case 7: // Side Info for Detected Points
     {
-        std::vector<SideInfoPoint> points;
-        for (size_t i = 0; i < length / 4; ++i) {
-            SideInfoPoint point;
-            point.snr = EndianUtils::readLittleEndianInt16(data, offset);
-            point.noise = EndianUtils::readLittleEndianInt16(data, offset);
-            points.push_back(point);
-        }
-        setSideInfoPoints(points);
+
     }
     break;
     default:
