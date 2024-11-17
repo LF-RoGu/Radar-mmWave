@@ -37,6 +37,12 @@ int IWR6843::init(string configPort, string dataPort, string configFilePath)
 
 int IWR6843::poll()
 {
+	/*
+	Test for decoding
+	TODO: remove when need it
+	*/
+	size_t offset = 0;
+
 	//Checking if bytes are available
 	int bytesAvailable = 0;
 	if (ioctl(dataPort_fd, FIONREAD, &bytesAvailable) == -1)
@@ -83,8 +89,46 @@ int IWR6843::poll()
 		ToDo: Add elements to vector of decoded items
 	
 	*/
+	// Step 1: Parse Frame Header
+	Frame_header frameHeader(sublists[0]);
+	FrameHeaderData parsedFrameHeader = frameHeader.parseFrameHeader(sublists[0]);
 
-	//UARTframe(sublists.at(0));
+	// Retrieve frame header values using getters (for debugging or further processing)
+	uint32_t version = frameHeader.getVersion();
+	uint32_t packetLength = frameHeader.getPacketLength();
+	uint32_t platform = frameHeader.getPlatform();
+	uint32_t frameNumber = frameHeader.getFrameNumber();
+	uint32_t timestamp = frameHeader.getTime();
+	uint32_t numObjectsDetected = frameHeader.getNumObjDetecter();
+	uint32_t numTLVs = frameHeader.getNumTLV();
+	uint32_t subframeNumber = frameHeader.getSubframeNum();
+
+	// Step 2: Parse Each TLV Header and Payload
+	for (uint32_t i = 0; i < numTLVs; ++i) {
+		TLV_header tlvHeader;
+		tlvHeader.parseTLVHeader(sublists[0].data(), offset);
+
+		// Retrieve TLV header values
+		uint32_t tlvType = tlvHeader.getType();
+		uint32_t tlvLength = tlvHeader.getLength();
+
+		// Set breakpoint here to verify TLV header values
+
+		// Step 3: Parse TLV Payload
+		TLV_payload payload;
+		TLVHeaderData tlvHeaderData = { tlvType, tlvLength };  // Create a TLVHeaderData struct
+		payload.parsePayload(sublists[0].data(), offset, tlvHeaderData);
+
+		// Use getters from TLV_payload to access the parsed payload data
+		std::vector<DetectedPoints> detectedPoints = payload.getDetectedPoints();
+		std::vector<RangeProfilePoint> rangeProfile = payload.getRangeProfilePoints();
+		std::vector<NoiseProfilePoint> noiseProfile = payload.getNoiseProfilePoints();
+		std::vector<AzimuthHeatmapPoint> azimuthHeatmap = payload.getAzimuthHeatmapPoints();
+		std::vector<SphericalCoordinate> sphericalCoordinates = payload.getSphericalCoordinates();
+		std::vector<TargetData> targetData = payload.getTargetData();
+
+		// Set breakpoints here to inspect the parsed payload values
+	}
 
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
