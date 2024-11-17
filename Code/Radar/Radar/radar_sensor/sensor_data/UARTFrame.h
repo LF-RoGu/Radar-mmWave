@@ -188,6 +188,8 @@ public:
      * Default constructor for TLV_header.
      */
     TLV_frame();
+
+    TLV_frame(std::vector<uint8_t>& data);
     
     /**
      * Parses the TLV header from raw data.
@@ -221,6 +223,18 @@ public:
      * Default constructor for TLV_header.
      */
     TLV_header();
+
+    /**
+     * Sets the Type identifier.
+     * @param type: The type value to set.
+     */
+    void setType(uint32_t var);
+
+    /**
+     * Sets the Length of the payload.
+     * @param length: The length value to set.
+     */
+    void setLength(uint32_t var);
 
     /**
      * Returns the Type identifier.

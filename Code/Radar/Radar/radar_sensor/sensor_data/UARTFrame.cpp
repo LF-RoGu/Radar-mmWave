@@ -135,9 +135,17 @@ TLV_frame::TLV_frame()
 {
 }
 
+TLV_frame::TLV_frame(std::vector<uint8_t>& data)
+{
+    parseTLVHeader(data);
+}
+
 void TLV_frame::parseTLVHeader(std::vector<uint8_t>& data)
 {
-
+    EndianUtils EndianUtils_c;
+    TLV_header TLV_header_c;
+    TLV_header_c.setType(EndianUtils_c.toLittleEndian32(data,4));
+    TLV_header_c.setLength(EndianUtils_c.toLittleEndian32(data, 4));
 }
 
 void TLV_frame::parsePayload(std::vector<uint8_t>& data, size_t& offset)
@@ -181,6 +189,16 @@ void TLV_frame::parsePayload(std::vector<uint8_t>& data, size_t& offset)
 
 TLV_header::TLV_header()
 {
+}
+
+void TLV_header::setType(uint32_t var)
+{
+    TLVHeaderData_str.type_u32 = var;
+}
+
+void TLV_header::setLength(uint32_t var)
+{
+    TLVHeaderData_str.length_u32 = var;
 }
 
 uint32_t TLV_header::getType() const
