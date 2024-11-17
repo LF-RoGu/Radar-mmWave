@@ -136,36 +136,16 @@ TLV_frame::TLV_frame()
 {
 }
 
-TLV_header::TLV_header()
+void TLV_frame::parseTLVHeader(std::vector<uint8_t>& data)
 {
+
 }
 
-void TLV_header::parseTLVHeader(std::vector<uint8_t>& data)
+void TLV_frame::parsePayload(std::vector<uint8_t>& data, size_t& offset)
 {
-    EndianUtils EndianUtils_c;
-    TLVHeaderData_str.type_u32 = EndianUtils_c.toLittleEndian32(data, 4);
-
-    TLVHeaderData_str.length_u32 = EndianUtils_c.toLittleEndian32(data, 4);
-}
-
-uint32_t TLV_header::getType() const
-{
-    return TLVHeaderData_str.type_u32;
-}
-
-uint32_t TLV_header::getLength() const
-{
-    return TLVHeaderData_str.length_u32;
-}
-
-TLV_payload::TLV_payload()
-{
-}
-
-void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHeaderData& header) {
     // Implement parsing logic based on the type and length from the header
-    uint32_t type = header.type_u32;
-    uint32_t length = header.length_u32;
+    uint32_t type;
+    uint32_t length;
 
     switch (type) {
     case 1: // Detected points
@@ -198,6 +178,24 @@ void TLV_payload::parsePayload(const uint8_t* data, size_t& offset, const TLVHea
         offset += length; // Skip unknown TLV
         break;
     }
+}
+
+TLV_header::TLV_header()
+{
+}
+
+uint32_t TLV_header::getType() const
+{
+    return TLVHeaderData_str.type_u32;
+}
+
+uint32_t TLV_header::getLength() const
+{
+    return TLVHeaderData_str.length_u32;
+}
+
+TLV_payload::TLV_payload()
+{
 }
 
 void TLV_payload::setDetectedPoints(const std::vector<DetectedPoints>& points) {

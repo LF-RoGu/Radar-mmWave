@@ -182,14 +182,34 @@ public:
  */
 class TLV_frame : public UART_frame {
 private:
+    TLVHeaderData TLVHeaderData_str;
 public:
     /**
      * Default constructor for TLV_header.
      */
     TLV_frame();
-    /*
-    TODO: Add methods like calculate etc.
-    */
+    
+    /**
+     * Parses the TLV header from raw data.
+     * Input:
+     *  - data: Pointer to the raw data buffer containing TLVs.
+     *  - offset: Reference to the current offset in the data buffer.
+     * Output:
+     *  - void: Updates TLVHeaderData_str with the parsed data.
+     */
+    void parseTLVHeader(std::vector<uint8_t>& data);
+    /**
+     * Parses the TLV payload from raw data based on the header information.
+     *
+     * Input:
+     *  - data: Reference to the vector of raw data containing the payload.
+     *  - offset: Reference to the current offset in the data buffer.
+     *  - header: Constant reference to the TLV header data structure.
+     *
+     * Output:
+     *  - void: Updates the payload data based on the parsed information.
+     */
+    void parsePayload(std::vector<uint8_t>& data, size_t& offset);
 };
 
 class TLV_header : public TLV_frame
@@ -201,16 +221,6 @@ public:
      * Default constructor for TLV_header.
      */
     TLV_header();
-
-    /**
-     * Parses the TLV header from raw data.
-     * Input:
-     *  - data: Pointer to the raw data buffer containing TLVs.
-     *  - offset: Reference to the current offset in the data buffer.
-     * Output:
-     *  - void: Updates TLVHeaderData_str with the parsed data.
-     */
-    void parseTLVHeader(std::vector<uint8_t>& data);
 
     /**
      * Returns the Type identifier.
@@ -246,7 +256,7 @@ public:
      */
     TLV_payload();
 
-    void parsePayload(const uint8_t* data, size_t& offset, const TLVHeaderData& header);
+    
 
     // Setters for vectors
     void setDetectedPoints(const std::vector<DetectedPoints>& points);
