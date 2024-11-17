@@ -24,23 +24,10 @@ public:
 };
 
 /**
- * @class TLV_header
- * @brief Derived class for parsing TLV (Type-Length-Value) headers.
- */
-class TLV_frame : public UART_frame {
-private:
-public:
-    /**
-     * Default constructor for TLV_header.
-     */
-    TLV_frame();
-};
-
-/**
  * @class Frame_header
  * @brief Derived class for parsing and handling frame headers.
  */
-class Frame_header : public TLV_frame {
+class Frame_header : public UART_frame {
 private:
     FrameHeaderData FrameHeader_str;  ///< Struct to store parsed frame header data.
 
@@ -187,6 +174,22 @@ public:
      *  - uint32_t: The subframe number value.
      */
     uint32_t getSubframeNum() const;
+};
+
+/**
+ * @class TLV_header
+ * @brief Derived class for parsing TLV (Type-Length-Value) headers.
+ */
+class TLV_frame : public UART_frame {
+private:
+public:
+    /**
+     * Default constructor for TLV_header.
+     */
+    TLV_frame();
+    /*
+    TODO: Add methods like calculate etc.
+    */
 };
 
 class TLV_header : public TLV_frame
