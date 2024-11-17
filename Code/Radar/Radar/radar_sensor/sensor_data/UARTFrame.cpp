@@ -146,6 +146,13 @@ void TLV_frame::parseTLVHeader(std::vector<uint8_t>& data)
     TLV_header TLV_header_c;
     TLV_header_c.setType(EndianUtils_c.toLittleEndian32(data,4));
     TLV_header_c.setLength(EndianUtils_c.toLittleEndian32(data, 4));
+
+    /*
+    Parse Payload, as it is what is of interest
+    */
+
+    TLV_header_c.getType();
+    TLV_header_c.getLength();
 }
 
 void TLV_frame::parsePayload(std::vector<uint8_t>& data, size_t& offset)
