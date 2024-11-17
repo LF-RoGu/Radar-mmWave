@@ -5,53 +5,51 @@ constexpr uint64_t MAGIC_WORD = 0x0708050603040102;
 UART_frame::UART_frame() {}
 
 
-Frame_header::Frame_header(const std::vector<uint8_t>& data) 
+Frame_header::Frame_header(std::vector<uint8_t>& data) 
 {
     parseFrameHeader(data);
 }
 
-FrameHeaderData Frame_header::parseFrameHeader(const std::vector<uint8_t>& data) 
+void Frame_header::parseFrameHeader(std::vector<uint8_t>& data)
 {
     EndianUtils EndianUtils_c;
     FrameHeaderData headerData;
-    size_t offset = 0;
 
-    uint64_t magicWord = EndianUtils_c.toLittleEndian64(&data[offset], 8);
+    // Extract magic word (64-bit) from the vector
+    uint64_t magicWord = EndianUtils_c.toLittleEndian64(data, 8);
+
     // Check if the magic word matches the expected value
     if (magicWord != MAGIC_WORD) {
         std::cerr << "Error: Invalid magic word detected! Aborting frame parsing.\n";
-        return {}; // Return an empty FrameHeaderData or handle error appropriately
+        return; // Early exit if the magic word is invalid
     }
-    for (int i = 0; i < 4; ++i) {
-        headerData.magicWord_u16[i] = (magicWord >> (16 * i)) & 0xFFFF;
-    }
-    offset += 8;
 
-    setVersion(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract version (32-bit) from the vector
+    setVersion(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setPacketLength(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract packet length (32-bit) from the vector
+    setPacketLength(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setPlatform(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract platform (32-bit) from the vector
+    setPlatform(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setFrameNumber(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract frame number (32-bit) from the vector
+    setFrameNumber(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setTime(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract time (32-bit) from the vector
+    setTime(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setNumObjDetecter(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract number of detected objects (32-bit) from the vector
+    setNumObjDetecter(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setNumTLV(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-    offset += 4;
+    // Extract number of TLVs (32-bit) from the vector
+    setNumTLV(EndianUtils_c.toLittleEndian32(data, 4));
 
-    setSubframeNum(EndianUtils_c.toLittleEndian32(&data[offset], 4));
-
-    return headerData;
+    // Extract subframe number (32-bit) from the vector
+    setSubframeNum(EndianUtils_c.toLittleEndian32(data, 4));
 }
+
+
 
 void Frame_header::setVersion(uint32_t var)
 {
@@ -142,14 +140,12 @@ TLV_header::TLV_header()
 {
 }
 
-void TLV_header::parseTLVHeader(const uint8_t* data, size_t& offset)
+void TLV_header::parseTLVHeader(std::vector<uint8_t>& data)
 {
     EndianUtils EndianUtils_c;
-    TLVHeaderData_str.type_u32 = EndianUtils_c.toLittleEndian32(&data[offset], 4);
-    offset += 4;
+    TLVHeaderData_str.type_u32 = EndianUtils_c.toLittleEndian32(data, 4);
 
-    TLVHeaderData_str.length_u32 = EndianUtils_c.toLittleEndian32(&data[offset], 4);
-    offset += 4;
+    TLVHeaderData_str.length_u32 = EndianUtils_c.toLittleEndian32(data, 4);
 }
 
 uint32_t TLV_header::getType() const
