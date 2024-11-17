@@ -91,7 +91,6 @@ int IWR6843::poll()
 	*/
 	// Step 1: Parse Frame Header
 	Frame_header frameHeader(sublists[0]);
-	FrameHeaderData parsedFrameHeader = frameHeader.parseFrameHeader(sublists[0]);
 
 	// Retrieve frame header values using getters (for debugging or further processing)
 	uint32_t version = frameHeader.getVersion();

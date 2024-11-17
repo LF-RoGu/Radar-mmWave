@@ -1,6 +1,6 @@
 #include "UARTFrame.h"
 
-constexpr uint64_t MAGIC_WORD = 0x0708050604030201;
+constexpr uint64_t MAGIC_WORD = 0x0708050603040102;
 
 UART_frame::UART_frame() {}
 
@@ -43,28 +43,28 @@ FrameHeaderData Frame_header::parseFrameHeader(const std::vector<uint8_t>& data)
     }
     offset += 8;
 
-    headerData.version_u32 = toLittleEndian32(&data[offset], 4);
+    setVersion(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.totalPacketLength_u32 = toLittleEndian32(&data[offset], 4);
+    setPacketLength(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.platform_u32 = toLittleEndian32(&data[offset], 4);
+    setPlatform(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.frameNumber_u32 = toLittleEndian32(&data[offset], 4);
+    setFrameNumber(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.timeCpuCycles_u32 = toLittleEndian32(&data[offset], 4);
+    setTime(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.numDetectedObj_u32 = toLittleEndian32(&data[offset], 4);
+    setNumObjDetecter(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.numTLVs_u32 = toLittleEndian32(&data[offset], 4);
+    setNumTLV(toLittleEndian32(&data[offset], 4));
     offset += 4;
 
-    headerData.subFrameNumber_u32 = toLittleEndian32(&data[offset], 4);
+    setSubframeNum(toLittleEndian32(&data[offset], 4));
 
     return headerData;
 }
