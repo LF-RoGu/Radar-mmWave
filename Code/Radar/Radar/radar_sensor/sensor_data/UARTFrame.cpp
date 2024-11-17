@@ -13,7 +13,6 @@ Frame_header::Frame_header(std::vector<uint8_t>& data)
 void Frame_header::parseFrameHeader(std::vector<uint8_t>& data)
 {
     EndianUtils EndianUtils_c;
-    FrameHeaderData headerData;
 
     // Extract magic word (64-bit) from the vector
     uint64_t magicWord = EndianUtils_c.toLittleEndian64(data, 8);
