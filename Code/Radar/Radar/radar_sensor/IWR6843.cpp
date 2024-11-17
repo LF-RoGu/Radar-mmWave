@@ -102,33 +102,6 @@ int IWR6843::poll()
 	uint32_t numTLVs = frameHeader.getNumTLV();
 	uint32_t subframeNumber = frameHeader.getSubframeNum();
 
-	// Step 2: Parse Each TLV Header and Payload
-	for (uint32_t i = 0; i < numTLVs; ++i) {
-		TLV_header tlvHeader;
-		tlvHeader.parseTLVHeader(sublists[0].data(), offset);
-
-		// Retrieve TLV header values
-		uint32_t tlvType = tlvHeader.getType();
-		uint32_t tlvLength = tlvHeader.getLength();
-
-		// Set breakpoint here to verify TLV header values
-
-		// Step 3: Parse TLV Payload
-		TLV_payload payload;
-		TLVHeaderData tlvHeaderData = { tlvType, tlvLength };  // Create a TLVHeaderData struct
-		payload.parsePayload(sublists[0].data(), offset, tlvHeaderData);
-
-		// Use getters from TLV_payload to access the parsed payload data
-		std::vector<DetectedPoints> detectedPoints = payload.getDetectedPoints();
-		std::vector<RangeProfilePoint> rangeProfile = payload.getRangeProfilePoints();
-		std::vector<NoiseProfilePoint> noiseProfile = payload.getNoiseProfilePoints();
-		std::vector<AzimuthHeatmapPoint> azimuthHeatmap = payload.getAzimuthHeatmapPoints();
-		std::vector<SphericalCoordinate> sphericalCoordinates = payload.getSphericalCoordinates();
-		std::vector<TargetData> targetData = payload.getTargetData();
-
-		// Set breakpoints here to inspect the parsed payload values
-	}
-
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
 	return 0;

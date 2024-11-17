@@ -13,7 +13,6 @@
  */
 class UART_frame {
 protected:
-    std::vector<uint8_t> UARTFrame_temp;  ///< Temporary storage for frame data.
     std::vector<uint8_t> UARTFrame_vec;  ///< Vector to hold raw UART frame data.
 
 public:
@@ -22,38 +21,32 @@ public:
      */
     UART_frame();
 
-    /**
-     * Converts a sequence of bytes (up to 4) in little-endian order to a 32-bit integer.
-     * Input:
-     *  - data: Pointer to the byte array.
-     *  - size: Number of bytes to convert (max 4).
-     * Output:
-     *  - uint32_t: The converted 32-bit integer.
-     */
-    static uint32_t toLittleEndian32(const uint8_t* data, uint8_t size);
+};
 
+/**
+ * @class TLV_header
+ * @brief Derived class for parsing TLV (Type-Length-Value) headers.
+ */
+class TLV_frame : public UART_frame {
+private:
+public:
     /**
-     * Converts a sequence of bytes (up to 8) in little-endian order to a 64-bit integer.
-     * Input:
-     *  - data: Pointer to the byte array.
-     *  - size: Number of bytes to convert (max 8).
-     * Output:
-     *  - uint64_t: The converted 64-bit integer.
+     * Default constructor for TLV_header.
      */
-    static uint64_t toLittleEndian64(const uint8_t* data, uint8_t size);
+    TLV_frame();
 };
 
 /**
  * @class Frame_header
  * @brief Derived class for parsing and handling frame headers.
  */
-class Frame_header : public UART_frame {
+class Frame_header : public TLV_frame {
 private:
     FrameHeaderData FrameHeader_str;  ///< Struct to store parsed frame header data.
 
 public:
 
-    Frame_header(const std::vector<uint8_t>& data);
+    Frame_header(std::vector<uint8_t>& data);
 
     /**
      * Parses the entire frame header from raw data, interpreting each multi-byte field
@@ -63,7 +56,7 @@ public:
      * Output:
      *  - FrameHeaderData: Parsed frame header data.
      */
-    FrameHeaderData parseFrameHeader(const std::vector<uint8_t>& data);
+    void parseFrameHeader(std::vector<uint8_t>& data);
 
     // Setters
     /**
@@ -196,19 +189,6 @@ public:
     uint32_t getSubframeNum() const;
 };
 
-/**
- * @class TLV_header
- * @brief Derived class for parsing TLV (Type-Length-Value) headers.
- */
-class TLV_frame : public UART_frame {
-private:
-public:
-    /**
-     * Default constructor for TLV_header.
-     */
-    TLV_frame();
-};
-
 class TLV_header : public TLV_frame
 {
 private:
@@ -227,7 +207,7 @@ public:
      * Output:
      *  - void: Updates TLVHeaderData_str with the parsed data.
      */
-    void parseTLVHeader(const uint8_t* data, size_t& offset);
+    void parseTLVHeader(std::vector<uint8_t>& data);
 
     /**
      * Returns the Type identifier.

@@ -1,30 +1,43 @@
 // EndianUtils.cpp
 #include "EndianUtils.h"
+#include <stdexcept>
 
-uint16_t EndianUtils::readLittleEndian16(const uint8_t* data, size_t& offset) {
-    uint16_t value = data[offset] | (data[offset + 1] << 8);
-    offset += sizeof(uint16_t);
-    return value;
+uint32_t EndianUtils::toLittleEndian32(std::vector<uint8_t>& data, uint8_t bytesToCheck)
+{
+    // Ensure the vector has at least the required number of bytes
+    if (data.size() < bytesToCheck || bytesToCheck > 4) {
+        throw std::invalid_argument("Invalid number of bytes to process");
+    }
+
+    uint32_t result = 0;
+
+    // Extract little-endian 32-bit value from the vector
+    for (uint8_t i = 0; i < bytesToCheck; ++i) {
+        result |= static_cast<uint32_t>(data[i]) << (8 * i);
+    }
+
+    // Remove the used bytes from the beginning of the vector
+    data.erase(data.begin(), data.begin() + bytesToCheck);
+
+    return result;
 }
 
-uint32_t EndianUtils::readLittleEndian32(const uint8_t* data, size_t& offset) {
-    uint32_t value = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
-    offset += sizeof(uint32_t);
-    return value;
-}
+uint64_t EndianUtils::toLittleEndian64(std::vector<uint8_t>& data, uint8_t bytesToCheck)
+{
+    // Ensure the vector has at least the required number of bytes
+    if (data.size() < bytesToCheck || bytesToCheck > 8) {
+        throw std::invalid_argument("Invalid number of bytes to process");
+    }
 
-int16_t EndianUtils::readLittleEndianInt16(const uint8_t* data, size_t& offset) {
-    int16_t value = data[offset] | (data[offset + 1] << 8);
-    offset += sizeof(int16_t);
-    return value;
-}
+    uint64_t result = 0;
 
-float EndianUtils::readFloatFromLittleEndian(const uint8_t* data, size_t& offset) {
-    union {
-        uint32_t i;
-        float f;
-    } converter;
-    uint32_t intVal = readLittleEndian32(data, offset);
-    converter.i = intVal;
-    return converter.f;
+    // Extract little-endian 64-bit value from the vector
+    for (uint8_t i = 0; i < bytesToCheck; ++i) {
+        result |= static_cast<uint64_t>(data[i]) << (8 * i);
+    }
+
+    // Remove the used bytes from the beginning of the vector
+    data.erase(data.begin(), data.begin() + bytesToCheck);
+
+    return result;
 }
