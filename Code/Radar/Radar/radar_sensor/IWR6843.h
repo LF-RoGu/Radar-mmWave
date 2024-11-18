@@ -18,6 +18,14 @@
 
 using namespace std;
 
+#define DEBUG
+
+// Add this macro for debug printing
+#ifdef DEBUG
+#define DEBUG_PRINT(x) std::cout << x << std::endl
+#else
+#define DEBUG_PRINT(x) // Do nothing
+#endif
 
 class IWR6843
 {

@@ -91,7 +91,6 @@ int IWR6843::poll()
 	*/
 	// Step 1: Parse Frame Header
 	Frame_header frameHeader(sublists[0]);
-
 	// Retrieve frame header values using getters (for debugging or further processing)
 	uint32_t version = frameHeader.getVersion();
 	uint32_t packetLength = frameHeader.getPacketLength();
@@ -101,10 +100,34 @@ int IWR6843::poll()
 	uint32_t numObjectsDetected = frameHeader.getNumObjDetecter();
 	uint32_t numTLVs = frameHeader.getNumTLV();
 	uint32_t subframeNumber = frameHeader.getSubframeNum();
-
+	// Step 2: Parse TLV Frame
+	/*
+	2.1. The header is parsed
+	2.2. The payload is parsed and then uploaded into a struct that is a vector of data of all the possible payloads
+	*/
+	/*
+	TODO: NOT all data types are added at this point, due to the lacking of info of what is FFT in this context, and how to get it.
+	*/
 	TLV_payload payloadTLV(sublists[0], numTLVs);
 
 	TLVPayloadData TLV_payload_temp = payloadTLV.getTLVFramePayloadData();
+
+	// Print values of DetectedPoints_str if DEBUG is enabled
+#ifdef DEBUG
+	if (!TLV_payload_temp.DetectedPoints_str.empty()) {
+		for (size_t i = 0; i < TLV_payload_temp.DetectedPoints_str.size(); ++i) {
+			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
+			DEBUG_PRINT("Detected Point " << i + 1 << ":");
+			DEBUG_PRINT("  x = " << point.x_f);
+			DEBUG_PRINT("  y = " << point.y_f);
+			DEBUG_PRINT("  z = " << point.z_f);
+			DEBUG_PRINT("  doppler = " << point.doppler_f);
+		}
+	}
+	else {
+		DEBUG_PRINT("No detected points available.");
+	}
+#endif // DEBUG
 
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
