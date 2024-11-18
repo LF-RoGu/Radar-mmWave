@@ -135,8 +135,6 @@ TLV_frame::TLV_frame()
 
 TLV_frame::TLV_frame(std::vector<uint8_t>& data, uint32_t numDetectedObj_var)
 {
-    TLVHeaderData TLVHeaderData_str;
-    TLVPayloadData TLVPayloadData_str;
     TLVHeaderData_str = parseTLVHeader(data);
     TLVPayloadData_str = parseTLVPayload(data, TLVHeaderData_str, numDetectedObj_var);
 }
@@ -158,24 +156,24 @@ TLVHeaderData TLV_frame::parseTLVHeader(std::vector<uint8_t>& data)
 TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderData TLVHeaderData_var, uint32_t numDetectedObj_var)
 {
     EndianUtils EndianUtils_c;
-    TLV_payload TLV_payload_c;
     TLVPayloadData TLVPayloadData_str;
     // Implement parsing logic based on the type and length from the header
     TLVHeaderData_var.type_u32;
     TLVHeaderData_var.length_u32;
 
-    switch (TLVHeaderData_var.type_u32) {
+    switch (TLVHeaderData_var.type_u32) 
+    {
     case 1: // Detected points
     {
-        DetectedPoints DetectedPoints_var;
+        DetectedPoints DetectedPoints_temp;
         for (uint32_t i = 0; i < numDetectedObj_var; i++)
         {
-            DetectedPoints_var.x_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_var.y_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_var.z_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_var.doppler_f = EndianUtils_c.toLittleEndian32(data, 4);
+            DetectedPoints_temp.x_f = EndianUtils_c.toLittleEndian32(data, 4);
+            DetectedPoints_temp.y_f = EndianUtils_c.toLittleEndian32(data, 4);
+            DetectedPoints_temp.z_f = EndianUtils_c.toLittleEndian32(data, 4);
+            DetectedPoints_temp.doppler_f = EndianUtils_c.toLittleEndian32(data, 4);
 
-            TLV_payload_c.setDetectedPoints(DetectedPoints_var);
+            TLVPayloadData_str.DetectedPoints_str.push_back(DetectedPoints_temp);
         }
     }
     break;
@@ -196,13 +194,10 @@ TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderD
     break;
     case 7: // Side Info for Detected Points
     {
-        SideInfoPoint SideInfoPoint_var;
         for (uint32_t i = 0; i < numDetectedObj_var; i++)
         {
-            SideInfoPoint_var.snr = EndianUtils_c.toLittleEndian32(data, 4);
-            SideInfoPoint_var.snr = EndianUtils_c.toLittleEndian32(data, 4);
-
-            TLV_payload_c.setSideInfoPoints(SideInfoPoint_var);
+            TLVPayloadData_str.SideInfoPoint_str.snr = EndianUtils_c.toLittleEndian32(data, 4);
+            TLVPayloadData_str.SideInfoPoint_str.snr = EndianUtils_c.toLittleEndian32(data, 4);
         }
     }
     break;
@@ -210,7 +205,16 @@ TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderD
         std::cerr << "Unknown TLV type " << "\n";
         break;
     }
+    return TLVPayloadData_str;
+}
 
+TLVHeaderData TLV_frame::getTLVFrameHeaderData()
+{
+    return TLVHeaderData_str;
+}
+
+TLVPayloadData TLV_frame::getTLVFramePayloadData()
+{
     return TLVPayloadData_str;
 }
 
@@ -242,101 +246,19 @@ TLV_payload::TLV_payload()
 {
 }
 
-void TLV_payload::setDetectedPoints(DetectedPoints DetectedPoints_var) 
+// Constructor implementation
+TLV_payload::TLV_payload(std::vector<uint8_t>& data, uint32_t numDetectedObj_var)
+    : TLV_frame(data, numDetectedObj_var)
 {
-    detectedPoints_vect.push_back(DetectedPoints_var);
+    
 }
 
-void TLV_payload::setRangeProfilePoints(RangeProfilePoint RangeProfilePoint_var)
+void TLV_payload::setTLVPayloadData(TLVPayloadData TLVPayloadData_var)
 {
-    RangeProfilePoint_vect.push_back(RangeProfilePoint_var);
+    TLVPayloadData_vect.push_back(TLVPayloadData_var);
 }
 
-void TLV_payload::setNoiseProfilePoints(NoiseProfilePoint NoiseProfilePoint_var)
+std::vector<TLVPayloadData> TLV_payload::getTLVPayloadData()
 {
-    NoiseProfilePoint_vect.push_back(NoiseProfilePoint_var);
-}
-
-void TLV_payload::setAzimuthHeatmapPoints(AzimuthHeatmapPoint AzimuthHeatmapPoint_var)
-{
-    AzimuthHeatmapPoint_vect.push_back(AzimuthHeatmapPoint_var);
-}
-void TLV_payload::setSideInfoPoints(SideInfoPoint SideInfoPoint_var)
-{
-    SideInfoPoint_vect.push_back(SideInfoPoint_var);
-}
-
-void TLV_payload::setSphericalCoordinates(SphericalCoordinate SphericalCoordinate_var)
-{
-    SphericalCoordinate_vect.push_back(SphericalCoordinate_var);
-}
-
-void TLV_payload::setTargetData(TargetData TargetData_var)
-{
-    TargetData_vect.push_back(TargetData_var);
-}
-
-void TLV_payload::setPointCloudUnits(PointCloudUnit PointCloudUnit_var)
-{
-    PointCloudUnit_vect.push_back(PointCloudUnit_var);
-}
-
-void TLV_payload::setCompressedPointCloud(CompressedPoint CompressedPoint_var)
-{
-    CompressedPoint_vect.push_back(CompressedPoint_var);
-}
-
-void TLV_payload::setPresenceDetection(bool var)
-{
-    presenceDetection_vect.push_back(var);
-}
-
-std::vector<DetectedPoints> TLV_payload::getDetectedPoints() 
-{
-    return detectedPoints_vect;
-}
-
-std::vector<RangeProfilePoint> TLV_payload::getRangeProfilePoints() 
-{
-    return RangeProfilePoint_vect;
-}
-
-std::vector<NoiseProfilePoint> TLV_payload::getNoiseProfilePoints() 
-{
-    return NoiseProfilePoint_vect;
-}
-
-std::vector<AzimuthHeatmapPoint> TLV_payload::getAzimuthHeatmapPoints() 
-{
-    return AzimuthHeatmapPoint_vect;
-}
-
-std::vector<SideInfoPoint> TLV_payload::getSideInfoPoints() 
-{
-    return SideInfoPoint_vect;
-}
-
-std::vector<SphericalCoordinate> TLV_payload::getSphericalCoordinates() 
-{
-    return SphericalCoordinate_vect;
-}
-
-std::vector<TargetData> TLV_payload::getTargetData() 
-{
-    return TargetData_vect;
-}
-
-std::vector<PointCloudUnit> TLV_payload::getPointCloudUnits() 
-{
-    return PointCloudUnit_vect;
-}
-
-std::vector<CompressedPoint> TLV_payload::getCompressedPointCloud() 
-{
-    return CompressedPoint_vect;
-}
-
-std::vector<bool> TLV_payload::getPresenceDetection() 
-{
-    return presenceDetection_vect;
+    return TLVPayloadData_vect;
 }

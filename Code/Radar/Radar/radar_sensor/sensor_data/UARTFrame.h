@@ -183,6 +183,7 @@ public:
 class TLV_frame{
 private:
     TLVHeaderData TLVHeaderData_str;
+    TLVPayloadData TLVPayloadData_str;
 public:
     /**
      * Default constructor for TLV_header.
@@ -212,6 +213,9 @@ public:
      *  - void: Updates the payload data based on the parsed information.
      */
     TLVPayloadData parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderData TLVHeaderData_var, uint32_t numDetectedObj_var);
+
+    TLVHeaderData getTLVFrameHeaderData();
+    TLVPayloadData getTLVFramePayloadData();
 };
 
 class TLV_header : public TLV_frame
@@ -253,16 +257,7 @@ class TLV_payload : public TLV_frame
 {
 private:
     // Updated parsePayload function to handle different TLV types
-    std::vector<DetectedPoints> detectedPoints_vect;
-    std::vector<RangeProfilePoint> RangeProfilePoint_vect;
-    std::vector<NoiseProfilePoint> NoiseProfilePoint_vect;
-    std::vector<AzimuthHeatmapPoint> AzimuthHeatmapPoint_vect;
-    std::vector<SideInfoPoint> SideInfoPoint_vect;
-    std::vector<SphericalCoordinate> SphericalCoordinate_vect;
-    std::vector<TargetData> TargetData_vect;
-    std::vector<PointCloudUnit> PointCloudUnit_vect;
-    std::vector<CompressedPoint> CompressedPoint_vect;
-    std::vector<bool> presenceDetection_vect;
+    std::vector<TLVPayloadData> TLVPayloadData_vect;
 public:
     /**
      * Default constructor for TLV_payload.
@@ -272,37 +267,13 @@ public:
      * Constructor that takes raw data and number of detected objects,
      * and calls the base class constructor for parsing.
      */
-    TLV_payload(std::vector<uint8_t>& data, uint32_t numDetectedObj_var)
-        : TLV_frame(data, numDetectedObj_var)
-    {
-        // The TLV_frame constructor already handles the parsing
-        // The parsed data will be set in the vectors of this derived class
-    }
-    
+    TLV_payload(std::vector<uint8_t>& data, uint32_t numDetectedObj_var);
 
     // Setters for vectors
-    void setDetectedPoints(DetectedPoints DetectedPoints_var);
-    void setRangeProfilePoints(RangeProfilePoint RangeProfilePoint_var);
-    void setNoiseProfilePoints(NoiseProfilePoint NoiseProfilePoint_var);
-    void setAzimuthHeatmapPoints(AzimuthHeatmapPoint AzimuthHeatmapPoint_var);
-    void setSideInfoPoints(SideInfoPoint SideInfoPoint_var);
-    void setSphericalCoordinates(SphericalCoordinate SphericalCoordinate_var);
-    void setTargetData(TargetData TargetData_var);
-    void setPointCloudUnits(PointCloudUnit PointCloudUnit_var);
-    void setCompressedPointCloud(CompressedPoint CompressedPoint_var);
-    void setPresenceDetection(bool var);
+    void setTLVPayloadData(TLVPayloadData TLVPayloadData_var);
 
     // Getters for vectors
-    std::vector<DetectedPoints> getDetectedPoints();
-    std::vector<RangeProfilePoint> getRangeProfilePoints();
-    std::vector<NoiseProfilePoint> getNoiseProfilePoints();
-    std::vector<AzimuthHeatmapPoint> getAzimuthHeatmapPoints();
-    std::vector<SideInfoPoint> getSideInfoPoints();
-    std::vector<SphericalCoordinate> getSphericalCoordinates();
-    std::vector<TargetData> getTargetData();
-    std::vector<PointCloudUnit> getPointCloudUnits();
-    std::vector<CompressedPoint> getCompressedPointCloud();
-    std::vector<bool> getPresenceDetection();
+    std::vector<TLVPayloadData> getTLVPayloadData();
 
 };
 
