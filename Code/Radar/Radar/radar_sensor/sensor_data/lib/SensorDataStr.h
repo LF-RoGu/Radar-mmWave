@@ -27,10 +27,10 @@ struct TLVHeaderData {
 
 // Additional structs for various types of detected data
 struct DetectedPoints {
-    uint32_t x_f;
-    uint32_t y_f;
-    uint32_t z_f;
-    uint32_t doppler_f;
+    float x_f;
+    float y_f;
+    float z_f;
+    float doppler_f;
 };
 
 struct RangeProfilePoint {

@@ -116,6 +116,7 @@ int IWR6843::poll()
 #ifdef DEBUG
 	if (!TLV_payload_temp.DetectedPoints_str.empty()) {
 		for (size_t i = 0; i < TLV_payload_temp.DetectedPoints_str.size(); ++i) {
+			DEBUG_PRINT("Detected Points: " << numObjectsDetected);
 			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
 			DEBUG_PRINT("Detected Point " << i + 1 << ":");
 			DEBUG_PRINT("  x = " << point.x_f);

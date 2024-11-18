@@ -18,6 +18,8 @@ public:
      */
     static uint32_t toLittleEndian32(std::vector<uint8_t>& data, uint8_t bytesToCheck);
 
+    static float toFloat32(uint32_t var32);
+
     /**
      * Converts a sequence of bytes (up to 8) in little-endian order to a 64-bit integer.
      * Input:

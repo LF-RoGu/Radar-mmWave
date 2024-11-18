@@ -168,10 +168,10 @@ TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderD
         DetectedPoints DetectedPoints_temp;
         for (uint32_t i = 0; i < numDetectedObj_var; i++)
         {
-            DetectedPoints_temp.x_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_temp.y_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_temp.z_f = EndianUtils_c.toLittleEndian32(data, 4);
-            DetectedPoints_temp.doppler_f = EndianUtils_c.toLittleEndian32(data, 4);
+            DetectedPoints_temp.x_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
+            DetectedPoints_temp.y_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
+            DetectedPoints_temp.z_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
+            DetectedPoints_temp.doppler_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
 
             TLVPayloadData_str.DetectedPoints_str.push_back(DetectedPoints_temp);
         }

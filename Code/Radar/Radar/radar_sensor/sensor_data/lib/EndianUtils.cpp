@@ -22,6 +22,15 @@ uint32_t EndianUtils::toLittleEndian32(std::vector<uint8_t>& data, uint8_t bytes
     return result;
 }
 
+float EndianUtils::toFloat32(uint32_t var32)
+{
+    // Reinterpret the bits of the 32-bit integer as a float
+    float floatValue;
+    std::memcpy(&floatValue, &var32, sizeof(float));
+
+    return floatValue;
+}
+
 uint64_t EndianUtils::toLittleEndian64(std::vector<uint8_t>& data, uint8_t bytesToCheck)
 {
     // Ensure the vector has at least the required number of bytes
