@@ -95,4 +95,17 @@ struct CompressedPoint {
     uint16_t snr;
 };
 
+struct TLVPayloadData
+{
+    DetectedPoints DetectedPoints_str;
+    RangeProfilePoint RangeProfilePoint_str;
+    NoiseProfilePoint NoiseProfilePoint_str;
+    AzimuthHeatmapPoint AzimutHeatmapPoint_str;
+    SideInfoPoint SideInfoPoint_str;
+    AzimuthElevationHeatmapPoint AzimuthElevationHeatmapPoint_str;
+    SphericalCoordinate SphericalCoordinate_str;
+    TargetData TargetData_str;
+    PointCloudUnit PointCloudUnit_str;
+    CompressedPoint CompressedPoint_str;
+};
 #endif // SENSORDATASTR_H

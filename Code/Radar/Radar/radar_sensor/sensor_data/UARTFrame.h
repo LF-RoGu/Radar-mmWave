@@ -180,7 +180,7 @@ public:
  * @class TLV_header
  * @brief Derived class for parsing TLV (Type-Length-Value) headers.
  */
-class TLV_frame : public UART_frame {
+class TLV_frame{
 private:
     TLVHeaderData TLVHeaderData_str;
 public:
@@ -189,7 +189,7 @@ public:
      */
     TLV_frame();
 
-    TLV_frame(std::vector<uint8_t>& data);
+    TLV_frame(std::vector<uint8_t>& data, uint32_t numDetectedObj_var);
     
     /**
      * Parses the TLV header from raw data.
@@ -199,7 +199,7 @@ public:
      * Output:
      *  - void: Updates TLVHeaderData_str with the parsed data.
      */
-    void parseTLVHeader(std::vector<uint8_t>& data);
+    TLVHeaderData parseTLVHeader(std::vector<uint8_t>& data);
     /**
      * Parses the TLV payload from raw data based on the header information.
      *
@@ -211,7 +211,7 @@ public:
      * Output:
      *  - void: Updates the payload data based on the parsed information.
      */
-    void parsePayload(std::vector<uint8_t>& data, size_t& offset);
+    TLVPayloadData parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderData TLVHeaderData_var, uint32_t numDetectedObj_var);
 };
 
 class TLV_header : public TLV_frame
@@ -258,7 +258,6 @@ private:
     std::vector<NoiseProfilePoint> NoiseProfilePoint_vect;
     std::vector<AzimuthHeatmapPoint> AzimuthHeatmapPoint_vect;
     std::vector<SideInfoPoint> SideInfoPoint_vect;
-    std::vector<AzimuthElevationHeatmapPoint> AzimuthElevationHeatmapPoint_vect;
     std::vector<SphericalCoordinate> SphericalCoordinate_vect;
     std::vector<TargetData> TargetData_vect;
     std::vector<PointCloudUnit> PointCloudUnit_vect;
@@ -269,32 +268,41 @@ public:
      * Default constructor for TLV_payload.
      */
     TLV_payload();
-
+    /**
+     * Constructor that takes raw data and number of detected objects,
+     * and calls the base class constructor for parsing.
+     */
+    TLV_payload(std::vector<uint8_t>& data, uint32_t numDetectedObj_var)
+        : TLV_frame(data, numDetectedObj_var)
+    {
+        // The TLV_frame constructor already handles the parsing
+        // The parsed data will be set in the vectors of this derived class
+    }
     
 
     // Setters for vectors
-    void setDetectedPoints(const std::vector<DetectedPoints>& points);
-    void setRangeProfilePoints(const std::vector<RangeProfilePoint>& points);
-    void setNoiseProfilePoints(const std::vector<NoiseProfilePoint>& points);
-    void setAzimuthHeatmapPoints(const std::vector<AzimuthHeatmapPoint>& points);
-    void setSideInfoPoints(const std::vector<SideInfoPoint>& points);
-    void setSphericalCoordinates(const std::vector<SphericalCoordinate>& coordinates);
-    void setTargetData(const std::vector<TargetData>& targets);
-    void setPointCloudUnits(const std::vector<PointCloudUnit>& units);
-    void setCompressedPointCloud(const std::vector<CompressedPoint>& points);
-    void setPresenceDetection(const std::vector<bool>& presence);
+    void setDetectedPoints(DetectedPoints DetectedPoints_var);
+    void setRangeProfilePoints(RangeProfilePoint RangeProfilePoint_var);
+    void setNoiseProfilePoints(NoiseProfilePoint NoiseProfilePoint_var);
+    void setAzimuthHeatmapPoints(AzimuthHeatmapPoint AzimuthHeatmapPoint_var);
+    void setSideInfoPoints(SideInfoPoint SideInfoPoint_var);
+    void setSphericalCoordinates(SphericalCoordinate SphericalCoordinate_var);
+    void setTargetData(TargetData TargetData_var);
+    void setPointCloudUnits(PointCloudUnit PointCloudUnit_var);
+    void setCompressedPointCloud(CompressedPoint CompressedPoint_var);
+    void setPresenceDetection(bool var);
 
     // Getters for vectors
-    std::vector<DetectedPoints> getDetectedPoints() const;
-    std::vector<RangeProfilePoint> getRangeProfilePoints() const;
-    std::vector<NoiseProfilePoint> getNoiseProfilePoints() const;
-    std::vector<AzimuthHeatmapPoint> getAzimuthHeatmapPoints() const;
-    std::vector<SideInfoPoint> getSideInfoPoints() const;
-    std::vector<SphericalCoordinate> getSphericalCoordinates() const;
-    std::vector<TargetData> getTargetData() const;
-    std::vector<PointCloudUnit> getPointCloudUnits() const;
-    std::vector<CompressedPoint> getCompressedPointCloud() const;
-    std::vector<bool> getPresenceDetection() const;
+    std::vector<DetectedPoints> getDetectedPoints();
+    std::vector<RangeProfilePoint> getRangeProfilePoints();
+    std::vector<NoiseProfilePoint> getNoiseProfilePoints();
+    std::vector<AzimuthHeatmapPoint> getAzimuthHeatmapPoints();
+    std::vector<SideInfoPoint> getSideInfoPoints();
+    std::vector<SphericalCoordinate> getSphericalCoordinates();
+    std::vector<TargetData> getTargetData();
+    std::vector<PointCloudUnit> getPointCloudUnits();
+    std::vector<CompressedPoint> getCompressedPointCloud();
+    std::vector<bool> getPresenceDetection();
 
 };
 
