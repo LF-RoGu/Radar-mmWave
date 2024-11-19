@@ -1,4 +1,5 @@
 #include "IWR6843.h"
+#include <iomanip>  // Needed for std::setprecision
 
 IWR6843::IWR6843()
 {
@@ -113,10 +114,11 @@ int IWR6843::poll()
 	TLVPayloadData TLV_payload_temp = payloadTLV.getTLVFramePayloadData();
 
 	// Print values of DetectedPoints_str if DEBUG is enabled
-#ifdef DEBUG
+#ifdef DEBUG_IWR
 	if (!TLV_payload_temp.DetectedPoints_str.empty()) {
 		for (size_t i = 0; i < TLV_payload_temp.DetectedPoints_str.size(); ++i) {
-			DEBUG_PRINT("Detected Points: " << numObjectsDetected);
+			std::cout << std::fixed << std::setprecision(6);
+			DEBUG_PRINT("!Detected Points: " << numObjectsDetected);
 			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
 			DEBUG_PRINT("Detected Point " << i + 1 << ":");
 			DEBUG_PRINT("  x = " << point.x_f);

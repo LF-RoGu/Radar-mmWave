@@ -1,4 +1,6 @@
 #include "UARTFrame.h"
+#include <iomanip>  // Needed for std::setprecision
+
 
 constexpr uint64_t MAGIC_WORD = 0x0708050603040102;
 
@@ -168,10 +170,37 @@ TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderD
         DetectedPoints DetectedPoints_temp;
         for (uint32_t i = 0; i < numDetectedObj_var; i++)
         {
-            DetectedPoints_temp.x_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
-            DetectedPoints_temp.y_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
-            DetectedPoints_temp.z_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
-            DetectedPoints_temp.doppler_f = EndianUtils_c.toFloat32(EndianUtils_c.toLittleEndian32(data, 4));
+            // Parse x, y, z, and doppler values (4 bytes each)
+            uint32_t x_int = EndianUtils::toLittleEndian32(data, 4);
+            uint32_t y_int = EndianUtils::toLittleEndian32(data, 4);
+            uint32_t z_int = EndianUtils::toLittleEndian32(data, 4);
+            uint32_t doppler_int = EndianUtils::toLittleEndian32(data, 4);
+#ifdef DEBUG
+            // Debug print to verify byte extraction
+            std::cout << "-----------------------------------------------------" << std::endl;
+            std::cout << "Extracted Raw Integers (Hex):" << std::endl;
+            std::cout << "  x (raw): 0x" << std::hex << x_int << std::endl;
+            std::cout << "  y (raw): 0x" << std::hex << y_int << std::endl;
+            std::cout << "  z (raw): 0x" << std::hex << z_int << std::endl;
+            std::cout << "  doppler (raw): 0x" << std::hex << doppler_int << std::endl;
+#endif
+            // Convert to float
+            float x_f = EndianUtils::toFloat32(x_int);
+            float y_f = EndianUtils::toFloat32(y_int);
+            float z_f = EndianUtils::toFloat32(z_int);
+            float doppler_f = EndianUtils::toFloat32(doppler_int);
+#ifdef DEBUG
+            std::cout << std::fixed << std::setprecision(6);
+            std::cout << "Converted Floats:" << std::endl;
+            std::cout << "  x: " << x_f << " meters" << std::endl;
+            std::cout << "  y: " << y_f << " meters" << std::endl;
+            std::cout << "  z: " << z_f << " meters" << std::endl;
+            std::cout << "  doppler: " << doppler_f << " m/s" << std::endl;
+#endif
+            DetectedPoints_temp.x_f = x_f;
+            DetectedPoints_temp.y_f = y_f;
+            DetectedPoints_temp.z_f = z_f;
+            DetectedPoints_temp.doppler_f = doppler_f;
 
             TLVPayloadData_str.DetectedPoints_str.push_back(DetectedPoints_temp);
         }
