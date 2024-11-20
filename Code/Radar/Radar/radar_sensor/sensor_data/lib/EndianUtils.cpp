@@ -1,6 +1,7 @@
 // EndianUtils.cpp
 #include "EndianUtils.h"
 #include <stdexcept>
+#include <cmath>
 
 uint32_t EndianUtils::toLittleEndian32(std::vector<uint8_t>& data, uint8_t bytesToCheck)
 {
@@ -49,4 +50,10 @@ uint64_t EndianUtils::toLittleEndian64(std::vector<uint8_t>& data, uint8_t bytes
     data.erase(data.begin(), data.begin() + bytesToCheck);
 
     return result;
+}
+
+// Function to round a float to a specified number of decimal places
+float EndianUtils::roundToPrecision(float value, int precision) {
+    float scale = std::pow(10.0f, precision);
+    return std::round(value * scale) / scale;
 }

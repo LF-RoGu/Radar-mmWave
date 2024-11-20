@@ -29,6 +29,8 @@ public:
      *  - uint64_t: The converted 64-bit integer.
      */
     static uint64_t toLittleEndian64(std::vector<uint8_t>& data, uint8_t bytesToCheck);
+
+    static float roundToPrecision(float value, int precision);
 };
 
 #endif // ENDIANUTILS_H

@@ -197,10 +197,11 @@ TLVPayloadData TLV_frame::parseTLVPayload(std::vector<uint8_t>& data, TLVHeaderD
             std::cout << "  z: " << z_f << " meters" << std::endl;
             std::cout << "  doppler: " << doppler_f << " m/s" << std::endl;
 #endif
-            DetectedPoints_temp.x_f = x_f;
-            DetectedPoints_temp.y_f = y_f;
-            DetectedPoints_temp.z_f = z_f;
-            DetectedPoints_temp.doppler_f = doppler_f;
+
+            DetectedPoints_temp.x_f = EndianUtils::roundToPrecision(x_f, 4);
+            DetectedPoints_temp.y_f = EndianUtils::roundToPrecision(y_f, 4);
+            DetectedPoints_temp.z_f = EndianUtils::roundToPrecision(z_f, 4);
+            DetectedPoints_temp.doppler_f = EndianUtils::roundToPrecision(doppler_f, 4);
 
             TLVPayloadData_str.DetectedPoints_str.push_back(DetectedPoints_temp);
         }
