@@ -7,7 +7,11 @@ constexpr uint64_t MAGIC_WORD = 0x0708050603040102;
 UART_frame::UART_frame() {}
 
 
-Frame_header::Frame_header(std::vector<uint8_t>& data) 
+Frame_header::Frame_header()
+{
+}
+
+Frame_header::Frame_header(std::vector<uint8_t>& data)
 {
     parseFrameHeader(data);
 }

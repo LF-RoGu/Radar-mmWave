@@ -32,7 +32,7 @@ private:
     FrameHeaderData FrameHeader_str;  ///< Struct to store parsed frame header data.
 
 public:
-
+    Frame_header();
     Frame_header(std::vector<uint8_t>& data);
 
     /**

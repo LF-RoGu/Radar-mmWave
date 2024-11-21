@@ -4,10 +4,10 @@
 #pragma once
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h> // File control definitions
-#include <termios.h> // POSIX terminal control definitions
-#include <unistd.h> // UNIX standard function definitions
-#include <errno.h> // Error number definitions
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <errno.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -15,23 +15,15 @@
 #include <sys/ioctl.h>
 #include <algorithm>
 #include "sensor_data/UARTFrame.h"
+#include <SensorData.h>
 
 using namespace std;
-
-#define DEBUG
-#define DEBUG_IWR
-
-// Add this macro for debug printing
-#ifdef DEBUG
-#define DEBUG_PRINT(x) std::cout << x << std::endl
-#else
-#define DEBUG_PRINT(x) // Do nothing
-#endif
 
 class IWR6843
 {
 private:
 	vector<uint8_t> dataBuffer;
+	vector<SensorData> decodedFrameBuffer;
 	int configPort_fd;
 	int dataPort_fd;
 
@@ -44,6 +36,8 @@ public:
 	IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
 	int poll();
+	vector<SensorData> getDecodedFrameBuffer();
+	vector<SensorData> getDecodedFramesFromTop(int num, bool del);
 };
 
 #endif // !IWR6843_H

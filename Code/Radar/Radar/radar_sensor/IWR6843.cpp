@@ -1,5 +1,4 @@
 #include "IWR6843.h"
-#include <iomanip>  // Needed for std::setprecision
 
 IWR6843::IWR6843()
 {
@@ -38,12 +37,6 @@ int IWR6843::init(string configPort, string dataPort, string configFilePath)
 
 int IWR6843::poll()
 {
-	/*
-	Test for decoding
-	TODO: remove when need it
-	*/
-	size_t offset = 0;
-
 	//Checking if bytes are available
 	int bytesAvailable = 0;
 	if (ioctl(dataPort_fd, FIONREAD, &bytesAvailable) == -1)
@@ -85,56 +78,34 @@ int IWR6843::poll()
 	//Extracting sublists containing one frame
 	vector<vector<uint8_t>> sublists = splitIntoSublistsByIndexes(indexesOfMagicWords);
 
-	/*
-	
-		ToDo: Add elements to vector of decoded items
-	
-	*/
-	// Step 1: Parse Frame Header
-	Frame_header frameHeader(sublists[0]);
-	// Retrieve frame header values using getters (for debugging or further processing)
-	uint32_t version = frameHeader.getVersion();
-	uint32_t packetLength = frameHeader.getPacketLength();
-	uint32_t platform = frameHeader.getPlatform();
-	uint32_t frameNumber = frameHeader.getFrameNumber();
-	uint32_t timestamp = frameHeader.getTime();
-	uint32_t numObjectsDetected = frameHeader.getNumObjDetecter();
-	uint32_t numTLVs = frameHeader.getNumTLV();
-	uint32_t subframeNumber = frameHeader.getSubframeNum();
-	// Step 2: Parse TLV Frame
-	/*
-	2.1. The header is parsed
-	2.2. The payload is parsed and then uploaded into a struct that is a vector of data of all the possible payloads
-	*/
-	/*
-	TODO: NOT all data types are added at this point, due to the lacking of info of what is FFT in this context, and how to get it.
-	*/
-	TLV_payload payloadTLV(sublists[0], numTLVs);
-
-	TLVPayloadData TLV_payload_temp = payloadTLV.getTLVFramePayloadData();
-
-	// Print values of DetectedPoints_str if DEBUG is enabled
-#ifdef DEBUG_IWR
-	if (!TLV_payload_temp.DetectedPoints_str.empty()) {
-		for (size_t i = 0; i < TLV_payload_temp.DetectedPoints_str.size(); ++i) {
-			std::cout << std::fixed << std::setprecision(6);
-			DEBUG_PRINT("!Detected Points: " << numObjectsDetected);
-			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
-			DEBUG_PRINT("Detected Point " << i + 1 << ":");
-			DEBUG_PRINT("  x = " << point.x_f);
-			DEBUG_PRINT("  y = " << point.y_f);
-			DEBUG_PRINT("  z = " << point.z_f);
-			DEBUG_PRINT("  doppler = " << point.doppler_f);
-		}
+	//Iterating over the sublists and adding the decoded frames to the internal buffer
+	for (uint8_t i = 0; i < sublists.size(); i++)
+	{
+		decodedFrameBuffer.push_back(SensorData(sublists.at(i)));
 	}
-	else {
-		DEBUG_PRINT("No detected points available.");
-	}
-#endif // DEBUG
 
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
-	return 0;
+	
+	//Returning the amount of decoded frames
+	return sublists.size();
+}
+
+vector<SensorData> IWR6843::getDecodedFrameBuffer()
+{
+	return decodedFrameBuffer;
+}
+
+vector<SensorData> IWR6843::getDecodedFramesFromTop(int num, bool del)
+{
+	vector<SensorData> framesFromTop(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
+
+	if (del)
+	{
+		decodedFrameBuffer.erase(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
+	}
+
+	return framesFromTop;
 }
 
 int IWR6843::configSerialPort(int port_fd, int baudRate)
