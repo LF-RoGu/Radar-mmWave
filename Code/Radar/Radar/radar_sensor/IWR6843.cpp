@@ -2,7 +2,7 @@
 
 IWR6843::IWR6843()
 {
-
+	pthread_mutex_init(&decodedFrameBufferMutex, nullptr);
 }
 
 int IWR6843::init(string configPort, string dataPort, string configFilePath)
@@ -78,11 +78,17 @@ int IWR6843::poll()
 	//Extracting sublists containing one frame
 	vector<vector<uint8_t>> sublists = splitIntoSublistsByIndexes(indexesOfMagicWords);
 
+	//Critical section begin: locking the mutex before adding decoded frames
+	pthread_mutex_lock(&decodedFrameBufferMutex);
+	
 	//Iterating over the sublists and adding the decoded frames to the internal buffer
 	for (uint8_t i = 0; i < sublists.size(); i++)
 	{
 		decodedFrameBuffer.push_back(SensorData(sublists.at(i)));
 	}
+
+	//Critical section end: unlocking the mutex after adding decoded frames
+	pthread_mutex_unlock(&decodedFrameBufferMutex);
 
 	//Removing the elements of the dataBuffer that were processed
 	dataBuffer.erase(dataBuffer.begin() + indexesOfMagicWords.front(), dataBuffer.begin() + indexesOfMagicWords.back());
@@ -91,21 +97,55 @@ int IWR6843::poll()
 	return sublists.size();
 }
 
-vector<SensorData> IWR6843::getDecodedFrameBuffer()
-{
-	return decodedFrameBuffer;
-}
-
+/// <summary>
+/// Getting the number of frames from the buffer of decoded frames
+/// </summary>
+/// <param name="num">Number of requested frames</param>
+/// <param name="del">Flag to set if frames should be deleted from the buffer afterwards</param>
+/// <returns></returns>
 vector<SensorData> IWR6843::getDecodedFramesFromTop(int num, bool del)
-{
+{	
+	//Critical section begin: locking the mutex before getting decoded frames
+	pthread_mutex_lock(&decodedFrameBufferMutex);
+	
+	//Clipping number of requested frames if necessary
+	if (num > decodedFrameBuffer.size())
+	{
+		num = decodedFrameBuffer.size();
+	}
+
+	//Creating a vector with the requested frames
 	vector<SensorData> framesFromTop(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
 
+	//Deleting the frames from the main buffer if flag 'del' is set
 	if (del)
 	{
 		decodedFrameBuffer.erase(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
 	}
 
+	//Critical section end: unlocking the mutex after getting decoded frames
+	pthread_mutex_unlock(&decodedFrameBufferMutex);
+
 	return framesFromTop;
+}
+
+/// <summary>
+/// Function to get the size of the buffer of decoded frames
+/// </summary>
+/// <returns>length of buffer</returns>
+int IWR6843::getDecodedFramesSize()
+{
+	int length = -1;
+
+	//Critical section begin: locking the mutex before getting length
+	pthread_mutex_lock(&decodedFrameBufferMutex);
+
+	length = decodedFrameBuffer.size();
+
+	//Critical section end: unlocking the mutex after getting length
+	pthread_mutex_unlock(&decodedFrameBufferMutex);
+
+	return length;
 }
 
 int IWR6843::configSerialPort(int port_fd, int baudRate)

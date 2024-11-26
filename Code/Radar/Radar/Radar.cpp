@@ -111,7 +111,7 @@ void* controller_thread(void* arg)
 }
 
 /// <summary>
-/// Function of the acutator thread
+/// Function of the actuator thread
 /// </summary>
 /// <param name="arg"></param>
 /// <returns></returns>

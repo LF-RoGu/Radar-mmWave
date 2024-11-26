@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <algorithm>
+#include <pthread.h>
+
 #include "sensor_data/UARTFrame.h"
 #include <SensorData.h>
 
@@ -22,10 +24,12 @@ using namespace std;
 class IWR6843
 {
 private:
-	vector<uint8_t> dataBuffer;
-	vector<SensorData> decodedFrameBuffer;
 	int configPort_fd;
 	int dataPort_fd;
+
+	vector<uint8_t> dataBuffer;
+	vector<SensorData> decodedFrameBuffer;
+	pthread_mutex_t decodedFrameBufferMutex;
 
 	int configSerialPort(int port_fd, int baudRate);
 	int sendConfigFile(int port_fd, string configFilePath);
@@ -36,8 +40,8 @@ public:
 	IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
 	int poll();
-	vector<SensorData> getDecodedFrameBuffer();
 	vector<SensorData> getDecodedFramesFromTop(int num, bool del);
+	int getDecodedFramesSize();
 };
 
 #endif // !IWR6843_H
