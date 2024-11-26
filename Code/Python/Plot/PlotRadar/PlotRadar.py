@@ -1,12 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from sklearn.cluster import DBSCAN
+import numpy as np
 import time
 
 # Constants
 FILE_PATH = r"\\wsl$\Ubuntu\root\.vs\Radar\out\build\linux-debug\Radar\OutputFile\detected_points.csv"
 AXIS_LIMIT = 3  # Meters
-DOPPLER_THRESHOLD = 0.1  # Doppler threshold to distinguish stationary and moving points
+DOPPLER_THRESHOLD = 0.1  # Doppler threshold to separate stationary and moving points
+DISTANCE_THRESHOLD = 0.5  # Distance between objects for clustering (meters)
 PLOT_UPDATE_DELAY = 0.001  # Delay for plot updates in seconds
 BOUNDING_BOX_ALPHA = 0.2  # Transparency for bounding boxes
 
@@ -53,6 +56,21 @@ def draw_bounding_box(ax, points, color='blue'):
     box = Poly3DCollection(edges, alpha=BOUNDING_BOX_ALPHA, edgecolor=color, facecolor=color)
     ax.add_collection3d(box)
 
+def cluster_objects(points, distance_threshold):
+    """Cluster points using DBSCAN and return clustered points."""
+    if points.empty:
+        return points, None
+
+    # Convert points to a numpy array
+    coords = points[['x', 'y', 'z']].values
+
+    # Apply DBSCAN for clustering
+    clustering = DBSCAN(eps=distance_threshold, min_samples=1).fit(coords)
+
+    # Add cluster labels to the points DataFrame
+    points['cluster'] = clustering.labels_
+    return points, clustering.labels_
+
 while True:
     try:
         # Read and process the file
@@ -66,12 +84,15 @@ while True:
         ax_stationary.cla()
         ax_moving.cla()
 
-        # Plot stationary objects
+        # Cluster and plot stationary objects
         if not stationary_points.empty:
-            ax_stationary.scatter(
-                stationary_points['x'], stationary_points['y'], stationary_points['z'], c='green', marker='o'
-            )
-            draw_bounding_box(ax_stationary, stationary_points, color='green')
+            clustered_stationary, _ = cluster_objects(stationary_points, DISTANCE_THRESHOLD)
+            for cluster_id, cluster_points in clustered_stationary.groupby('cluster'):
+                ax_stationary.scatter(
+                    cluster_points['x'], cluster_points['y'], cluster_points['z'],
+                    label=f"Cluster {cluster_id}", marker='o'
+                )
+                draw_bounding_box(ax_stationary, cluster_points, color='green')
         ax_stationary.set_xlabel('X Coordinate (m)')
         ax_stationary.set_ylabel('Y Coordinate (m)')
         ax_stationary.set_zlabel('Z Coordinate (m)')
@@ -79,13 +100,17 @@ while True:
         ax_stationary.set_ylim([-AXIS_LIMIT, AXIS_LIMIT])
         ax_stationary.set_zlim([-AXIS_LIMIT, AXIS_LIMIT])
         ax_stationary.set_title("Stationary Objects")
+        ax_stationary.legend(loc='upper left', fontsize=8)
 
-        # Plot moving objects
+        # Cluster and plot moving objects
         if not moving_points.empty:
-            ax_moving.scatter(
-                moving_points['x'], moving_points['y'], moving_points['z'], c='red', marker='o'
-            )
-            draw_bounding_box(ax_moving, moving_points, color='red')
+            clustered_moving, _ = cluster_objects(moving_points, DISTANCE_THRESHOLD)
+            for cluster_id, cluster_points in clustered_moving.groupby('cluster'):
+                ax_moving.scatter(
+                    cluster_points['x'], cluster_points['y'], cluster_points['z'],
+                    label=f"Cluster {cluster_id}", marker='o'
+                )
+                draw_bounding_box(ax_moving, cluster_points, color='red')
         ax_moving.set_xlabel('X Coordinate (m)')
         ax_moving.set_ylabel('Y Coordinate (m)')
         ax_moving.set_zlabel('Z Coordinate (m)')
@@ -93,6 +118,7 @@ while True:
         ax_moving.set_ylim([-AXIS_LIMIT, AXIS_LIMIT])
         ax_moving.set_zlim([-AXIS_LIMIT, AXIS_LIMIT])
         ax_moving.set_title("Moving Objects")
+        ax_moving.legend(loc='upper left', fontsize=8)
 
         # Pause to update the plots
         plt.pause(PLOT_UPDATE_DELAY)  # Pause for a short time to allow the plots to update
