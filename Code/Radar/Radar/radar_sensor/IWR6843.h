@@ -2,13 +2,10 @@
 #define IWR6843_H
 
 #pragma once
-#include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-#include <errno.h>
-#include <iostream>
 #include <fstream>
 #include <vector>
 #include <stdint.h>
@@ -16,8 +13,7 @@
 #include <algorithm>
 #include <pthread.h>
 
-#include "sensor_data/UARTFrame.h"
-#include <SensorData.h>
+#include "SensorData.h"
 
 using namespace std;
 
