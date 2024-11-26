@@ -38,6 +38,7 @@ private:
 
 public:
 	IWR6843();
+	~IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
 	int poll();
 	vector<SensorData> getDecodedFramesFromTop(int num, bool del);

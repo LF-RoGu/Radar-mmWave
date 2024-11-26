@@ -5,6 +5,11 @@ IWR6843::IWR6843()
 	pthread_mutex_init(&decodedFrameBufferMutex, nullptr);
 }
 
+IWR6843::~IWR6843()
+{
+	pthread_mutex_destroy(&decodedFrameBufferMutex);
+}
+
 int IWR6843::init(string configPort, string dataPort, string configFilePath)
 {
 	configPort_fd = open(configPort.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
