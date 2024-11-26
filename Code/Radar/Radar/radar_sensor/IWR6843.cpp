@@ -5,10 +5,12 @@ IWR6843::IWR6843()
 	pthread_mutex_init(&decodedFrameBufferMutex, nullptr);
 }
 
+
 IWR6843::~IWR6843()
 {
 	pthread_mutex_destroy(&decodedFrameBufferMutex);
 }
+
 
 int IWR6843::init(string configPort, string dataPort, string configFilePath)
 {
@@ -39,6 +41,7 @@ int IWR6843::init(string configPort, string dataPort, string configFilePath)
 
 	return 1;
 }
+
 
 int IWR6843::poll()
 {
@@ -102,56 +105,99 @@ int IWR6843::poll()
 	return sublists.size();
 }
 
+
 /// <summary>
-/// Getting the number of frames from the buffer of decoded frames
+/// Thread-safe function for copying decoded frames from the internal buffer to a destination vector.
 /// </summary>
-/// <param name="num">Number of requested frames</param>
-/// <param name="del">Flag to set if frames should be deleted from the buffer afterwards</param>
-/// <returns></returns>
-vector<SensorData> IWR6843::getDecodedFramesFromTop(int num, bool del)
-{	
-	//Critical section begin: locking the mutex before getting decoded frames
-	pthread_mutex_lock(&decodedFrameBufferMutex);
+/// <param name="destination">Pointer to the destination vector</param>
+/// <param name="numFrames">Number of frames from the top</param>
+/// <param name="delFrames">Flag if frames should be deleted from the internal buffer</param>
+/// <param name="timeout_ms">Timeout in ms</param>
+/// <returns>true if operation was successful, false otherwise</returns>
+bool IWR6843::copyDecodedFramesFromTop(vector<SensorData>& destination, uint numFrames, bool delFrames, long timeout_ms)
+{
+	//Preparing the timeout for locking the mutex
+	struct timespec timeout;
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += timeout_ms / 1000;
+	timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
+
+	//Taking care if an overflow happens
+	if (timeout.tv_nsec >= 1000000000)
+	{
+		timeout.tv_sec += 1;
+		timeout.tv_nsec -= 1000000000;
+	}
+
+	//Critical section begin: trying to lock the mutex with the timeout. Returning false if locking was not successful
+	if (pthread_mutex_timedlock(&decodedFrameBufferMutex, &timeout) != 0)
+	{
+		return false;
+	}
+
+	//Clipping the number of frames if it exceeds the buffer of decoded frames' size
+	if (numFrames > decodedFrameBuffer.size())
+	{
+		numFrames = decodedFrameBuffer.size();
+	}
+
+	//Pre-allocating space
+	destination.reserve(numFrames);
 	
-	//Clipping number of requested frames if necessary
-	if (num > decodedFrameBuffer.size())
+	//Copying to the destination vector
+	copy(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + numFrames, back_inserter(destination));
+
+	//Deleting from the internal buffer of decoded frames if flag was set
+	if (delFrames)
 	{
-		num = decodedFrameBuffer.size();
+		decodedFrameBuffer.erase(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + numFrames);
 	}
 
-	//Creating a vector with the requested frames
-	vector<SensorData> framesFromTop(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
-
-	//Deleting the frames from the main buffer if flag 'del' is set
-	if (del)
-	{
-		decodedFrameBuffer.erase(decodedFrameBuffer.begin(), decodedFrameBuffer.begin() + num);
-	}
-
-	//Critical section end: unlocking the mutex after getting decoded frames
+	//Critical section end: unlocking the mutex
 	pthread_mutex_unlock(&decodedFrameBufferMutex);
 
-	return framesFromTop;
+	//Returning true if operation was successful
+	return true;
 }
+
 
 /// <summary>
 /// Function to get the size of the buffer of decoded frames
 /// </summary>
-/// <returns>length of buffer</returns>
-int IWR6843::getDecodedFramesSize()
+/// <param name="destination">Pointer to an destination int variable</param>
+/// <param name="timeout_ms">Timeout in ms</param>
+/// <returns>true if operation was successful, false otherwise</returns>
+bool IWR6843::getDecodedFramesSize(int& destination, long timeout_ms)
 {
-	int length = -1;
+	//Preparing the timeout for locking the mutex
+	struct timespec timeout;
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += timeout_ms / 1000;
+	timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
 
-	//Critical section begin: locking the mutex before getting length
-	pthread_mutex_lock(&decodedFrameBufferMutex);
+	//Taking care if an overflow happens
+	if (timeout.tv_nsec >= 1000000000)
+	{
+		timeout.tv_sec += 1;
+		timeout.tv_nsec -= 1000000000;
+	}
 
-	length = decodedFrameBuffer.size();
+	//Critical section begin: trying to lock the mutex with the timeout. Returning false if locking was not successful
+	if (pthread_mutex_timedlock(&decodedFrameBufferMutex, &timeout) != 0)
+	{
+		return false;
+	}
 
-	//Critical section end: unlocking the mutex after getting length
+	//Writing the buffer's size to the destination variable
+	destination = decodedFrameBuffer.size();
+
+	//Critical section end: unlocking the mutex
 	pthread_mutex_unlock(&decodedFrameBufferMutex);
 
-	return length;
+	//Returning true if operation was successful
+	return true;
 }
+
 
 int IWR6843::configSerialPort(int port_fd, int baudRate)
 {
@@ -186,6 +232,7 @@ int IWR6843::configSerialPort(int port_fd, int baudRate)
 
 	return 1;
 }
+
 
 int IWR6843::sendConfigFile(int port_fd, string configFilePath)
 {

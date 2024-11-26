@@ -37,8 +37,8 @@ public:
 	~IWR6843();
 	int init(string configPort, string dataPort, string configFilePath);
 	int poll();
-	vector<SensorData> getDecodedFramesFromTop(int num, bool del);
-	int getDecodedFramesSize();
+	bool copyDecodedFramesFromTop(vector<SensorData>& destination, uint numFrames, bool delFrames, long timeout_ms);
+	bool getDecodedFramesSize(int& destination, long timeout_ms);
 };
 
 #endif // !IWR6843_H

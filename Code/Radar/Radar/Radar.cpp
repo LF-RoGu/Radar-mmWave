@@ -62,25 +62,29 @@ void* sensor_thread(void* arg)
         //Polling the sensor and getting the amount of recently received frames
         int numOfNewFrames = sensor.poll();
 
-        //Processing if any new frames were received
-        if (numOfNewFrames > 0)
+        //Continuing if no new frames are available
+        if (numOfNewFrames < 1)
         {
-            //Getting and deleting the new frames from the buffer of decoded frames
-            vector<SensorData> newFrames = sensor.getDecodedFramesFromTop(numOfNewFrames, true);
+            continue;
+        }
 
-            //Iterating over all new frames and printing out the x,y,z,doppler values
-            for (int i = 0; i < newFrames.size(); i++)
+        //Processing if any new frames were received
+        //Getting and deleting the new frames from the buffer of decoded frames
+        vector<SensorData> newFrames;
+        sensor.copyDecodedFramesFromTop(newFrames, numOfNewFrames, true, 100);
+
+        //Iterating over all new frames and printing out the x,y,z,doppler values
+        for (int i = 0; i < newFrames.size(); i++)
+        {
+            cout << "Frame " << i << endl;
+            vector<DetectedPoints> points = newFrames.at(i).getTLVPayloadData().DetectedPoints_str;
+            for (int n = 0; n < points.size(); n++)
             {
-                cout << "Frame " << i << endl;
-                vector<DetectedPoints> points = newFrames.at(i).getTLVPayloadData().DetectedPoints_str;
-                for (int n = 0; n < points.size(); n++)
-                {
-                    cout << "Point " << n << ":" << endl;
-                    cout << "x: " << points.at(n).x_f << endl;
-                    cout << "y: " << points.at(n).y_f << endl;
-                    cout << "z: " << points.at(n).z_f << endl;
-                    cout << "doppler: " << points.at(n).doppler_f << endl;
-                }
+                cout << "Point " << n << ":" << endl;
+                cout << "x: " << points.at(n).x_f << endl;
+                cout << "y: " << points.at(n).y_f << endl;
+                cout << "z: " << points.at(n).z_f << endl;
+                cout << "doppler: " << points.at(n).doppler_f << endl;
             }
         }
     }
