@@ -5,10 +5,48 @@ from sklearn.cluster import DBSCAN
 import numpy as np
 import time
 
+"""
+Constants and Descriptions:
+
+1. FILE_PATH:
+   - Path to the radar data file (`detected_points.csv`).
+   - Ensure it points to the correct location in your system.
+
+2. FIG_SIZE:
+   - Size of the figure in the format (width, height).
+   - Adjust based on your display or visualization requirements.
+
+3. AXIS_LIMIT:
+   - Defines the range of the 3D plot axes in meters (e.g., -AXIS_LIMIT to +AXIS_LIMIT).
+   - Increase for larger detection areas, decrease for smaller scenes.
+
+4. DOPPLER_THRESHOLD:
+   - Threshold for separating stationary and moving objects based on Doppler shift.
+   - Lower values increase sensitivity to minor movements; higher values filter small Doppler shifts.
+
+5. DISTANCE_THRESHOLD:
+   - Maximum distance between points to consider them part of the same cluster (in meters).
+   - Lower values result in smaller, tighter clusters; higher values group distant points together.
+
+6. MIN_SAMPLES:
+   - Minimum number of points required to form a cluster in DBSCAN.
+   - Increase to filter out small, irrelevant clusters caused by noise.
+
+7. BOUNDING_BOX_ALPHA:
+   - Transparency of bounding boxes (range: 0.0 to 1.0).
+   - Use lower values for more transparent boxes and higher values for opaque ones.
+
+8. PLOT_UPDATE_DELAY:
+   - Time interval between plot updates, measured in seconds.
+   - Shorter delays provide real-time updates but increase CPU usage; longer delays reduce resource consumption.
+
+"""
+
+
 # Constants
 FILE_PATH = r"\\wsl$\Ubuntu\root\.vs\Radar\out\build\linux-debug\Radar\OutputFile\detected_points.csv"
 AXIS_LIMIT = 3  # Meters
-DOPPLER_THRESHOLD = 0.1  # Doppler threshold to separate stationary and moving points
+DOPPLER_THRESHOLD = 0.01  # Doppler threshold to separate stationary and moving points
 DISTANCE_THRESHOLD = 0.5  # Distance between objects for clustering (meters)
 PLOT_UPDATE_DELAY = 0.001  # Delay for plot updates in seconds
 BOUNDING_BOX_ALPHA = 0.2  # Transparency for bounding boxes
