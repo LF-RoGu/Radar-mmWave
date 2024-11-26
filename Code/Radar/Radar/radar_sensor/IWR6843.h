@@ -20,6 +20,7 @@ using namespace std;
 
 #define DEBUG
 #define DEBUG_IWR
+#define DEBUG_IWR_TXT
 
 // Add this macro for debug printing
 #ifdef DEBUG

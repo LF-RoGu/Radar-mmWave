@@ -1,5 +1,9 @@
 #include "IWR6843.h"
 #include <iomanip>  // Needed for std::setprecision
+#include <fstream>
+#include <filesystem> // For directory creation (C++17 and above)
+#include <iostream>
+
 
 IWR6843::IWR6843()
 {
@@ -109,7 +113,7 @@ int IWR6843::poll()
 	/*
 	TODO: NOT all data types are added at this point, due to the lacking of info of what is FFT in this context, and how to get it.
 	*/
-	TLV_payload payloadTLV(sublists[0], numTLVs);
+	TLV_payload payloadTLV(sublists[0], numObjectsDetected);
 
 	TLVPayloadData TLV_payload_temp = payloadTLV.getTLVFramePayloadData();
 
@@ -120,7 +124,7 @@ int IWR6843::poll()
 			std::cout << std::fixed << std::setprecision(6);
 			DEBUG_PRINT("!Detected Points: " << numObjectsDetected);
 			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
-			DEBUG_PRINT("Detected Point " << i + 1 << ":");
+			DEBUG_PRINT("Point... " << i + 1 << ":");
 			DEBUG_PRINT("  x = " << point.x_f);
 			DEBUG_PRINT("  y = " << point.y_f);
 			DEBUG_PRINT("  z = " << point.z_f);
@@ -129,6 +133,46 @@ int IWR6843::poll()
 	}
 	else {
 		DEBUG_PRINT("No detected points available.");
+	}
+#endif // DEBUG
+
+#ifdef DEBUG_IWR_TXT
+	if (!TLV_payload_temp.DetectedPoints_str.empty()) {
+		// Define the relative path
+		std::string outputPath = "../Radar/OutputFile/";
+
+		// Ensure the directory exists
+		std::filesystem::create_directories(outputPath);
+
+		// Define the full file path
+		std::string outputFile = outputPath + "detected_points.csv";
+
+		// Open the file
+		std::ofstream outFile(outputFile);
+
+		if (!outFile.is_open()) {
+			std::cerr << "Failed to create the file: " << outputFile << std::endl;
+			return -1;
+		}
+		else
+		{
+			/*
+			Do Nothing
+			*/
+		}
+
+		outFile << "x,y,z,doppler\n"; // CSV header
+
+		for (size_t i = 0; i < TLV_payload_temp.DetectedPoints_str.size(); ++i) {
+			const DetectedPoints& point = TLV_payload_temp.DetectedPoints_str[i];
+			outFile << point.x_f << "," << point.y_f << "," << point.z_f << "," << point.doppler_f << "\n";
+		}
+
+		outFile.close();
+		std::cout << "Detected points exported to detected_points.csv" << std::endl;
+	}
+	else {
+		std::cout << "No detected points available." << std::endl;
 	}
 #endif // DEBUG
 
