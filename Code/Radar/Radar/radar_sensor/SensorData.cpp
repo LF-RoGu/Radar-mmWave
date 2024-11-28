@@ -8,7 +8,7 @@ SensorData::SensorData()
 SensorData::SensorData(vector<uint8_t> rawData)
 {
 	header = Frame_header(rawData);
-	payload = TLV_payload(rawData, header.getNumTLV());
+	payload = TLV_payload(rawData, header.getNumObjDetecter());
 	payload_data = payload.getTLVFramePayloadData();
 }
 
