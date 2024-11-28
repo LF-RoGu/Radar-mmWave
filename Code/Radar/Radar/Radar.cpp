@@ -8,11 +8,15 @@ IWR6843 sensor;
 const int NUM_THREADS = 3;
 pthread_t threads[NUM_THREADS];
 
-const int NUM_FRAMES = 100;
+const int NUM_FRAMES = 25;
 vector<SensorData> totalFrames;
 
 int main() {
     
+    cout << "Input filename prefix: " << endl;
+    string prefix;
+    cin >> prefix;
+
     //Initializing the sensor
     sensor = IWR6843();
     sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/xwr68xx_AOP_profile_2024_10_31T16_15_25_003.cfg");
@@ -47,6 +51,16 @@ int main() {
 
     //Returning a 1 after joining all threads (may not be reached but for the sake of completeness)
     cout << "Successfully joined all threads" << endl;
+
+    chrono::time_point<std::chrono::system_clock> timestamp = chrono::system_clock::now();
+
+    string filename = prefix + "_log_" + formatTimestamp(timestamp) + ".csv";
+
+    //Storing the data
+    writeToCSV(filename, totalFrames);
+
+    cout << "Log " << filename << " successfully stored" << endl;
+
     return 1;
 }
 
@@ -76,29 +90,12 @@ void* sensor_thread(void* arg)
         vector<SensorData> newFrames;
         sensor.copyDecodedFramesFromTop(newFrames, numOfNewFrames, true, 100);
 
+        //Inserting it into the vector for logging and exiting if limit was reached
         totalFrames.insert(totalFrames.end(), newFrames.begin(), newFrames.end());
-
         if (totalFrames.size() >= NUM_FRAMES)
         {
             break;
         }
-
-        /*
-        //Iterating over all new frames and printing out the x,y,z,doppler values
-        for (int i = 0; i < newFrames.size(); i++)
-        {
-            cout << "Frame " << i << endl;
-            vector<DetectedPoints> points = newFrames.at(i).getTLVPayloadData().DetectedPoints_str;
-            for (int n = 0; n < points.size(); n++)
-            {
-                cout << "Point " << n << ":" << endl;
-                cout << "x: " << points.at(n).x_f << endl;
-                cout << "y: " << points.at(n).y_f << endl;
-                cout << "z: " << points.at(n).z_f << endl;
-                cout << "doppler: " << points.at(n).doppler_f << endl;
-            }
-        }
-        */
     }
 
     //Exiting the thread
@@ -140,4 +137,52 @@ void* actuator_thread(void* arg)
     
     //Exiting the thread
     pthread_exit(nullptr);
+}
+
+
+std::string formatTimestamp(const std::chrono::time_point<std::chrono::system_clock>& timePoint) {
+    auto duration = timePoint.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration) -
+        std::chrono::duration_cast<std::chrono::nanoseconds>(seconds);
+
+    std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
+    std::ostringstream oss;
+    oss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+    oss << "." << std::setw(9) << std::setfill('0') << nanoseconds.count();
+    return oss.str();
+}
+
+// Convert vector<uint8_t> to a comma-separated string
+std::string formatRawData(const std::vector<uint8_t>& data) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < data.size(); ++i) {
+        oss << static_cast<int>(data[i]);
+        if (i < data.size() - 1) {
+            oss << ",";
+        }
+    }
+    return oss.str();
+}
+
+
+
+void writeToCSV(const std::string& filename, const std::vector<SensorData>& objects) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    // Write header
+    file << "Timestamp,RawData\n";
+
+    // Write each object
+    for (const auto& obj : objects) {
+        file << formatTimestamp(obj.timestamp) << ",";
+        file << "\"" << formatRawData(obj.storedRawData) << "\"\n";  // Enclose RawData in quotes
+    }
+
+    file.close();
+    std::cout << "Data written to " << filename << std::endl;
 }

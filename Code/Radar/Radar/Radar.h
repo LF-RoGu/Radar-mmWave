@@ -8,6 +8,11 @@
 #include <iostream>
 #include <pthread.h>
 
+#include <fstream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+
 //Private includes
 #include "IWR6843.h"
 #include "SensorData.h"
@@ -28,5 +33,9 @@ extern vector<SensorData> totalFrames;
 void* sensor_thread(void* arg);
 void* controller_thread(void* arg);
 void* actuator_thread(void* arg);
+
+
+string formatTimestamp(const std::chrono::time_point<std::chrono::system_clock>& timePoint);
+void writeToCSV(const std::string& filename, const std::vector<SensorData>& objects);
 
 #endif // RADAR_H
