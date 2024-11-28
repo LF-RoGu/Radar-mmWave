@@ -21,6 +21,9 @@ extern IWR6843 sensor;
 extern const int NUM_THREADS;
 extern pthread_t threads[];
 
+extern const int NUM_FRAMES;
+extern vector<SensorData> totalFrames;
+
 //Function prototypes
 void* sensor_thread(void* arg);
 void* controller_thread(void* arg);

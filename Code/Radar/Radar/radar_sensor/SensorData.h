@@ -4,6 +4,8 @@
 #pragma once
 #include <vector>
 #include <stdint.h>
+#include <chrono>
+#include <ctime>
 #include "sensor_data/UARTFrame.h"
 
 using namespace std;
@@ -22,6 +24,11 @@ public:
 	Frame_header getHeader();
 	TLV_payload getTLVPayload();
 	TLVPayloadData getTLVPayloadData();
+
+	//Vector and timestamp
+	chrono::time_point<chrono::system_clock> timestamp;
+	vector<uint8_t> storedRawData;
+
 };
 
 #endif // !SENSORDATA_H

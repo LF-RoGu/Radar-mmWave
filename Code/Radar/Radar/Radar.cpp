@@ -8,6 +8,9 @@ IWR6843 sensor;
 const int NUM_THREADS = 3;
 pthread_t threads[NUM_THREADS];
 
+const int NUM_FRAMES = 100;
+vector<SensorData> totalFrames;
+
 int main() {
     
     //Initializing the sensor
@@ -73,6 +76,14 @@ void* sensor_thread(void* arg)
         vector<SensorData> newFrames;
         sensor.copyDecodedFramesFromTop(newFrames, numOfNewFrames, true, 100);
 
+        totalFrames.insert(totalFrames.end(), newFrames.begin(), newFrames.end());
+
+        if (totalFrames.size() >= NUM_FRAMES)
+        {
+            break;
+        }
+
+        /*
         //Iterating over all new frames and printing out the x,y,z,doppler values
         for (int i = 0; i < newFrames.size(); i++)
         {
@@ -87,6 +98,7 @@ void* sensor_thread(void* arg)
                 cout << "doppler: " << points.at(n).doppler_f << endl;
             }
         }
+        */
     }
 
     //Exiting the thread
@@ -105,10 +117,7 @@ void* controller_thread(void* arg)
 
     //Simulating work
     cout << "Hello from thread " << thread_id << endl;
-    while (true)
-    {
-        sleep(10);
-    }
+    sleep(10);
     
     //Exiting the thread
     pthread_exit(nullptr);
@@ -126,10 +135,8 @@ void* actuator_thread(void* arg)
     
     //Simulating work
     cout << "Hello from thread " << thread_id << endl;
-    while (true)
-    {
-        sleep(10);
-    }
+    sleep(10);
+
     
     //Exiting the thread
     pthread_exit(nullptr);
