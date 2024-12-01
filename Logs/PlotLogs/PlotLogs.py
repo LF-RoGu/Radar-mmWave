@@ -157,6 +157,31 @@ def parse_tlv_payload(tlv_header, raw_data):
         # Unknown TLV type
         return {"Raw Payload": payload}
 
+def print_tlvs(num_tlvs, raw_data_list):
+    """
+    Parse and print all TLVs for the current frame.
+    :param num_tlvs: Number of TLVs to process (from Frame Header).
+    :param raw_data_list: List of raw data to parse.
+    """
+    for tlv_idx in range(num_tlvs):
+        print(f"\n--- Parsing TLV {tlv_idx + 1} ---")
+
+        # Parse the TLV header
+        tlv_header = parse_tlv_header(raw_data_list)
+        print("\nParsed TLV Header:")
+        for key, value in tlv_header.items():
+            print(f"{key}: {value}")
+
+        # Parse the TLV payload
+        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+        print("\nParsed TLV Payload:")
+        print(tlv_payload)
+
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+
+    return
+
 
 
 # Main code to read the file and parse data
@@ -179,75 +204,9 @@ if __name__ == "__main__":
         for key, value in frame_header.items():
             print(f"{key}: {value}")
 
-        # Parse the first TLV header
-        tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed First TLV Header:")
-        for key, value in tlv_header.items():
-            print(f"{key}: {value}")
+        num_tlvs = frame_header["Num TLVs"]
 
-        # Parse the first TLV payload
-        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed First TLV Payload:")
-        print(tlv_payload)
-
-        # Debug: Print remaining raw_data_list before parsing next TLV
-        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
-
-        # Parse the first TLV header
-        tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed First TLV Header:")
-        for key, value in tlv_header.items():
-            print(f"{key}: {value}")
-
-        # Parse the first TLV payload
-        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed First TLV Payload:")
-        print(tlv_payload)
-
-        # Debug: Print remaining raw_data_list before parsing next TLV
-        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
-
-        # Parse the first TLV header
-        tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed First TLV Header:")
-        for key, value in tlv_header.items():
-            print(f"{key}: {value}")
-
-        # Parse the first TLV payload
-        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed First TLV Payload:")
-        print(tlv_payload)
-
-        # Debug: Print remaining raw_data_list before parsing next TLV
-        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
-
-        # Parse the first TLV header
-        tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed First TLV Header:")
-        for key, value in tlv_header.items():
-            print(f"{key}: {value}")
-
-        # Parse the first TLV payload
-        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed First TLV Payload:")
-        print(tlv_payload)
-
-        # Debug: Print remaining raw_data_list before parsing next TLV
-        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
-
-        # Parse the first TLV header
-        tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed First TLV Header:")
-        for key, value in tlv_header.items():
-            print(f"{key}: {value}")
-
-        # Parse the first TLV payload
-        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed First TLV Payload:")
-        print(tlv_payload)
-
-        # Debug: Print remaining raw_data_list before parsing next TLV
-        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+        print_tlvs(num_tlvs, raw_data_list)
 
     except Exception as e:
         print(f"Error: {e}")
