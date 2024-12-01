@@ -267,6 +267,118 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
     plt.tight_layout()
     plt.show()
 
+def plot_all_data_with_kalman(data, doppler_threshold=0.1, axis_limit=3):
+    """
+    Plot all stationary and moving objects in a single frame with Kalman filter tracking.
+    
+    Args:
+        data (DataFrame): The radar data.
+        doppler_threshold (float): Threshold to separate stationary and moving objects.
+        axis_limit (float): Limit for the 3D axis (in meters).
+    """
+    from pykalman import KalmanFilter
+    import numpy as np
+
+    stationary_coords = []  # Stationary points: (X, Y, Z)
+    moving_coords = []      # Moving points: (X, Y, Z)
+    kalman_filters = []     # List of Kalman Filters for each detected object
+
+    for row_idx in range(len(data)):
+        try:
+            # Check if the row is valid (non-null)
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Skipping row {row_idx + 1}: Null data encountered.")
+                continue
+
+            # Convert timestamp to UNIX format
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            # Get raw data from the current row
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+
+            # Parse the frame header
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            # Parse TLVs
+            detected_coords = []
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            detected_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            if not detected_coords:
+                continue
+
+            detected_coords = np.array(detected_coords)
+
+            # Initialize Kalman Filters for newly detected objects
+            if not kalman_filters:
+                for coord in detected_coords:
+                    kf = KalmanFilter(
+                        transition_matrices=np.eye(3),         # Constant position model
+                        observation_matrices=np.eye(3),       # Observing position directly
+                        transition_covariance=np.eye(3) * 0.05,  # System dynamics noise
+                        observation_covariance=np.eye(3) * 0.02, # Measurement noise
+                        initial_state_mean=coord,             # Initial position
+                        initial_state_covariance=np.eye(3) * 0.1 # Initial uncertainty
+                    )
+                    kalman_filters.append(kf)
+
+            # Update Kalman Filters with detected positions
+            kalman_predictions = []
+            for kf, coord in zip(kalman_filters, detected_coords):
+                next_state = kf.filter_update(kf.initial_state_mean, kf.initial_state_covariance, coord)
+                kalman_predictions.append(next_state[0])
+
+            # Separate stationary and moving objects
+            for prediction in kalman_predictions:
+                x, y, z = prediction
+                doppler = np.linalg.norm(prediction)  # Approximate Doppler from velocity magnitude
+                if doppler <= doppler_threshold:
+                    stationary_coords.append((x, y, z))
+                else:
+                    moving_coords.append((x, y, z))
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    # Plot stationary and moving objects
+    fig = plt.figure(figsize=(12, 6))
+    ax_stationary = fig.add_subplot(121, projection='3d', title="Stationary Objects")
+    ax_moving = fig.add_subplot(122, projection='3d', title="Moving Objects")
+
+    # Plot stationary objects
+    if stationary_coords:
+        x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+        ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+    ax_stationary.set_xlabel('X Coordinate (m)')
+    ax_stationary.set_ylabel('Y Coordinate (m)')
+    ax_stationary.set_zlabel('Z Coordinate (m)')
+    ax_stationary.set_xlim([-axis_limit, axis_limit])
+    ax_stationary.set_ylim([-axis_limit, axis_limit])
+    ax_stationary.set_zlim([-axis_limit, axis_limit])
+
+    # Plot moving objects
+    if moving_coords:
+        x_moving, y_moving, z_moving = zip(*moving_coords)
+        ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+    ax_moving.set_xlabel('X Coordinate (m)')
+    ax_moving.set_ylabel('Y Coordinate (m)')
+    ax_moving.set_zlabel('Z Coordinate (m)')
+    ax_moving.set_xlim([-axis_limit, axis_limit])
+    ax_moving.set_ylim([-axis_limit, axis_limit])
+    ax_moving.set_zlim([-axis_limit, axis_limit])
+
+    plt.tight_layout()
+    plt.show()
+
 def live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, eps=0.5, min_samples=5):
     """
     Live visualization with DBSCAN clustering in a separate plot window.
@@ -373,16 +485,42 @@ def live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, d
 
     plt.show()
 
-def live_visualization_with_kalman(data, doppler_threshold=0.1, axis_limit=12, delay=0.1):
+def live_visualization_with_kalman(
+    data, doppler_threshold=0.1, axis_limit=12, delay=0.1,
+    transition_matrix=None, observation_matrix=None,
+    transition_covariance=None, observation_covariance=None,
+    initial_state_mean=None, initial_state_covariance=None
+):
     """
-    Live visualization with Kalman filter for tracking.
+    Live visualization with Kalman filter for tracking with tunable parameters.
+
+    Args:
+        data (DataFrame): Input radar data.
+        doppler_threshold (float): Doppler threshold to filter moving vs stationary objects.
+        axis_limit (int): Limit for the 3D axis in meters.
+        delay (float): Delay between frames in seconds.
+        transition_matrix (numpy.ndarray): State transition matrix (default: constant velocity).
+        observation_matrix (numpy.ndarray): Observation matrix (default: observes position only).
+        transition_covariance (numpy.ndarray): Process noise covariance matrix.
+        observation_covariance (numpy.ndarray): Measurement noise covariance matrix.
+        initial_state_mean (list): Initial state mean (position and velocity).
+        initial_state_covariance (numpy.ndarray): Initial state covariance matrix.
     """
     from pykalman import KalmanFilter
+    import numpy as np
 
     fig_kalman = plt.figure(figsize=(6, 6))
     ax_kalman = fig_kalman.add_subplot(111, projection='3d')
 
     kalman_filters = []
+
+    # Set default Kalman parameters if not provided
+    transition_matrix = transition_matrix or np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    observation_matrix = observation_matrix or np.eye(3)
+    transition_covariance = transition_covariance or np.eye(3) * 0.01
+    observation_covariance = observation_covariance or np.eye(3) * 0.1
+    initial_state_mean = initial_state_mean or [0, 0, 0]
+    initial_state_covariance = initial_state_covariance or np.eye(3)
 
     for row_idx in range(len(data)):
         try:
@@ -417,7 +555,14 @@ def live_visualization_with_kalman(data, doppler_threshold=0.1, axis_limit=12, d
             # Update Kalman Filters
             if not kalman_filters:
                 for coord in detected_coords:
-                    kf = KalmanFilter(initial_state_mean=coord, n_dim_obs=3)
+                    kf = KalmanFilter(
+                        transition_matrices=transition_matrix,
+                        observation_matrices=observation_matrix,
+                        transition_covariance=transition_covariance,
+                        observation_covariance=observation_covariance,
+                        initial_state_mean=coord,
+                        initial_state_covariance=initial_state_covariance,
+                    )
                     kalman_filters.append(kf)
 
             kalman_predictions = []
@@ -665,7 +810,6 @@ def run_live_visualization(data):
     """
     live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
 
-
 def run_live_visualization_with_dbscan(data):
     """
     Wrapper to run the live visualization with DBSCAN in a separate thread.
@@ -676,13 +820,49 @@ def run_live_visualization_with_kalman(data):
     """
     Wrapper to run the live visualization with KALMAN in a separate thread.
     """
-    live_visualization_with_kalman(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
+    # Custom Kalman filter parameters
+    transition_matrix = np.eye(3)  # Constant position model
+    observation_matrix = np.eye(3)  # Direct observation of position
+    transition_covariance = np.eye(3) * 0.05  # More uncertainty in system dynamics
+    observation_covariance = np.eye(3) * 0.02  # Less measurement noise
+    initial_state_mean = [1, 2, 3]  # Initial guess for position
+    initial_state_covariance = np.eye(3) * 0.1  # Initial uncertainty
+    
+    live_visualization_with_kalman(
+    data,
+    doppler_threshold=0.1,
+    axis_limit=12,
+    delay=0.1,
+    transition_matrix=transition_matrix,
+    observation_matrix=observation_matrix,
+    transition_covariance=transition_covariance,
+    observation_covariance=observation_covariance,
+    initial_state_mean=initial_state_mean,
+    initial_state_covariance=initial_state_covariance,
+    )
 
 def run_live_visualization_with_region_growing(data):
     """
     Wrapper to run the live visualization with region_growing in a separate thread.
     """
     live_visualization_with_region_growing(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, distance_threshold=0.5)
+
+def run_all_data_with_kalman(data):
+    """
+    Wrapper to run the plot_all_data_with_kalman function with customizable Kalman filter parameters.
+    """
+    # Custom Kalman filter parameters
+    transition_matrix = np.eye(3)  # Constant position model
+    observation_matrix = np.eye(3)  # Direct observation of position
+    transition_covariance = np.eye(3) * 0.05  # More uncertainty in system dynamics
+    observation_covariance = np.eye(3) * 0.02  # Less measurement noise
+    initial_state_mean = [0, 0, 0]  # Initial guess for position
+    initial_state_covariance = np.eye(3) * 0.1  # Initial uncertainty
+
+    # Call the Kalman visualization function
+    plot_all_data_with_kalman(data, doppler_threshold=0.1, axis_limit=12)
+
+
 
 if __name__ == "__main__":
     # Define the relative path to your log file
@@ -699,9 +879,9 @@ if __name__ == "__main__":
 
     # Choose mode of visualization
     mode = input("Enter 'live' (1) for live visualization or 'all' (2) to plot all data: ").strip().lower()
-    modeCluster = input("Choose visualization: 'custom' (0) or 'normal' (1) or 'dbscan' (2) or 'k-cluster' (3) or 'k-cluster (4)': ").strip().lower()
 
     if mode in ['live', '1']:
+        modeCluster = input("Choose visualization: 'custom' (0) or 'normal' (1) or 'dbscan' (2) or 'kalman' (3) or 'region_growing' (4)': ").strip().lower()
         # Run live visualization
         if mode in ['custom', '0']:
             # Start both threads
@@ -717,12 +897,15 @@ if __name__ == "__main__":
             run_live_visualization(data)
         elif mode in ['dbscan', '2']:
             run_live_visualization_with_dbscan(data)
-        elif mode in ['k-cluster', '3']:
-            run_live_visualization_with_dbscan(data)
+        elif mode in ['kalman', '3']:
+            run_live_visualization_with_kalman(data)
         elif mode in ['region_growing', '4']:
             run_live_visualization_with_region_growing(data)
     elif mode in ['all', '2']:
-        # Plot all data
-        plot_all_data(data, doppler_threshold=0.1, axis_limit=12)
+        modeCluster = input("Choose visualization: 'normal' (1) or 'kalman' (2): ").strip().lower()
+        if mode in ['normal', '1']:
+            plot_all_data(data, doppler_threshold=0.1, axis_limit=12)
+        elif mode in ['kalman', '2']:
+            run_all_data_with_kalman(data)
     else:
         print("Invalid mode. Please enter 'live' or 'all'.")
