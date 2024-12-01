@@ -8,6 +8,7 @@ def parse_frame_header(raw_data):
     Parse the first 40 bytes of raw data into a structured frame header.
     Values are popped from the raw_data list as they are parsed.
     """
+
     if len(raw_data) < 40:
         raise ValueError("Insufficient data for Frame Header")
 
@@ -184,7 +185,6 @@ def print_tlvs(num_tlvs, raw_data_list):
 
 
 
-# Main code to read the file and parse data
 if __name__ == "__main__":
     # Define the relative path to your log file
     script_dir = os.getcwd()  # Use current working directory
@@ -193,20 +193,29 @@ if __name__ == "__main__":
     # Load the CSV file
     data = pd.read_csv(log_file)
 
+    # Ask the user for the number of rows to process
     try:
-        # Process the first row of the CSV file
-        first_row = data.iloc[0]
-        raw_data_list = [int(x) for x in first_row['RawData'].split(',')]
+        num_rows_to_process = int(input("Enter the number of rows to process: "))
+    except ValueError:
+        print("Invalid input. Please enter an integer value.")
+        exit(1)
 
-        # Parse the frame header
-        frame_header = parse_frame_header(raw_data_list)
-        print("\nParsed Frame Header:")
-        for key, value in frame_header.items():
-            print(f"{key}: {value}")
+    # Process the specified number of rows
+    for row_idx in range(min(num_rows_to_process, len(data))):
+        print(f"\n--- Processing Row {row_idx + 1} ---")
+        try:
+            # Get raw data from the current row
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
 
-        num_tlvs = frame_header["Num TLVs"]
+            # Parse the frame header
+            frame_header = parse_frame_header(raw_data_list)
+            print("\nParsed Frame Header:")
+            for key, value in frame_header.items():
+                print(f"{key}: {value}")
 
-        print_tlvs(num_tlvs, raw_data_list)
+            # Parse and print TLVs using the extracted number of TLVs from the frame header
+            num_tlvs = frame_header["Num TLVs"]
+            print_tlvs(num_tlvs, raw_data_list)
 
-    except Exception as e:
-        print(f"Error: {e}")
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
