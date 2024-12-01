@@ -3,6 +3,10 @@ import pandas as pd
 import struct
 import matplotlib.pyplot as plt
 from datetime import datetime
+from sklearn.cluster import DBSCAN
+import numpy as np
+import threading
+
 
 # Global variable to specify which TLVs to process
 interested_tlv_types = [1]  # Example: Interested in Detected Points (1) and Temperature Statistics (9)
@@ -263,7 +267,96 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
     plt.tight_layout()
     plt.show()
 
-def live_visualization(data, doppler_threshold=0.1, axis_limit=3, delay=0.5):
+def live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, eps=0.5, min_samples=5):
+    """
+    Live visualization with DBSCAN clustering in a separate plot window.
+    """
+    fig_live = plt.figure(figsize=(12, 6))
+    ax_stationary = fig_live.add_subplot(121, projection='3d')
+    ax_moving = fig_live.add_subplot(122, projection='3d')
+
+    fig_dbscan = plt.figure(figsize=(6, 6))
+    ax_dbscan = fig_dbscan.add_subplot(111, projection='3d')
+
+    for row_idx in range(len(data)):
+        try:
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Stopping processing at row {row_idx + 1}: Null data encountered.")
+                break
+
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            stationary_coords = []  # Stationary points: (X, Y, Z)
+            moving_coords = []      # Moving points: (X, Y, Z)
+
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            if abs(point["Doppler [m/s]"]) <= doppler_threshold:
+                                stationary_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+                            else:
+                                moving_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            ax_stationary.cla()
+            ax_moving.cla()
+            ax_dbscan.cla()
+
+            if stationary_coords:
+                x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+                ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+            if moving_coords:
+                x_moving, y_moving, z_moving = zip(*moving_coords)
+                ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+
+            ax_stationary.set_xlim([-axis_limit, axis_limit])
+            ax_stationary.set_ylim([-axis_limit, axis_limit])
+            ax_stationary.set_zlim([-axis_limit, axis_limit])
+            ax_stationary.set_title("Stationary Objects")
+
+            ax_moving.set_xlim([-axis_limit, axis_limit])
+            ax_moving.set_ylim([-axis_limit, axis_limit])
+            ax_moving.set_zlim([-axis_limit, axis_limit])
+            ax_moving.set_title("Moving Objects")
+
+            all_coords = stationary_coords + moving_coords
+            if all_coords:
+                all_coords = np.array(all_coords)
+                dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+                labels = dbscan.fit_predict(all_coords)
+
+                unique_labels = set(labels)
+                colors = plt.cm.jet(np.linspace(0, 1, len(unique_labels)))
+                for label, color in zip(unique_labels, colors):
+                    if label == -1:
+                        color = "black"
+                    mask = labels == label
+                    ax_dbscan.scatter(
+                        all_coords[mask, 0], all_coords[mask, 1], all_coords[mask, 2],
+                        c=[color], label=f"Cluster {label}"
+                    )
+
+            ax_dbscan.set_xlim([-axis_limit, axis_limit])
+            ax_dbscan.set_ylim([-axis_limit, axis_limit])
+            ax_dbscan.set_zlim([-axis_limit, axis_limit])
+            ax_dbscan.set_title("DBSCAN Clustering")
+            plt.pause(delay)
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    plt.show()
+
+def live_visualization(data, doppler_threshold=0.1, axis_limit=10, delay=0.5):
     """
     Live visualization of stationary and moving objects with updates based on timestamp.
     """
@@ -344,6 +437,22 @@ def live_visualization(data, doppler_threshold=0.1, axis_limit=3, delay=0.5):
 
     plt.show()
 
+
+
+def run_live_visualization(data):
+    """
+    Wrapper to run the normal live visualization in a separate thread.
+    """
+    live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
+
+
+def run_live_visualization_with_dbscan(data):
+    """
+    Wrapper to run the live visualization with DBSCAN in a separate thread.
+    """
+    live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, eps=0.5, min_samples=5)
+
+
 if __name__ == "__main__":
     # Define the relative path to your log file
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
@@ -353,12 +462,31 @@ if __name__ == "__main__":
     # Load the CSV file
     data = pd.read_csv(log_file)
 
+    # Create threads for both visualization methods
+    thread_normal = threading.Thread(target=run_live_visualization, args=(data,))
+    thread_dbscan = threading.Thread(target=run_live_visualization_with_dbscan, args=(data,))
+
     # Choose mode of visualization
     mode = input("Enter 'live' (1) for live visualization or 'all' (2) to plot all data: ").strip().lower()
+    modeCluster = input("Choose visualization: 'custom' (0) or 'normal' (1) or 'dbscan' (2): ").strip().lower()
 
     if mode in ['live', '1']:
         # Run live visualization
-        live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
+        if mode in ['custom', '0']:
+            # Start both threads
+            thread_normal.start()
+            thread_dbscan.start()
+
+            thread_normal.join()
+            thread_dbscan.join()
+        elif mode in ['normal', '1']:
+            thread_normal.start()
+
+            thread_normal.join()
+        elif mode in ['dbscan', '2']:
+            thread_dbscan.start()
+
+            thread_dbscan.join()
     elif mode in ['all', '2']:
         # Plot all data
         plot_all_data(data, doppler_threshold=0.1, axis_limit=12)
