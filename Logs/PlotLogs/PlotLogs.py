@@ -55,7 +55,7 @@ def parse_tlv_payload(tlv_header, raw_data):
     """
     tlv_type = tlv_header["TLV Type"]
     tlv_length = tlv_header["TLV Length"]
-    payload_length = tlv_length - 8  # Subtract header size
+    payload_length = tlv_length  # Subtract header size
 
     if len(raw_data) < payload_length:
         raise ValueError(f"Insufficient data for TLV Payload: expected {payload_length} bytes, "
@@ -65,8 +65,7 @@ def parse_tlv_payload(tlv_header, raw_data):
     payload = [raw_data.pop(0) for _ in range(payload_length)]
 
     # Process the payload based on the TLV type
-    if tlv_type == 1:
-        # Detected Points
+    if tlv_type == 1:  # Detected Points
         point_size = 16  # Each detected point is 16 bytes
         detected_points = []
         for i in range(payload_length // point_size):
@@ -75,46 +74,89 @@ def parse_tlv_payload(tlv_header, raw_data):
             detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
         return {"Detected Points": detected_points}
 
-    elif tlv_type == 2:
-        # Range Profile
+    elif tlv_type in (2, 3):  # Range Profile or Noise Profile
         range_points = []
         for i in range(payload_length // 2):  # Each point is 2 bytes
-            point_raw = (payload[i * 2 + 1] << 8) | payload[i * 2]  # Combine 2 bytes into 16-bit value
+            point_raw = (payload[i * 2 + 1] << 8) | payload[i * 2]
             point_q9 = point_raw / 512.0  # Convert Q9 format to float
             range_points.append(point_q9)
-        return {"Range Profile": range_points}
+        return {"Range Profile" if tlv_type == 2 else "Noise Profile": range_points}
 
-    elif tlv_type == 3:
-        # Noise Profile
-        return {"Noise Profile": payload}
+    elif tlv_type in (4, 8):  # Azimuth Static Heatmap or Azimuth/Elevation Heatmap
+        heatmap = []
+        for i in range(payload_length // 4):  # Each complex number is 4 bytes
+            imag = (payload[i * 4 + 1] << 8) | payload[i * 4]
+            real = (payload[i * 4 + 3] << 8) | payload[i * 4 + 2]
+            heatmap.append({"Real": real, "Imaginary": imag})
+        return {"Azimuth Static Heatmap" if tlv_type == 4 else "Azimuth/Elevation Static Heatmap": heatmap}
 
-    elif tlv_type == 4:
-        # Azimuth Static Heatmap
-        return {"Azimuth Static Heatmap": payload}
+    elif tlv_type == 5:  # Range-Doppler Heatmap
+        heatmap = []
+        row_size = int(payload_length ** 0.5)  # Assuming square 2D array
+        for i in range(row_size):
+            row = payload[i * row_size:(i + 1) * row_size]
+            heatmap.append(row)
+        return {"Range-Doppler Heatmap": heatmap}
 
-    elif tlv_type == 5:
-        # Doppler Static Heatmap
-        return {"Doppler Static Heatmap": payload}
+    elif tlv_type == 6:  # Statistics
+        stats = struct.unpack('<' + 'I' * (payload_length // 4), bytes(payload))
+        return {
+            "Statistics": {
+                "InterFrameProcessingTime": stats[0],
+                "TransmitOutputTime": stats[1],
+                "InterFrameProcessingMargin": stats[2],
+                "InterChirpProcessingMargin": stats[3],
+                "ActiveFrameCPULoad": stats[4],
+                "InterFrameCPULoad": stats[5]
+            }
+        }
 
-    elif tlv_type == 6:
-        # Statistics
-        return {"Statistics": payload}
+    elif tlv_type == 7:  # Side Info for Detected Points
+        side_info = []
+        point_size = 4  # Each point has 4 bytes of side info
+        for i in range(payload_length // point_size):
+            snr, noise = struct.unpack('<HH', bytes(payload[i * point_size:(i + 1) * point_size]))
+            side_info.append({"SNR": snr, "Noise": noise})
+        return {"Side Info for Detected Points": side_info}
 
-    elif tlv_type == 7:
-        # Side Info for Detected Points
-        return {"Side Info": payload}
+    elif tlv_type == 9:  # Temperature Statistics
+        # Type 9 payload structure:
+        # 4 bytes: TempReportValid (uint32_t)
+        # 4 bytes: Time (uint32_t)
+        # 2 bytes each: Remaining temperature values (uint16_t)
+        if payload_length != 28:
+            raise ValueError(f"Invalid payload length for Type 9: expected 28 bytes, got {payload_length} bytes")
 
-    elif tlv_type == 8:
-        # Static Heatmap
-        return {"Static Heatmap": payload}
+        # Parse the payload manually
+        temp_report_valid = (payload[3] << 24) | (payload[2] << 16) | (payload[1] << 8) | payload[0]
+        time_ms = (payload[7] << 24) | (payload[6] << 16) | (payload[5] << 8) | payload[4]
 
-    elif tlv_type == 9:
-        # Temperature Statistics
-        return {"Temperature Statistics": payload}
+        temperatures = []
+        for i in range(8, payload_length, 2):  # Start at index 8, step by 2 for uint16_t
+            temp = (payload[i + 1] << 8) | payload[i]
+            temperatures.append(temp)
+
+        # Map temperatures to sensor names
+        sensor_names = [
+            "TmpRx0Sens", "TmpRx1Sens", "TmpRx2Sens", "TmpRx3Sens",
+            "TmpTx0Sens", "TmpTx1Sens", "TmpTx2Sens", "TmpPmSens",
+            "TmpDig0Sens", "TmpDig1Sens"
+        ]
+        temperature_data = dict(zip(sensor_names, temperatures))
+
+        return {
+            "Temperature Statistics": {
+                "TempReportValid": temp_report_valid,
+                "Time (ms)": time_ms,
+                **temperature_data
+            }
+        }
+
 
     else:
-        # Unknown Type
-        return {"Unknown Type": payload}
+        # Unknown TLV type
+        return {"Raw Payload": payload}
+
 
 
 # Main code to read the file and parse data
@@ -139,17 +181,73 @@ if __name__ == "__main__":
 
         # Parse the first TLV header
         tlv_header = parse_tlv_header(raw_data_list)
-        print("\nParsed TLV Header:")
+        print("\nParsed First TLV Header:")
         for key, value in tlv_header.items():
             print(f"{key}: {value}")
 
-        # Parse the TLV payload
+        # Parse the first TLV payload
         tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-        print("\nParsed TLV Payload:")
+        print("\nParsed First TLV Payload:")
         print(tlv_payload)
 
-        # Remaining raw_data_list after parsing
-        print(f"\nRemaining Raw Data: {raw_data_list}")
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+
+        # Parse the first TLV header
+        tlv_header = parse_tlv_header(raw_data_list)
+        print("\nParsed First TLV Header:")
+        for key, value in tlv_header.items():
+            print(f"{key}: {value}")
+
+        # Parse the first TLV payload
+        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+        print("\nParsed First TLV Payload:")
+        print(tlv_payload)
+
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+
+        # Parse the first TLV header
+        tlv_header = parse_tlv_header(raw_data_list)
+        print("\nParsed First TLV Header:")
+        for key, value in tlv_header.items():
+            print(f"{key}: {value}")
+
+        # Parse the first TLV payload
+        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+        print("\nParsed First TLV Payload:")
+        print(tlv_payload)
+
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+
+        # Parse the first TLV header
+        tlv_header = parse_tlv_header(raw_data_list)
+        print("\nParsed First TLV Header:")
+        for key, value in tlv_header.items():
+            print(f"{key}: {value}")
+
+        # Parse the first TLV payload
+        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+        print("\nParsed First TLV Payload:")
+        print(tlv_payload)
+
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
+
+        # Parse the first TLV header
+        tlv_header = parse_tlv_header(raw_data_list)
+        print("\nParsed First TLV Header:")
+        for key, value in tlv_header.items():
+            print(f"{key}: {value}")
+
+        # Parse the first TLV payload
+        tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+        print("\nParsed First TLV Payload:")
+        print(tlv_payload)
+
+        # Debug: Print remaining raw_data_list before parsing next TLV
+        print(f"\nRemaining Data After First TLV: {raw_data_list[:20]}...")  # Print first 20 bytes
 
     except Exception as e:
         print(f"Error: {e}")
