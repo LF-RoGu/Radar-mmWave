@@ -37,7 +37,6 @@ def parse_tlv_header(raw_data):
 
     return {"TLV Type": tlv_type, "TLV Length": tlv_length}
 
-
 def parse_tlv_payload(tlv_header, raw_data):
     tlv_type = tlv_header["TLV Type"]
     tlv_length = tlv_header["TLV Length"]
@@ -177,7 +176,6 @@ def print_tlvs(num_tlvs, raw_data_list):
 
     return
 
-
 def convert_timestamp_to_unix(timestamp_str):
     """
     Convert a timestamp string into UNIX format, handling nanoseconds by truncating them.
@@ -265,11 +263,92 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
     plt.tight_layout()
     plt.show()
 
+def live_visualization(data, doppler_threshold=0.1, axis_limit=3, delay=0.5):
+    """
+    Live visualization of stationary and moving objects with updates based on timestamp.
+    """
+    fig = plt.figure(figsize=(12, 6))
+    ax_stationary = fig.add_subplot(121, projection='3d')
+    ax_moving = fig.add_subplot(122, projection='3d')
+
+    for row_idx in range(len(data)):
+        try:
+            # Check if the row is valid (non-null)
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Stopping processing at row {row_idx + 1}: Null data encountered.")
+                break
+
+            # Convert timestamp to UNIX format
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            # Get raw data from the current row
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+
+            # Parse the frame header
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            # Storage for stationary and moving points
+            stationary_coords = []  # Stationary points: (X, Y, Z)
+            moving_coords = []      # Moving points: (X, Y, Z)
+
+            # Parse TLVs
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            # Categorize based on Doppler threshold
+                            if abs(point["Doppler [m/s]"]) <= doppler_threshold:
+                                stationary_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+                            else:
+                                moving_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            # Clear plots for new frame
+            ax_stationary.cla()
+            ax_moving.cla()
+
+            # Update stationary plot
+            if stationary_coords:
+                x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+                ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+            ax_stationary.set_xlim([-axis_limit, axis_limit])
+            ax_stationary.set_ylim([-axis_limit, axis_limit])
+            ax_stationary.set_zlim([-axis_limit, axis_limit])
+            ax_stationary.set_xlabel('X Coordinate (m)')
+            ax_stationary.set_ylabel('Y Coordinate (m)')
+            ax_stationary.set_zlabel('Z Coordinate (m)')
+            ax_stationary.set_title("Stationary Objects")
+
+            # Update moving plot
+            if moving_coords:
+                x_moving, y_moving, z_moving = zip(*moving_coords)
+                ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+            ax_moving.set_xlim([-axis_limit, axis_limit])
+            ax_moving.set_ylim([-axis_limit, axis_limit])
+            ax_moving.set_zlim([-axis_limit, axis_limit])
+            ax_moving.set_xlabel('X Coordinate (m)')
+            ax_moving.set_ylabel('Y Coordinate (m)')
+            ax_moving.set_zlabel('Z Coordinate (m)')
+            ax_moving.set_title("Moving Objects")
+
+            # Pause to simulate live update with delay
+            plt.pause(delay)
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    plt.show()
+
 if __name__ == "__main__":
     # Define the relative path to your log file
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
     parent_dir = os.path.dirname(script_dir)  # One directory above the current directory
-    log_file = os.path.join(parent_dir, 'azim30_elev30_static_log_2024-11-28.csv')
+    log_file = os.path.join(parent_dir, 'azimut60_elev30_wall3x3_approach_log_2024-11-28.csv')
 
     # Load the CSV file
     data = pd.read_csv(log_file)
