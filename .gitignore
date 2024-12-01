@@ -1,0 +1,12 @@
+
+*.vsidx
+
+Logs/PlotLogs/.vs/PlotLogs/v17/.suo
+
+Logs/PlotLogs/.vs/PlotLogs/v17/DocumentLayout.backup.json
+
+Logs/PlotLogs/.vs/PlotLogs/v17/DocumentLayout.json
+
+Logs/PlotLogs/PlotLogs.pyproj
+
+Logs/PlotLogs/PlotLogs.sln
