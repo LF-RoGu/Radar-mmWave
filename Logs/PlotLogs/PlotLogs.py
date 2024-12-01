@@ -37,6 +37,7 @@ def parse_tlv_header(raw_data):
 
     return {"TLV Type": tlv_type, "TLV Length": tlv_length}
 
+
 def parse_tlv_payload(tlv_header, raw_data):
     tlv_type = tlv_header["TLV Type"]
     tlv_length = tlv_header["TLV Length"]
@@ -59,18 +60,69 @@ def parse_tlv_payload(tlv_header, raw_data):
             detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
         return {"Detected Points": detected_points}
 
+    elif tlv_type in (2, 3):  # Range Profile or Noise Profile
+        range_points = []
+        for i in range(payload_length // 2):  # Each point is 2 bytes
+            point_raw = (payload[i * 2 + 1] << 8) | payload[i * 2]
+            point_q9 = point_raw / 512.0  # Convert Q9 format to float
+            range_points.append(point_q9)
+        return {"Range Profile" if tlv_type == 2 else "Noise Profile": range_points}
+
+    elif tlv_type in (4, 8):  # Azimuth Static Heatmap or Azimuth/Elevation Heatmap
+        heatmap = []
+        for i in range(payload_length // 4):  # Each complex number is 4 bytes
+            imag = (payload[i * 4 + 1] << 8) | payload[i * 4]
+            real = (payload[i * 4 + 3] << 8) | payload[i * 4 + 2]
+            heatmap.append({"Real": real, "Imaginary": imag})
+        return {"Azimuth Static Heatmap" if tlv_type == 4 else "Azimuth/Elevation Static Heatmap": heatmap}
+
+    elif tlv_type == 5:  # Range-Doppler Heatmap
+        heatmap = []
+        row_size = int(payload_length ** 0.5)  # Assuming square 2D array
+        for i in range(row_size):
+            row = payload[i * row_size:(i + 1) * row_size]
+            heatmap.append(row)
+        return {"Range-Doppler Heatmap": heatmap}
+
+    elif tlv_type == 6:  # Statistics
+        stats = struct.unpack('<' + 'I' * (payload_length // 4), bytes(payload))
+        return {
+            "Statistics": {
+                "InterFrameProcessingTime": stats[0],
+                "TransmitOutputTime": stats[1],
+                "InterFrameProcessingMargin": stats[2],
+                "InterChirpProcessingMargin": stats[3],
+                "ActiveFrameCPULoad": stats[4],
+                "InterFrameCPULoad": stats[5]
+            }
+        }
+
+    elif tlv_type == 7:  # Side Info for Detected Points
+        side_info = []
+        point_size = 4  # Each point has 4 bytes of side info
+        for i in range(payload_length // point_size):
+            snr, noise = struct.unpack('<HH', bytes(payload[i * point_size:(i + 1) * point_size]))
+            side_info.append({"SNR": snr, "Noise": noise})
+        return {"Side Info for Detected Points": side_info}
+
     elif tlv_type == 9:  # Temperature Statistics
+        # Type 9 payload structure:
+        # 4 bytes: TempReportValid (uint32_t)
+        # 4 bytes: Time (uint32_t)
+        # 2 bytes each: Remaining temperature values (uint16_t)
         if payload_length != 28:
             raise ValueError(f"Invalid payload length for Type 9: expected 28 bytes, got {payload_length} bytes")
 
+        # Parse the payload manually
         temp_report_valid = (payload[3] << 24) | (payload[2] << 16) | (payload[1] << 8) | payload[0]
         time_ms = (payload[7] << 24) | (payload[6] << 16) | (payload[5] << 8) | payload[4]
 
         temperatures = []
-        for i in range(8, payload_length, 2):
+        for i in range(8, payload_length, 2):  # Start at index 8, step by 2 for uint16_t
             temp = (payload[i + 1] << 8) | payload[i]
             temperatures.append(temp)
 
+        # Map temperatures to sensor names
         sensor_names = [
             "TmpRx0Sens", "TmpRx1Sens", "TmpRx2Sens", "TmpRx3Sens",
             "TmpTx0Sens", "TmpTx1Sens", "TmpTx2Sens", "TmpPmSens",
