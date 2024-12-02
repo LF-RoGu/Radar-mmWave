@@ -7,8 +7,8 @@ from matplotlib.animation import FuncAnimation
 # Initialize parameters
 time_steps = 50
 car_position = [5, 5]  # Car's cluster center (stationary or slightly moving)
-pedestrian_start = [15, 10]  # Starting position of the pedestrian cluster
-pedestrian_velocity = [-0.5, 0]  # Pedestrian moving from right to left
+pedestrian_start = [20, 10]  # Starting position of the pedestrian cluster
+pedestrian_velocity = [-1, -1]  # Pedestrian moving from right to left
 pedestrian_points = 5  # Increased number of points in pedestrian cluster
 car_points = 20  # Number of points in car cluster
 noise_points = 100  # Number of random noise points
@@ -29,7 +29,7 @@ for t in range(time_steps):
 noise = np.random.uniform(low=0, high=20, size=(time_steps, noise_points, 2))
 
 # Apply DBSCAN clustering to filter noise
-eps = 1.5  # Maximum distance between points in a cluster
+eps = 1.1  # Maximum distance between points in a cluster
 min_samples = 5  # Minimum points to form a cluster
 filtered_pedestrian_positions = []
 for t in range(time_steps):
@@ -53,7 +53,7 @@ kf.F = np.array([[1, 0, 1, 0],  # State transition matrix
                  [0, 0, 0, 1]])
 kf.H = np.array([[1, 0, 0, 0],  # Measurement function
                  [0, 1, 0, 0]])
-kf.R = np.eye(2) * 0.5  # Measurement noise
+kf.R = np.eye(2) * 0.25  # Measurement noise
 kf.Q = np.eye(4) * 0.01  # Process noise
 kf.P = np.eye(4) * 10  # Initial uncertainty
 kf.x = np.array([pedestrian_start[0], pedestrian_start[1], 0, 0])  # Initial state (x, y, vx, vy)
