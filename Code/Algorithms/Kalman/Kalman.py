@@ -1,7 +1,7 @@
 import numpy as np
 
 # Persistent variables replacement
-class KalmanFilter:
+class AdvancedKalmanFilter:
     def __init__(self):
         # Initialization
         self.A = 1
@@ -13,8 +13,8 @@ class KalmanFilter:
 
     def update(self, z):
         # I. Prediction
-        xp = self.A * self.x  # Prediction of state
-        Pp = self.A * self.P * self.A + self.Q  # Prediction of error covariance
+        xp = self.A * self.x  # Predicted state
+        Pp = self.A * self.P * self.A + self.Q  # Predicted error covariance
 
         # II. Compute Kalman gain
         K = Pp * self.H / (self.H * Pp * self.H + self.R)
@@ -25,7 +25,7 @@ class KalmanFilter:
         # IV. Update error covariance
         self.P = Pp - K * self.H * Pp
 
-        return self.x
+        return self.x, self.P, K  # Return voltage estimate, error covariance, and Kalman gain
 
 
 # Simulated voltage generator
@@ -36,21 +36,29 @@ def get_voltage():
 
 # Main function to test the Kalman filter
 def main():
-    kalman = KalmanFilter()  # Initialize the Kalman filter
-    num_samples = 20  # Number of voltage samples
+    kalman = AdvancedKalmanFilter()  # Initialize the Kalman filter
+    num_samples = 500  # Number of voltage samples
     measured_voltages = []
     filtered_voltages = []
+    error_covariances = []
+    kalman_gains = []
 
     # Simulate and filter voltages
     for _ in range(num_samples):
         z = get_voltage()  # Simulated noisy voltage measurement
         measured_voltages.append(z)
-        filtered_voltages.append(kalman.update(z))
+        volt, Px, K = kalman.update(z)
+        filtered_voltages.append(volt)
+        error_covariances.append(Px)
+        kalman_gains.append(K)
 
     # Plot the results
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 6))
+
+    # Plot measured and filtered voltages
+    plt.subplot(2, 1, 1)
     plt.plot(measured_voltages, label="Measured Voltage (Noisy)", color="orange", linestyle="dashed")
     plt.plot(filtered_voltages, label="Filtered Voltage (Kalman)", color="red")
     plt.axhline(y=14.4, color="green", linestyle="--", label="True Voltage")
@@ -59,6 +67,18 @@ def main():
     plt.title("Kalman Filter for Voltage Measurement")
     plt.legend()
     plt.grid()
+
+    # Plot Kalman gain and error covariance
+    plt.subplot(2, 1, 2)
+    plt.plot(error_covariances, label="Error Covariance (Px)", color="blue")
+    plt.plot(kalman_gains, label="Kalman Gain (K)", color="purple")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Value")
+    plt.title("Error Covariance and Kalman Gain")
+    plt.legend()
+    plt.grid()
+
+    plt.tight_layout()
     plt.show()
 
 
