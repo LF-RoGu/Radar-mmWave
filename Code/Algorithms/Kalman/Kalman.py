@@ -13,10 +13,12 @@ def simulate_pedestrian(num_samples=50, dt=0.1):
     t = np.arange(0, num_samples * dt, dt)  # Time array
     true_positions = np.array([5 + 0.5 * t, 10 - 0.3 * t]).T  # Linear motion (x, y)
 
-    cluster_noise = np.random.normal(0, 0.2, size=(num_samples, 10, 2))  # Cluster noise
+    # Reduce noise for points closer to the true trajectory
+    cluster_noise = np.random.normal(0, 0.05, size=(num_samples, 10, 2))  # Noise std reduced to 0.05
     radar_points = true_positions[:, np.newaxis, :] + cluster_noise  # Noisy radar points
 
     return t, true_positions, radar_points
+
 
 # Kalman Filter for pedestrian tracking
 class PedestrianKalmanFilter:
