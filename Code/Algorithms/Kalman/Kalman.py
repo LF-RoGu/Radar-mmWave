@@ -19,7 +19,6 @@ def simulate_pedestrian(num_samples=50, dt=0.1):
 
     return t, true_positions, radar_points
 
-
 # Kalman Filter for pedestrian tracking
 class PedestrianKalmanFilter:
     def __init__(self, dt=0.1):
@@ -85,7 +84,7 @@ def main():
 
     # Arrays to store results
     estimated_positions = []
-    predicted_trajectories = []
+    covariance_matrices = []
 
     for k in range(num_samples):
         # Extract pedestrian cluster
@@ -93,16 +92,15 @@ def main():
         z = cluster_points.mean(axis=0)  # Cluster centroid as measurement
 
         # Update Kalman filter with measurement
-        estimated_state, _ = kalman.update(z)
+        estimated_state, P = kalman.update(z)
         estimated_positions.append(estimated_state[:2])
-
-        # Predict future trajectory
-        if k == num_samples - 1:  # Predict at the last sample
-            predicted_trajectories = kalman.predict_future(future_steps)
+        covariance_matrices.append(np.diag(P[:2, :2]))  # Save position covariances (x, y)
 
     estimated_positions = np.array(estimated_positions)
+    covariance_matrices = np.array(covariance_matrices)
 
-    # Time array for future predictions
+    # Predict future positions
+    predicted_trajectories = kalman.predict_future(future_steps)
     t_future = np.arange(num_samples * dt, (num_samples + future_steps) * dt, dt)
 
     # Plot results
@@ -115,6 +113,17 @@ def main():
     plt.xlabel("X Position (m)")
     plt.ylabel("Y Position (m)")
     plt.title("Pedestrian Tracking and Future Trajectory Prediction")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    # Plot error covariance
+    plt.figure(figsize=(10, 6))
+    plt.plot(t, covariance_matrices[:, 0], label="Position Covariance (X)", color="blue")
+    plt.plot(t, covariance_matrices[:, 1], label="Position Covariance (Y)", color="green")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Covariance")
+    plt.title("Error Covariance Over Time")
     plt.legend()
     plt.grid()
     plt.show()
