@@ -1,86 +1,122 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Persistent variables replacement
-class AdvancedKalmanFilter:
-    def __init__(self):
-        # Initialization
-        self.A = 1
-        self.H = 1
-        self.Q = 0
-        self.R = 4
-        self.x = 14
-        self.P = 6
+# Simulate true trajectory
+def simulate_radar_data(num_samples=1500, dt=0.02):
+    """
+    Simulates realistic radar data with noise.
+    :param num_samples: Number of samples to simulate.
+    :param dt: Time step (sampling interval).
+    :return: True positions, noisy measurements, and time array.
+    """
+    t = np.arange(0, num_samples * dt, dt)  # Time array
+    true_positions = 10 + 2 * np.sin(0.2 * t)  # True position (sinusoidal motion)
+    velocity = 2 * 0.2 * np.cos(0.2 * t)  # True velocity (derivative of position)
+
+    noise = np.random.normal(0, 0.5, size=num_samples)  # Gaussian noise (std = 0.5)
+    noisy_measurements = true_positions + noise  # Noisy radar measurements
+
+    return t, true_positions, noisy_measurements, velocity
+
+# Kalman Filter implementation for position and velocity
+class DvKalman:
+    def __init__(self, dt=0.02):
+        """
+        Initialize Kalman filter for position and velocity estimation.
+        :param dt: Time step (sampling interval).
+        """
+        self.dt = dt  # Sampling time
+        self.A = np.array([[1, dt], [0, 1]])  # State transition matrix
+        self.H = np.array([[1, 0]])  # Measurement matrix
+        self.Q = np.array([[0.001, 0], [0, 0.001]])  # Process noise covariance
+        self.R = np.array([[0.25]])  # Measurement noise covariance
+        self.x = np.array([[0], [0]])  # Initial state [position, velocity]
+        self.P = np.eye(2) * 1000  # Initial state covariance (large uncertainty)
 
     def update(self, z):
-        # I. Prediction
-        xp = self.A * self.x  # Predicted state
-        Pp = self.A * self.P * self.A + self.Q  # Predicted error covariance
+        """
+        Perform one step of Kalman filter update.
+        :param z: Measurement
+        :return: Estimated position, velocity, and state covariance
+        """
+        # Prediction
+        xp = self.A @ self.x  # Predicted state
+        Pp = self.A @ self.P @ self.A.T + self.Q  # Predicted covariance
 
-        # II. Compute Kalman gain
-        K = Pp * self.H / (self.H * Pp * self.H + self.R)
+        # Kalman gain
+        K = Pp @ self.H.T @ np.linalg.inv(self.H @ Pp @ self.H.T + self.R)
 
-        # III. Update state estimate
-        self.x = xp + K * (z - self.H * xp)
+        # Update state and covariance with measurement
+        self.x = xp + K @ (z - self.H @ xp)
+        self.P = Pp - K @ self.H @ Pp
 
-        # IV. Update error covariance
-        self.P = Pp - K * self.H * Pp
+        return self.x.flatten(), self.P
 
-        return self.x, self.P, K  # Return voltage estimate, error covariance, and Kalman gain
-
-
-# Simulated voltage generator
-def get_voltage():
-    noise = np.random.normal(0, 4)  # Random noise with standard deviation 4
-    return 14.4 + noise  # Simulated voltage with noise
-
-
-# Main function to test the Kalman filter
+# Main function to simulate and apply Kalman filter
 def main():
-    kalman = AdvancedKalmanFilter()  # Initialize the Kalman filter
-    num_samples = 500  # Number of voltage samples
-    measured_voltages = []
-    filtered_voltages = []
-    error_covariances = []
-    kalman_gains = []
+    dt = 0.02  # Time step
+    num_samples = 1500  # Number of samples
 
-    # Simulate and filter voltages
-    for _ in range(num_samples):
-        z = get_voltage()  # Simulated noisy voltage measurement
-        measured_voltages.append(z)
-        volt, Px, K = kalman.update(z)
-        filtered_voltages.append(volt)
-        error_covariances.append(Px)
-        kalman_gains.append(K)
+    # Simulate radar data
+    t, true_positions, noisy_measurements, true_velocity = simulate_radar_data(num_samples, dt)
 
-    # Plot the results
-    import matplotlib.pyplot as plt
+    # Initialize Kalman filter
+    kalman = DvKalman(dt)
 
+    # Initialize arrays to save data
+    Xsaved = np.zeros((num_samples, 2))  # Estimated position and velocity
+    Zsaved = noisy_measurements  # Save noisy measurements
+    Psaved = np.zeros((num_samples, 2))  # State covariance
+
+    # Run the Kalman filter
+    for k in range(num_samples):
+        pos_vel, P = kalman.update(Zsaved[k])
+        Xsaved[k, :] = pos_vel  # Save position and velocity
+        Psaved[k, :] = [P[0, 0], P[1, 1]]  # Save diagonal of covariance matrix
+
+    # Plot results
     plt.figure(figsize=(12, 6))
 
-    # Plot measured and filtered voltages
+    # Plot position
     plt.subplot(2, 1, 1)
-    plt.plot(measured_voltages, label="Measured Voltage (Noisy)", color="orange", linestyle="dashed")
-    plt.plot(filtered_voltages, label="Filtered Voltage (Kalman)", color="red")
-    plt.axhline(y=14.4, color="green", linestyle="--", label="True Voltage")
-    plt.xlabel("Sample Index")
-    plt.ylabel("Voltage (V)")
-    plt.title("Kalman Filter for Voltage Measurement")
+    plt.plot(t, Zsaved, 'r.', markersize=10, label='Position, Noisy Measurements')
+    plt.plot(t, Xsaved[:, 0], 'k-', linewidth=2, label='Position from Kalman Filter')
+    plt.plot(t, true_positions, 'g-', linewidth=2, label='True Position')
+    plt.ylabel("Position (m)")
+    plt.title("Position and Velocity from Noisy Radar Measurements")
     plt.legend()
     plt.grid()
 
-    # Plot Kalman gain and error covariance
+    # Plot velocity
     plt.subplot(2, 1, 2)
-    plt.plot(error_covariances, label="Error Covariance (Px)", color="blue")
-    plt.plot(kalman_gains, label="Kalman Gain (K)", color="purple")
-    plt.xlabel("Sample Index")
-    plt.ylabel("Value")
-    plt.title("Error Covariance and Kalman Gain")
+    plt.plot(t, Xsaved[:, 1], 'b-', linewidth=2, label='Velocity from Kalman Filter')
+    plt.plot(t, true_velocity, 'g-', linewidth=2, label='True Velocity')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Velocity (m/s)")
     plt.legend()
     plt.grid()
 
     plt.tight_layout()
     plt.show()
 
+    # Additional plots for covariance
+    plt.figure()
+    plt.plot(t, Psaved[:, 0], 'k-', label='Position Covariance (P[0,0])')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Covariance")
+    plt.title("Position Covariance (P[0,0])")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    plt.figure()
+    plt.plot(t, Psaved[:, 1], 'b-', label='Velocity Covariance (P[1,1])')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Covariance")
+    plt.title("Velocity Covariance (P[1,1])")
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
     main()
