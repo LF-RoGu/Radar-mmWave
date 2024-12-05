@@ -201,6 +201,7 @@ def visualize_radar_with_clustering_and_distance_filter(
 def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, grid_spacing=1, eps=1.0, min_samples=3, min_distance=1.0, max_distance=float('inf')):
     """
     Visualize movement tracking of clusters using Kalman filters and calculate average Doppler speed for each cluster.
+    Also draws dotted lines from the sensor (0,0) to each cluster point.
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, file_name)
@@ -253,17 +254,22 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
     for y in y_ticks:
         ax.plot(plot_x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-    # Plot movements and Doppler speeds
+    # Plot movements, Doppler speeds, and dotted lines from (0, 0)
     for cluster_id, original_pos in clusters.items():
         updated_pos = updated_clusters[cluster_id]
         avg_doppler = cluster_doppler.get(cluster_id, 0)  # Get average Doppler for the cluster
+
+        # Draw dotted line from radar (0,0) to each cluster's updated position
+        ax.plot([radar_position[0], updated_pos[0]], [radar_position[1], updated_pos[1]], linestyle=':', color='black', linewidth=1)
+
+        # Plot the cluster movements and annotate Doppler speed
         ax.plot([original_pos[0], updated_pos[0]], [original_pos[1], updated_pos[1]], 'k--', label=f'Cluster {cluster_id}')
         ax.scatter(*original_pos, label=f'Cluster {cluster_id} (Original)', alpha=0.8)
         ax.scatter(*updated_pos, label=f'Cluster {cluster_id} (Updated)', color='red')
         ax.text(updated_pos[0], updated_pos[1], f"{avg_doppler:.2f} m/s", fontsize=9, color='purple')  # Annotate with Doppler speed
-    
+
     ax.legend()
-    ax.set_title("Cluster Movement Tracking with Average Doppler Speeds")
+    ax.set_title("Cluster Movement Tracking with Average Doppler Speeds and Sensor Lines")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
     plt.show()
