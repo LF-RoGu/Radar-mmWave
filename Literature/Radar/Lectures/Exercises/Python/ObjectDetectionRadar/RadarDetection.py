@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Wedge, Rectangle
+from matplotlib.patches import Patch
 from sklearn.cluster import DBSCAN
 import numpy as np
 
@@ -21,9 +22,10 @@ def dbscan_clustering(data, eps=1.0, min_samples=3):
     db = DBSCAN(eps=eps, min_samples=min_samples).fit(points)
     return db.labels_
 
-def visualize_radar_with_clustering(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, grid_spacing=1, eps=1.0, min_samples=3):
+def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, grid_spacing=1, eps=1.0, min_samples=3):
     """
-    Visualize radar field of view, plot points from a CSV file, and cluster them using DBSCAN.
+    Visualize radar field of view, plot points from a CSV file, cluster them using DBSCAN, 
+    and highlight grid cells where clusters are detected. Only plot points greater than 1 meter from the sensor origin.
 
     Args:
     - file_name (str): Name of the CSV file relative to the script.
@@ -52,6 +54,10 @@ def visualize_radar_with_clustering(file_name, radar_position, plot_x_limits, pl
         frames_to_plot = data['Frame'].unique()[:num_frames]
         data = data[data['Frame'].isin(frames_to_plot)]
 
+    # Calculate distance from radar and filter points greater than 1 meter from the center
+    data['Distance'] = np.sqrt(data['X [m]']**2 + data['Y [m]']**2)
+    data = data[data['Distance'] > 1.5]
+
     # Perform DBSCAN clustering
     labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
     data['Cluster'] = labels
@@ -76,8 +82,17 @@ def visualize_radar_with_clustering(file_name, radar_position, plot_x_limits, pl
     for y in y_ticks:
         ax.plot(plot_x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-    # Plot points from the CSV file with cluster labels
+    # Highlight grid cells for each cluster
     unique_labels = np.unique(labels)
+    for label in unique_labels:
+        if label == -1:  # Skip noise points
+            continue
+        cluster_points = data[data['Cluster'] == label]
+        grid_cells = set((int(np.floor(x)), int(np.floor(y))) for x, y in zip(cluster_points['X [m]'], cluster_points['Y [m]']))
+        for cell in grid_cells:
+            ax.add_patch(Rectangle((cell[0], cell[1]), grid_spacing, grid_spacing, color='red', alpha=0.3))
+
+    # Plot points from the CSV file with cluster labels
     for label in unique_labels:
         cluster_points = data[data['Cluster'] == label]
         if label == -1:
@@ -89,22 +104,22 @@ def visualize_radar_with_clustering(file_name, radar_position, plot_x_limits, pl
         ax.scatter(cluster_points['X [m]'], cluster_points['Y [m]'], color=color, label=label_name, s=20)
 
     # Labels and legends
-    ax.set_title("Radar Detection Visualization with Clustering (DBSCAN)")
+    ax.set_title("Radar Detection with Clustering and Grid Highlighting")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.05))
 
     plt.show()
 
 
 # Example usage
-visualize_radar_with_clustering(
+visualize_radar_with_clustering_and_grid(
     file_name="coordinates.csv",
     radar_position=(0, 0),
     plot_x_limits=[-10, 10],
     plot_y_limits=[0, 10],
-    num_frames=30,
+    num_frames=50,
     grid_spacing=1,
     eps=0.4,  # DBSCAN clustering radius
-    min_samples=2  # Minimum points to form a cluster
+    min_samples=3  # Minimum points to form a cluster
 )
