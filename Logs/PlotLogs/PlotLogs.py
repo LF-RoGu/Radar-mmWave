@@ -38,7 +38,7 @@ def append_frame_to_csv(frame_number, timestamp, coordinates, filename="coordina
         for point in coordinates:
             f.write(f"{frame_number},{timestamp},{point['X [m]']},{point['Y [m]']},{point['Z [m]']},{point['Doppler [m/s]']}\n")
 
-    print(f"Appended Frame {frame_number} data to {file_path}")
+    #print(f"Appended Frame {frame_number} data to {file_path}")
 
 
 def parse_frame_header(raw_data):
