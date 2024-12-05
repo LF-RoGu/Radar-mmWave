@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Wedge, Rectangle
 from matplotlib.patches import Patch
+import matplotlib.cm as cm
 from sklearn.cluster import DBSCAN
 import numpy as np
 from filterpy.kalman import KalmanFilter
@@ -234,6 +235,11 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
             avg_doppler = cluster_points['Doppler [m/s]'].mean()  # Compute average Doppler speed
             cluster_doppler[cluster_id] = avg_doppler
 
+    # Generate a colormap for clusters
+    cluster_ids = list(clusters.keys())
+    colormap = cm.get_cmap('tab10', len(cluster_ids))  # Distinct colors for each cluster
+
+
     # Initialize plot
     fig, ax = plt.subplots(figsize=(12, 8))
     ax.set_xlim(plot_x_limits)
@@ -259,7 +265,9 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
     ax.plot([0, 0], [plot_y_limits[0], plot_y_limits[1]], linestyle=':', color='green', linewidth=1, label='Centerline')
 
     # Plot movements, Doppler speeds, and angles
-    for cluster_id, original_pos in clusters.items():
+    for i, cluster_id in enumerate(cluster_ids):
+        color = colormap(i)  # Get a unique color for the cluster
+        original_pos = clusters[cluster_id]
         updated_pos = updated_clusters[cluster_id]
         avg_doppler = cluster_doppler.get(cluster_id, 0)  # Get average Doppler for the cluster
 
@@ -267,9 +275,9 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
         ax.plot([radar_position[0], updated_pos[0]], [radar_position[1], updated_pos[1]], linestyle=':', color='black', linewidth=1)
 
         # Plot the cluster movements and annotate Doppler speed
-        ax.plot([original_pos[0], updated_pos[0]], [original_pos[1], updated_pos[1]], 'k--', label=f'Cluster {cluster_id}')
-        ax.scatter(*original_pos, label=f'Cluster {cluster_id} (Original)', alpha=0.8)
-        ax.scatter(*updated_pos, label=f'Cluster {cluster_id} (Updated)', color='red')
+        ax.plot([original_pos[0], updated_pos[0]], [original_pos[1], updated_pos[1]], linestyle='--', color=color, label=f'Cluster {cluster_id}')
+        ax.scatter(*original_pos, label=f'Cluster {cluster_id} (Original)', alpha=0.8, color=color)
+        ax.scatter(*updated_pos, label=f'Cluster {cluster_id} (Updated)', color=color)
         ax.text(updated_pos[0], updated_pos[1], f"{avg_doppler:.2f} m/s", fontsize=9, color='purple')  # Annotate with Doppler speed
 
         # Calculate and display the angle from the centerline to the cluster
@@ -278,7 +286,7 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
             angle = angle - 90
         else:
             angle = 90 - angle
-        ax.text(updated_pos[0], updated_pos[1] - 0.5, f"{angle:.1f}°", fontsize=9, color='orange')  # Annotate angle
+        ax.text(updated_pos[0], updated_pos[1] - 0.5, f"{angle:.1f}°", fontsize=9, color='black')  # Annotate angle
 
     ax.legend()
     ax.set_title("Cluster Movement with Angles and Average Doppler Speeds")
@@ -305,7 +313,7 @@ visualize_cluster_movement(
     radar_position=(0, 0),
     plot_x_limits=[-10, 10],
     plot_y_limits=[0, 15],
-    num_frames=30,
+    num_frames=50,
     grid_spacing=1,
     eps=0.4,
     min_samples=3
