@@ -10,3 +10,7 @@ Logs/PlotLogs/.vs/PlotLogs/v17/DocumentLayout.json
 Logs/PlotLogs/PlotLogs.pyproj
 
 Logs/PlotLogs/PlotLogs.sln
+
+*.sqlite
+
+Logs/PlotLogs/coordinates.csv
