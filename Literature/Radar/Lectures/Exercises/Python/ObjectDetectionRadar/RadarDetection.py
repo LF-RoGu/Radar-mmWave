@@ -1,34 +1,41 @@
+import pandas as pd
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Wedge, Rectangle
 
-# Constants for Plot Margins
-PLOT_X_LIMITS = [-70, 70]  # Define X-axis limits
-PLOT_Y_LIMITS = [0, 50]  # Define Y-axis limits
-
-# Object positions and properties
-objects = [
-    {'start_position': -15, 'lane': 0, 'color': 'red', 'length': 2, 'direction': 'right'},  # Object moving right
-    {'start_position': 20, 'lane': 1, 'color': 'green', 'length': 2, 'direction': 'left'},  # Object moving left
-    {'start_position': 10, 'lane': 1, 'color': 'orange', 'length': 4, 'direction': 'left'},  # Longer object moving left
-]
-
-radar_position = (0, 0)  # Radar at the origin (0, 0)
-
-# Visualization only
-def visualize_radar_with_grid(objects, radar_position, radar_distance, lane_spacing):
+# Function to visualize radar points from a CSV file
+def visualize_radar_with_csv(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0):
     """
-    Visualize radar field of view, detected objects, and draw a grid.
+    Visualize radar field of view and plot points from a CSV file.
 
     Args:
-    - objects (list): List of object dictionaries with properties.
+    - file_name (str): Name of the CSV file in the same folder as the script.
     - radar_position (tuple): Radar position (x, y).
-    - radar_distance (float): Distance from radar to the first lane.
-    - lane_spacing (float): Vertical spacing between lanes.
+    - plot_x_limits (list): Limits for the X-axis.
+    - plot_y_limits (list): Limits for the Y-axis.
+    - num_frames (int): Number of frames to plot (0 for all frames).
     """
+    # Construct full file path
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
+    file_path = os.path.join(script_dir, file_name)
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        print(f"Error: File not found at {file_path}")
+        return
+
+    # Read the CSV file
+    data = pd.read_csv(file_path)
+
+    # Filter data by number of frames if specified
+    if num_frames > 0:
+        frames_to_plot = data['Frame'].unique()[:num_frames]
+        data = data[data['Frame'].isin(frames_to_plot)]
+
     # Initialize plot
     fig, ax = plt.subplots(figsize=(12, 8))
-    ax.set_xlim(PLOT_X_LIMITS)
-    ax.set_ylim(PLOT_Y_LIMITS)
+    ax.set_xlim(plot_x_limits)
+    ax.set_ylim(plot_y_limits)
     ax.set_aspect('equal')
 
     # Radar visualization
@@ -38,24 +45,16 @@ def visualize_radar_with_grid(objects, radar_position, radar_distance, lane_spac
     ax.add_patch(radar_fov)
 
     # Draw grid with 1x1 meter squares
-    for x in range(PLOT_X_LIMITS[0], PLOT_X_LIMITS[1] + 1, 1):
-        ax.plot([x, x], PLOT_Y_LIMITS, linestyle='--', color='gray', linewidth=0.5)  # Vertical lines
-    for y in range(PLOT_Y_LIMITS[0], PLOT_Y_LIMITS[1] + 1, 1):
-        ax.plot(PLOT_X_LIMITS, [y, y], linestyle='--', color='gray', linewidth=0.5)  # Horizontal lines
+    for x in range(plot_x_limits[0], plot_x_limits[1] + 1, 1):
+        ax.plot([x, x], plot_y_limits, linestyle='--', color='gray', linewidth=0.5)  # Vertical lines
+    for y in range(plot_y_limits[0], plot_y_limits[1] + 1, 1):
+        ax.plot(plot_x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)  # Horizontal lines
 
-    # Display objects
-    for obj in objects:
-        position = (obj['start_position'], radar_distance + obj['lane'] * lane_spacing)
-        obj_box = Rectangle(
-            (obj['start_position'], position[1]),
-            obj['length'],
-            2,
-            color=obj['color']
-        )
-        ax.add_patch(obj_box)
+    # Plot points from the CSV file (X and Y only)
+    ax.scatter(data['X [m]'], data['Y [m]'], color='red', label='Detected Points', s=20)
 
     # Labels and legends
-    ax.set_title("Radar Detection Visualization with Grid")
+    ax.set_title("Radar Detection Visualization with Points from CSV")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
     ax.legend(loc='upper right')
@@ -64,5 +63,11 @@ def visualize_radar_with_grid(objects, radar_position, radar_distance, lane_spac
     plt.show()
 
 
-# Call the function to visualize objects with grid
-visualize_radar_with_grid(objects, radar_position, radar_distance=10, lane_spacing=2)
+# Example usage
+visualize_radar_with_csv(
+    file_name="coordinates.csv",
+    radar_position=(0, 0),
+    plot_x_limits=[-20, 20],
+    plot_y_limits=[0, 10],
+    num_frames=30  # Plot all frames
+)
