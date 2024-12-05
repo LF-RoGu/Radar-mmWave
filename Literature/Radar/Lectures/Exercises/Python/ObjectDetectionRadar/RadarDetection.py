@@ -201,7 +201,7 @@ def visualize_radar_with_clustering_and_distance_filter(
 def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, grid_spacing=1, eps=1.0, min_samples=3, min_distance=1.0, max_distance=float('inf')):
     """
     Visualize movement tracking of clusters using Kalman filters and calculate average Doppler speed for each cluster.
-    Also draws dotted lines from the sensor (0,0) to each cluster point.
+    Also draws dotted lines from the sensor (0, 0) to each cluster point and a vertical centerline to calculate angles.
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, file_name)
@@ -254,7 +254,11 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
     for y in y_ticks:
         ax.plot(plot_x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-    # Plot movements, Doppler speeds, and dotted lines from (0, 0)
+    # Draw a vertical centerline at the midpoint of the Y-axis
+    y_center = (plot_y_limits[0] + plot_y_limits[1]) / 2
+    ax.plot([0, 0], [plot_y_limits[0], plot_y_limits[1]], linestyle=':', color='green', linewidth=1, label='Centerline')
+
+    # Plot movements, Doppler speeds, and angles
     for cluster_id, original_pos in clusters.items():
         updated_pos = updated_clusters[cluster_id]
         avg_doppler = cluster_doppler.get(cluster_id, 0)  # Get average Doppler for the cluster
@@ -268,63 +272,18 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
         ax.scatter(*updated_pos, label=f'Cluster {cluster_id} (Updated)', color='red')
         ax.text(updated_pos[0], updated_pos[1], f"{avg_doppler:.2f} m/s", fontsize=9, color='purple')  # Annotate with Doppler speed
 
+        # Calculate and display the angle from the centerline to the cluster
+        angle = np.degrees(np.arctan2(updated_pos[1] - radar_position[1], updated_pos[0] - radar_position[0]))
+        if(angle > 90):
+            angle = angle - 90
+        else:
+            angle = 90 - angle
+        ax.text(updated_pos[0], updated_pos[1] - 0.5, f"{angle:.1f}°", fontsize=9, color='orange')  # Annotate angle
+
     ax.legend()
-    ax.set_title("Cluster Movement Tracking with Average Doppler Speeds and Sensor Lines")
+    ax.set_title("Cluster Movement with Angles and Average Doppler Speeds")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
-    plt.show()
-# Function to visualize velocity of each cluster
-def visualize_cluster_velocity(file_name, radar_position, eps=1.0, min_samples=3, min_distance=1.0, max_distance=float('inf')):
-    """
-    Visualize velocities of clusters based on Kalman filters.
-    """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, file_name)
-    if not os.path.exists(file_path):
-        print(f"Error: File not found at {file_path}")
-        return
-
-    # Load data
-    data = pd.read_csv(file_path)
-    data['Distance'] = np.sqrt(data['X [m]']**2 + data['Y [m]']**2)
-    data = data[(data['Distance'] > min_distance) & (data['Distance'] <= max_distance)]
-    
-    # Perform clustering
-    labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
-    data['Cluster'] = labels
-    clusters = {label: data[data['Cluster'] == label][['X [m]', 'Y [m]']].mean().values for label in np.unique(labels) if label != -1}
-
-    # Initialize Kalman filters and track movement
-    kalman_filters = {}
-    track_object_movement(clusters, kalman_filters)
-    velocities = estimate_velocity(kalman_filters)
-
-    # Check if velocities are computed
-    if not velocities:
-        print("No clusters found to compute velocities.")
-        return
-
-    # Ensure velocities are properly formatted as scalars
-    cluster_ids = list(velocities.keys())
-    vx = [float(v[0][0]) if v[0].ndim > 0 else float(v[0]) for v in velocities.values()]  # Handle scalar/array
-    vy = [float(v[1][0]) if v[1].ndim > 0 else float(v[1]) for v in velocities.values()]  # Handle scalar/array
-
-    # Plot velocities
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.set_title("Estimated Velocities")
-    ax.set_xlabel("Cluster ID")
-    ax.set_ylabel("Velocity (m/s)")
-    bar_width = 0.35  # Width of the bars
-
-    # Bar plots for vx and vy
-    x_positions = np.arange(len(cluster_ids))  # X positions for cluster IDs
-    ax.bar(x_positions - bar_width / 2, vx, bar_width, label="Vx (m/s)", alpha=0.7)
-    ax.bar(x_positions + bar_width / 2, vy, bar_width, label="Vy (m/s)", alpha=0.7)
-
-    # Add labels
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels(cluster_ids)
-    ax.legend()
     plt.show()
 
 # Example usage
@@ -348,13 +307,6 @@ visualize_cluster_movement(
     plot_y_limits=[0, 15],
     num_frames=30,
     grid_spacing=1,
-    eps=0.4,
-    min_samples=3
-)
-# Example usage
-visualize_cluster_velocity(
-    file_name="coordinates.csv",
-    radar_position=(0, 0),
     eps=0.4,
     min_samples=3
 )
