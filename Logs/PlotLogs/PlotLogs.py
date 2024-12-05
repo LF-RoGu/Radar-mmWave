@@ -7,22 +7,38 @@ from datetime import datetime
 # Global variable to specify which TLVs to process
 interested_tlv_types = [1]  # Example: Interested in Detected Points (1) and Temperature Statistics (9)
 
-def save_coordinates_to_csv(coordinates, filename="coordinates.csv"):
+def initialize_csv(filename="coordinates.csv"):
     """
-    Saves the coordinates and Doppler speed to a CSV file.
-
-    :param coordinates: List of dictionaries with keys "X [m]", "Y [m]", "Z [m]", and "Doppler [m/s]".
-    :param filename: The name of the CSV file to save.
+    Initializes the CSV file by deleting any existing data and adding headers.
+    :param filename: Name of the CSV file to initialize.
     """
-    # Define the path to save the file in the script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
     file_path = os.path.join(script_dir, filename)
 
-    # Convert the coordinates to a DataFrame
-    df = pd.DataFrame(coordinates)
+    # Create or overwrite the file with headers
+    with open(file_path, 'w') as f:
+        f.write("Frame,Timestamp,X [m],Y [m],Z [m],Doppler [m/s]\n")
 
-    # Save to CSV
-    df.to_csv(file_path, index=False)
+    print(f"Initialized CSV at {file_path}")
+    return file_path
+
+def append_frame_to_csv(frame_number, timestamp, coordinates, filename="coordinates.csv"):
+    """
+    Appends frame data to the CSV file.
+    :param frame_number: The frame number.
+    :param timestamp: The UNIX timestamp of the frame.
+    :param coordinates: List of dictionaries with keys "X [m]", "Y [m]", "Z [m]", "Doppler [m/s]".
+    :param filename: Name of the CSV file to append to.
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
+    file_path = os.path.join(script_dir, filename)
+
+    # Append the frame data
+    with open(file_path, 'a') as f:
+        for point in coordinates:
+            f.write(f"{frame_number},{timestamp},{point['X [m]']},{point['Y [m]']},{point['Z [m]']},{point['Doppler [m/s]']}\n")
+
+    print(f"Appended Frame {frame_number} data to {file_path}")
 
 
 def parse_frame_header(raw_data):
@@ -76,7 +92,8 @@ def parse_tlv_payload(tlv_header, raw_data):
             x, y, z, doppler = struct.unpack('<ffff', point_bytes)
             detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
 
-        save_coordinates_to_csv(detected_points)
+        #Insert logic here
+
         return {"Detected Points": detected_points}
 
     elif tlv_type in (2, 3):  # Range Profile or Noise Profile
@@ -215,6 +232,8 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
     """
     Plot all stationary and moving objects in a single frame without erasing any points.
     """
+    csv_file = initialize_csv()  # Call the CSV initializer if logging is enabled
+
     stationary_coords = []  # Stationary points: (X, Y, Z)
     moving_coords = []      # Moving points: (X, Y, Z)
 
@@ -238,6 +257,9 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
             frame_header = parse_frame_header(raw_data_list)
             num_tlvs = frame_header["Num TLVs"]
 
+            # Use the row index as the frame number (1-indexed)
+            frame_number = row_idx + 1
+
             # Parse TLVs
             for _ in range(num_tlvs):
                 tlv_header = parse_tlv_header(raw_data_list)
@@ -250,6 +272,9 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
                                 stationary_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
                             else:
                                 moving_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+                        append_frame_to_csv(frame_number, timestamp, tlv_payload["Detected Points"], csv_file)
+
         except Exception as e:
             print(f"Error processing row {row_idx + 1}: {e}")
 
