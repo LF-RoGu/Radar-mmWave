@@ -22,10 +22,13 @@ def dbscan_clustering(data, eps=1.0, min_samples=3):
     db = DBSCAN(eps=eps, min_samples=min_samples).fit(points)
     return db.labels_
 
-def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, grid_spacing=1, eps=1.0, min_samples=3):
+def visualize_radar_with_clustering_and_distance_filter(
+    file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, 
+    grid_spacing=1, eps=1.0, min_samples=3, min_distance=1.0, max_distance=float('inf')
+):
     """
-    Visualize radar field of view, plot points from a CSV file, cluster them using DBSCAN, 
-    and highlight grid cells where clusters are detected. Only plot points greater than 1 meter from the sensor origin.
+    Visualize radar field of view, plot points from a CSV file, cluster them using DBSCAN,
+    and highlight grid cells where clusters are detected. Filter points by distance range.
 
     Args:
     - file_name (str): Name of the CSV file relative to the script.
@@ -36,6 +39,8 @@ def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_l
     - grid_spacing (float): Spacing for grid lines.
     - eps (float): DBSCAN maximum distance between points for clustering.
     - min_samples (int): Minimum samples for a core point in DBSCAN.
+    - min_distance (float): Minimum distance from the radar sensor.
+    - max_distance (float): Maximum distance from the radar sensor.
     """
     # Construct full file path
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -54,9 +59,9 @@ def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_l
         frames_to_plot = data['Frame'].unique()[:num_frames]
         data = data[data['Frame'].isin(frames_to_plot)]
 
-    # Calculate distance from radar and filter points greater than 1 meter from the center
+    # Calculate distance from radar and filter points within the specified distance range
     data['Distance'] = np.sqrt(data['X [m]']**2 + data['Y [m]']**2)
-    data = data[data['Distance'] > 1.5]
+    data = data[(data['Distance'] > min_distance) & (data['Distance'] <= max_distance)]
 
     # Perform DBSCAN clustering
     labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
@@ -104,7 +109,7 @@ def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_l
         ax.scatter(cluster_points['X [m]'], cluster_points['Y [m]'], color=color, label=label_name, s=20)
 
     # Labels and legends
-    ax.set_title("Radar Detection with Clustering and Grid Highlighting")
+    ax.set_title("Radar Detection with Clustering and Distance Filtering")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
     ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.05))
@@ -113,13 +118,15 @@ def visualize_radar_with_clustering_and_grid(file_name, radar_position, plot_x_l
 
 
 # Example usage
-visualize_radar_with_clustering_and_grid(
+visualize_radar_with_clustering_and_distance_filter(
     file_name="coordinates.csv",
     radar_position=(0, 0),
     plot_x_limits=[-10, 10],
-    plot_y_limits=[0, 10],
-    num_frames=50,
+    plot_y_limits=[0, 15],
+    num_frames=30,
     grid_spacing=1,
     eps=0.4,  # DBSCAN clustering radius
-    min_samples=3  # Minimum points to form a cluster
+    min_samples=3,  # Minimum points to form a cluster
+    min_distance=1.5,  # Minimum distance from radar
+    max_distance=15.0  # Maximum distance from radar
 )
