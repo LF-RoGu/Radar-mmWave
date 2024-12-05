@@ -18,3 +18,5 @@ Logs/PlotLogs/.vs/PlotLogs/v17/DocumentLayout.json
 Logs/PlotLogs/.vs/slnx.sqlite
 
 Logs/PlotLogs/PlotLogs.sln
+
+*.pyproj
