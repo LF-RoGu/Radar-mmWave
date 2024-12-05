@@ -7,6 +7,24 @@ from datetime import datetime
 # Global variable to specify which TLVs to process
 interested_tlv_types = [1]  # Example: Interested in Detected Points (1) and Temperature Statistics (9)
 
+def save_coordinates_to_csv(coordinates, filename="coordinates.csv"):
+    """
+    Saves the coordinates and Doppler speed to a CSV file.
+
+    :param coordinates: List of dictionaries with keys "X [m]", "Y [m]", "Z [m]", and "Doppler [m/s]".
+    :param filename: The name of the CSV file to save.
+    """
+    # Define the path to save the file in the script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
+    file_path = os.path.join(script_dir, filename)
+
+    # Convert the coordinates to a DataFrame
+    df = pd.DataFrame(coordinates)
+
+    # Save to CSV
+    df.to_csv(file_path, index=False)
+
+
 def parse_frame_header(raw_data):
     if len(raw_data) < 40:
         raise ValueError("Insufficient data for Frame Header")
@@ -57,6 +75,8 @@ def parse_tlv_payload(tlv_header, raw_data):
             point_bytes = bytes(payload[i * point_size:(i + 1) * point_size])
             x, y, z, doppler = struct.unpack('<ffff', point_bytes)
             detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
+
+        save_coordinates_to_csv(detected_points)
         return {"Detected Points": detected_points}
 
     elif tlv_type in (2, 3):  # Range Profile or Noise Profile
