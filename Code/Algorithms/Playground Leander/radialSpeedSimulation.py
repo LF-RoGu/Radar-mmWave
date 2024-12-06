@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+from scipy.optimize import minimize
 
 # Simulation Parameters
 dt = 0.1  # Time step (seconds)
@@ -48,15 +48,15 @@ objects = np.array([
 
     [50.0, 5.0],
     [50.0, -5.0],
-    [55.0, 0.0],
+    #[55.0, 0.0],
     [55.0, 10.0],
     [55.0, -10.0]
 ])
 
 # Initialize figure for visualization
 plt.ion()
-fig, axes = plt.subplots(4, 1, figsize=(10, 6))
-ax1, ax2, ax3, ax4 = axes
+fig, axes = plt.subplots(5, 1, figsize=(10, 6))
+ax1, ax2, ax3, ax4, ax5 = axes
 
 # Dictionary to store radial speeds over time for each object
 radial_speed_history = {i: [] for i in range(len(objects))}
@@ -145,7 +145,20 @@ def update_radial_speed_plot(time_history, radial_speed_history):
 
     #ax3.legend()
 
-def estim_self_speed(point_cloud):
+
+
+def model(params, x):
+    a, b, c, d = params
+    return a * x**3 + b * x**2 + c * x + d
+
+# Define the objective function (sum of absolute residuals)
+def objective(params, x, y):
+    predictions = model(params, x)
+    residuals = np.abs(y - predictions)
+    return np.sum(residuals)
+
+#Method 1 begin: Fitting a curve into different angles and radial speeds
+def estimating_self_speed(point_cloud):
     #Preparing an array to contain angle to target and radial speed
     phi_radspeed = []
 
@@ -160,6 +173,17 @@ def estim_self_speed(point_cloud):
         #Appending the angle and the radial speed 
         phi_radspeed.append([phi, point_cloud[i][2]])
 
+    #Converting array of tuples to NumPy array
+    phi_radspeed = np.array(phi_radspeed, dtype=float)
+
+    #Fitting the a curve into the points
+    initial_guess = [0.0, 0.0, 0.0, 0.0]
+    result = minimize(objective, initial_guess, args=(phi_radspeed[:,0], phi_radspeed[:,1]), method='Powell')
+    optimized_params = result.x
+    phi_fit = np.linspace(-90, 90, 100)
+    radial_speed_fit = model(optimized_params, phi_fit)
+
+    #Preparing plot
     ax4.clear()
     ax4.set_xlim(-90, 90)
     ax4.set_ylim(-10, 1)
@@ -167,8 +191,46 @@ def estim_self_speed(point_cloud):
     ax4.set_xlabel("phi (deg)")
     ax4.set_ylabel("Radial speed (m/s)")
 
+    #Plotting all points
     for i in range(len(phi_radspeed)):
         ax4.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
+        selfspeed = phi_radspeed[i][1] * np.cos(phi_radspeed[i][0])
+
+    #Plotting fitted curve
+    ax4.plot(phi_fit, radial_speed_fit)
+
+#Method 2: Recalculating self-speed from different angles before fitting
+def estimating_self_speed2(point_cloud):
+    #Preparing an array to contain phi and the re-calculated self-speed
+    phi_selfspeed = []
+    
+    #Iterating over all points
+    for i in range(len(point_cloud)):
+        #Calculating the distance from car to target
+        dist = np.sqrt(point_cloud[i][0]**2 + point_cloud[i][1]**2)
+
+        #Calculating the angle to the target
+        phi = np.rad2deg(np.arcsin(point_cloud[i][1]/dist))
+        
+        #Re-calculating the self-speed from phi and radial speed of target
+        selfspeed = point_cloud[i][2]/np.cos(np.deg2rad(phi))
+        phi_selfspeed.append([phi, selfspeed])
+    
+    #Converting array of tuples to NumPy array
+    phi_selfspeed = np.array(phi_selfspeed)
+    
+
+    #Preparing plot
+    ax5.clear()
+    ax5.set_xlim(-90, 90)
+    ax5.set_ylim(-10, 1)
+    ax5.set_title("Re-calculated self-speed vs angles")
+    ax5.set_xlabel("phi (deg)")
+    ax5.set_ylabel("Self-speed(m/s)")
+
+    #Plotting all points
+    for i in range(len(phi_selfspeed)):
+        ax5.plot(phi_selfspeed[i][0], phi_selfspeed[i][1], 'kx')
     
 
 
@@ -183,8 +245,9 @@ for t in np.arange(0, simulation_time, dt):
     # Simulate radar detection
     point_cloud, detected_indices = radar_detection(car_position, objects)
 
-    #Estimating the self_speed
-    estim_self_speed(point_cloud)
+    #Estimating the self_speed by both algorithms
+    estimating_self_speed(point_cloud)
+    estimating_self_speed2(point_cloud)
 
 
     # Update radial speed history
