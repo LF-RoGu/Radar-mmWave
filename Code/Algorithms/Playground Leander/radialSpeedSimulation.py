@@ -13,12 +13,41 @@ car_position = np.array([0.0, 0.0])
 
 # Object positions (x, y)
 objects = np.array([
+    [10.0, 5.0],
+    [10.0, -5.0],
+    [12.5, 7.5],
+    [12.5, -7.5],
+    [15.0, 10.0],
+    [15.0, -10.0],
+    [17.5, 7.5],
+    [17.5, -7.5],
     [20.0, 5.0],
     [20.0, -5.0],
+    [22.5, 7.5],
+    [22.5, -7.5],
+    [25.0, 10.0],
+    [25.0, -10.0],
+    [27.5, 7.5],
+    [27.5, -7.5],
     [30.0, 5.0],
     [30.0, -5.0],
+    [32.5, 7.5],
+    [32.5, -7.5],
+    [35.0, 10.0],
+    [35.0, -10.0],
+    [37.5, 7.5],
+    [37.5, -7.5],
     [40.0, 5.0],
     [40.0, -5.0],
+    [42.5, 7.5],
+    [42.5, -7.5],
+    [45.0, 10.0],
+    [45.0, -10.0],
+    [47.5, 7.5],
+    [47.5, -7.5],
+
+    [50.0, 5.0],
+    [50.0, -5.0],
     [55.0, 0.0],
     [55.0, 10.0],
     [55.0, -10.0]
@@ -26,8 +55,8 @@ objects = np.array([
 
 # Initialize figure for visualization
 plt.ion()
-fig, axes = plt.subplots(3, 1, figsize=(10, 6))
-ax1, ax2, ax3 = axes
+fig, axes = plt.subplots(4, 1, figsize=(10, 6))
+ax1, ax2, ax3, ax4 = axes
 
 # Dictionary to store radial speeds over time for each object
 radial_speed_history = {i: [] for i in range(len(objects))}
@@ -60,7 +89,7 @@ def update_car_visualization(car_pos, objects, point_cloud):
     Update the car visualization with position, objects, and radar detections.
     """
     ax1.clear()
-    ax1.set_xlim(-10, 70)
+    ax1.set_xlim(0, 60)
     ax1.set_ylim(-20, 20)
     ax1.set_title("Car and Radar Simulation")
     ax1.set_xlabel("X (m)")
@@ -85,7 +114,7 @@ def update_detection_visualization(point_cloud):
     Update the visualization of detected points in a separate plot.
     """
     ax2.clear()
-    ax2.set_xlim(-10, 70)
+    ax2.set_xlim(0, 60)
     ax2.set_ylim(-20, 20)
     ax2.set_title("Radar Detected Points")
     ax2.set_xlabel("X (m)")
@@ -116,6 +145,36 @@ def update_radial_speed_plot(time_history, radial_speed_history):
 
     #ax3.legend()
 
+def estim_self_speed(point_cloud):
+    #Preparing an array to contain angle to target and radial speed
+    phi_radspeed = []
+
+    #Iterating over all points
+    for i in range(len(point_cloud)):
+        #Calculating the distance from car to target
+        dist = np.sqrt(point_cloud[i][0]**2 + point_cloud[i][1]**2)
+
+        #Calculating the angle to the target
+        phi = np.rad2deg(np.arcsin(point_cloud[i][1]/dist))
+
+        #Appending the angle and the radial speed 
+        phi_radspeed.append([phi, point_cloud[i][2]])
+
+    ax4.clear()
+    ax4.set_xlim(-90, 90)
+    ax4.set_ylim(-10, 1)
+    ax4.set_title("Radial speeds vs angles")
+    ax4.set_xlabel("phi (deg)")
+    ax4.set_ylabel("Radial speed (m/s)")
+
+    for i in range(len(phi_radspeed)):
+        ax4.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
+    
+
+
+    
+
+
 # Simulation loop
 for t in np.arange(0, simulation_time, dt):
     # Move the car forward
@@ -123,6 +182,10 @@ for t in np.arange(0, simulation_time, dt):
 
     # Simulate radar detection
     point_cloud, detected_indices = radar_detection(car_position, objects)
+
+    #Estimating the self_speed
+    estim_self_speed(point_cloud)
+
 
     # Update radial speed history
     for i in range(len(objects)):
