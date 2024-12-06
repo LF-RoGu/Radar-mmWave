@@ -11,8 +11,8 @@ f = 24e9  # Radar carrier frequency (Hz)
 v_s = 5  # Speed of the square (m/s)
 
 # Dots configuration
-dots_start_x = 30
-num_dots = 20
+dots_start_x = 20
+num_dots = 2*dots_start_x
 
 # Main configuration
 plot_x_limits = [0, 60]
@@ -297,12 +297,28 @@ def update(frame):
         ax_curve.legend()
     
     # Plot radial speed history for each dot
-    for dot, speeds in radial_speeds_over_time.items():
-        if speeds:
-            times, rspeeds = zip(*speeds)  # Separate times and speeds
-            ax_time.plot(times, rspeeds, label=f"Dot {dot}")
+    if frame % (plot_x_limits[1] - square_config['width']) == 0:
+        # Clear and reset the plot periodically
+        ax_time.clear()
+        ax_time.set_title("Radial Speed vs Time (Reset)")
+        ax_time.set_xlabel("Time (frames)")
+        ax_time.set_ylabel("Radial Speed (m/s)")
+        radial_speeds_over_time.clear()  # Reset data
+    else:
+        ax_time.clear()
+        ax_time.set_title("Radial Speed vs Time")
+        ax_time.set_xlabel("Time (frames)")
+        ax_time.set_ylabel("Radial Speed (m/s)")
 
-    ax_time.legend()
+        # Plot radial speed history for each dot
+        for dot, speeds in radial_speeds_over_time.items():
+            if speeds:
+                times, rspeeds = zip(*speeds)  # Separate times and speeds
+                ax_time.plot(times, rspeeds, label=f"Dot {dot}")
+
+        #ax_time.legend()
+
+    #ax_time.legend()
 
     return square, wedge
 
