@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize
 
 # Simulation Parameters
 dt = 0.1  # Time step (seconds)
@@ -159,16 +158,6 @@ def update_radial_speed_plot(time_history, radial_speed_history):
 
 
 
-def model3(params, x):
-    a, b, c, d = params
-    return a * x**3 + b * x**2 + c * x + d
-
-# Define the objective function (sum of absolute residuals)
-def objective3(params, x, y):
-    predictions = model3(params, x)
-    residuals = np.abs(y - predictions)
-    return np.sum(residuals)
-
 #Method 1 begin: Fitting a curve into different angles and radial speeds
 def estimating_self_speed(point_cloud):
     #Preparing an array to contain angle to target and radial speed
@@ -188,12 +177,11 @@ def estimating_self_speed(point_cloud):
     #Converting array of tuples to NumPy array
     phi_radspeed = np.array(phi_radspeed, dtype=float)
 
-    #Fitting the a curve into the points
-    initial_guess = [0.0, 0.0, 0.0, 0.0]
-    result = minimize(objective3, initial_guess, args=(phi_radspeed[:,0], phi_radspeed[:,1]), method='Powell')
-    optimized_params = result.x
+    #Fitting a first order polynominal into the points
+    poly_coeff = np.polyfit(phi_radspeed[:,0], phi_radspeed[:,1], deg=2)  # Polynomial coefficients
+    poly_model = np.poly1d(poly_coeff)  # Polynomial model
     phi_fit = np.linspace(-90, 90, 100)
-    radial_speed_fit = model3(optimized_params, phi_fit)
+    phi_radial_speed_fit = poly_model(phi_fit)
 
     #Preparing plot
     ax4.clear()
@@ -208,7 +196,10 @@ def estimating_self_speed(point_cloud):
         ax4.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
 
     #Plotting fitted curve
-    ax4.plot(phi_fit, radial_speed_fit)
+    ax4.plot(phi_fit, phi_radial_speed_fit)
+
+    #Returning the self-speed after interpolating
+    return poly_model(0)
 
 #Method 2: Recalculating self-speed from different angles before fitting
 def estimating_self_speed2(point_cloud):
