@@ -128,7 +128,7 @@ def update_detection_visualization(point_cloud):
     ax2.clear()
     ax2.set_xlim(0, 60)
     ax2.set_ylim(-20, 20)
-    ax2.set_title("Radar Detected Points")
+    ax2.set_title("Radar Detected Points with noise")
     ax2.set_xlabel("X (m)")
     ax2.set_ylabel("Y (m)")
 
@@ -230,7 +230,7 @@ def estimating_self_speed2(point_cloud):
     #Converting array of tuples to NumPy array
     phi_selfspeed = np.array(phi_selfspeed)
     
-    #Fitting the a curve into the points
+    #Fitting a first order polynominal into the points
     poly_coeff = np.polyfit(phi_selfspeed[:,0], phi_selfspeed[:,1], deg=1)  # Polynomial coefficients
     poly_model = np.poly1d(poly_coeff)  # Polynomial model
     phi_fit = np.linspace(-90, 90, 100)
@@ -242,7 +242,7 @@ def estimating_self_speed2(point_cloud):
     ax5.set_ylim(-10, 1)
     ax5.set_title("Re-calculated self-speed vs angles")
     ax5.set_xlabel("phi (deg)")
-    ax5.set_ylabel("Self-speed(m/s)")
+    ax5.set_ylabel("Self-speed (m/s)")
 
     #Plotting all points
     for i in range(len(phi_selfspeed)):
@@ -250,6 +250,9 @@ def estimating_self_speed2(point_cloud):
 
     #Plotting fitted curve
     ax5.plot(phi_fit, radial_speed_fit)
+
+    #Returning the self-speed after interpolating
+    return poly_model(0)
     
 
 
@@ -281,7 +284,7 @@ for t in np.arange(0, simulation_time, dt):
 
     # Update visualizations
     update_car_visualization(car_position, objects, point_cloud)
-    update_detection_visualization(point_cloud)
+    update_detection_visualization(point_cloud_noisy)
     update_radial_speed_plot(time_history, radial_speed_history)
 
     plt.pause(0.01)
