@@ -90,6 +90,22 @@ wedge = patches.Wedge(
 )
 ax_main.add_patch(wedge)
 
+def calculate_exponential_speed(frame, v_start=2, v_max=2, growth_rate=0.05):
+    """
+    Calculate the exponentially increasing speed for the car.
+
+    Parameters:
+    - frame: Current frame number.
+    - v_start: Initial speed (m/s).
+    - v_max: Maximum speed (m/s).
+    - growth_rate: Exponential growth rate.
+
+    Returns:
+    - Current speed of the car (m/s).
+    """
+    return v_start + (v_max - v_start) * (1 - np.exp(-growth_rate * frame))
+
+
 # Define the cosine model
 def cosine_model(phi, A, phi0, B):
     """
@@ -224,11 +240,14 @@ def update(frame):
     """
     global detected_dots, displayed_dots, kalman_filters
 
+    # Calculate the car's current speed
+    v_s = calculate_exponential_speed(frame)
+
     # Move the square
-    square.set_x(frame)
+    square.set_x(frame * v_s)  # Use speed to determine position
 
     # Move the wedge
-    wedge_center = (frame + square_config['width'], wedge_config['start_y'])
+    wedge_center = ((frame * v_s) + square_config['width'], wedge_config['start_y'])
     wedge.set_center(wedge_center)
 
     # Check for new detections
