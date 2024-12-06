@@ -457,9 +457,6 @@ def visualized_fps(file_name, radar_position, plot_x_limits, plot_y_limits, chun
         for y in y_ticks:
             ax.plot(plot_x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-        # Draw a vertical centerline at the midpoint of the Y-axis
-        ax.plot([0, 0], [plot_y_limits[0], plot_y_limits[1]], linestyle=':', color='green', linewidth=1, label='Centerline')
-
         # Get frames for the current chunk
         start_frame = chunk_index * chunk_size
         end_frame = start_frame + chunk_size
@@ -475,37 +472,8 @@ def visualized_fps(file_name, radar_position, plot_x_limits, plot_y_limits, chun
         chunk_data['Cluster'] = labels
         clusters = {label: chunk_data[chunk_data['Cluster'] == label][['X [m]', 'Y [m]']].mean().values for label in np.unique(labels) if label != -1}
 
-        # Calculate average Doppler speed and cluster sizes
-        cluster_doppler = {}
-        cluster_sizes = {}
-        for cluster_id in np.unique(labels):
-            if cluster_id != -1:  # Ignore noise points
-                cluster_points = chunk_data[chunk_data['Cluster'] == cluster_id]
-                avg_doppler = cluster_points['Doppler [m/s]'].mean()  # Compute average Doppler speed
-                cluster_doppler[cluster_id] = avg_doppler
-                cluster_sizes[cluster_id] = len(cluster_points)  # Number of points in the cluster
-
-        # Estimate vehicle speed for each cluster
-        vehicle_speeds = {}
+        # Plot clusters and calculate angles
         for cluster_id, cluster_pos in clusters.items():
-            avg_doppler = cluster_doppler.get(cluster_id, 0)
-            angle = np.degrees(np.arctan2(cluster_pos[1] - radar_position[1], cluster_pos[0] - radar_position[0]))
-            angle_radians = np.radians(angle)
-            try:
-                # Avoid division by zero for angles near 90°
-                vehicle_speed = avg_doppler / np.cos(angle_radians)
-                vehicle_speeds[cluster_id] = vehicle_speed
-            except ZeroDivisionError:
-                vehicle_speeds[cluster_id] = float('inf')  # Indicates perpendicular motion
-
-        # Compute weighted average speed
-        total_weight = sum(cluster_sizes.values())
-        actual_speed = sum(cluster_sizes[cluster_id] * vehicle_speeds[cluster_id] for cluster_id in vehicle_speeds) / total_weight
-
-        # Plot clusters and annotate Doppler and speeds
-        for cluster_id, cluster_pos in clusters.items():
-            avg_doppler = cluster_doppler.get(cluster_id, 0)
-            speed = vehicle_speeds.get(cluster_id, 0)
             angle = np.degrees(np.arctan2(cluster_pos[1] - radar_position[1], cluster_pos[0] - radar_position[0]))
             color = plt.cm.get_cmap('tab10')(cluster_id % 10)
 
@@ -513,28 +481,15 @@ def visualized_fps(file_name, radar_position, plot_x_limits, plot_y_limits, chun
             ax.plot([radar_position[0], cluster_pos[0]], [radar_position[1], cluster_pos[1]], linestyle=':', color=color, linewidth=1)
             ax.scatter(cluster_pos[0], cluster_pos[1], color=color, label=f'Cluster {cluster_id}')
 
-            # Annotate Doppler and speed
-            ax.text(cluster_pos[0], cluster_pos[1] + 0.5, f"Doppler: {avg_doppler:.2f} m/s", fontsize=9, color='blue')
-            ax.text(cluster_pos[0], cluster_pos[1] - 0.5, f"Speed: {speed:.2f} m/s", fontsize=9, color='purple')
-
-        # Add the estimated actual vehicle speed below the x-axis label in m/s
-        ax.text(
-            0.5, -0.10, f"Estimated Actual Vehicle Speed: {actual_speed:.2f} m/s",
-            fontsize=12, color='red', transform=ax.transAxes, ha='center'
-        )
-
-        # Add the estimated actual vehicle speed below the x-axis label in kph
-        actual_speed_kph = actual_speed * 3.6  # Convert speed to kph
-        ax.text(
-            0.5, -0.14, f"Estimated Actual Vehicle Speed: {actual_speed_kph:.2f} km/h",
-            fontsize=12, color='red', transform=ax.transAxes, ha='center'
-        )
+            # Annotate the angle
+            ax.text(cluster_pos[0], cluster_pos[1] - 0.5, f"Angle: {angle:.1f}°", fontsize=9, color='black')
 
         # Finalize frame title
         ax.set_title(f"Radar Data Animation (Frames {frames_to_plot[0]}-{frames_to_plot[-1]})")
         ax.set_xlabel("X Position (m)")
         ax.set_ylabel("Y Position (m)")
         ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.05))
+
 
     # Create animation
     ani = FuncAnimation(fig, update, frames=total_chunks, interval=1000 / fps)
