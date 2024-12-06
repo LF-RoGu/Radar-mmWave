@@ -48,11 +48,24 @@ dots = [
 detected_dots = []
 displayed_dots = set()  # To track dots whose Doppler results have already been displayed
 kalman_filters = {}
+radial_speeds_over_time = {}  # Store radial speed history for each dot
 
 # Create the figure and axes
-fig, (ax_main, ax_curve) = plt.subplots(2, 1, figsize=(10, 12))
+fig, (ax_main, ax_curve, ax_time) = plt.subplots(3, 1, figsize=(10, 12))
+
+ax_main.set_title("Car and Radar Simulation")
 ax_main.set_xlim(plot_x_limits[0], plot_x_limits[1])
 ax_main.set_ylim(plot_y_limits[0], plot_y_limits[1])
+
+ax_curve.set_title("Radial Speed vs Angle")
+ax_curve.set_xlabel("Angle (degrees)")
+ax_curve.set_ylabel("Radial Speed (m/s)")
+ax_curve.set_xlim(-90, 90)
+ax_curve.set_ylim(-10, 10)
+
+ax_time.set_title("Radial Speed vs Time")
+ax_time.set_xlabel("Time (frames)")
+ax_time.set_ylabel("Radial Speed (m/s)")
 
 # Plot the dots
 dot_plots = {}
@@ -254,6 +267,12 @@ def update(frame):
         phi = np.rad2deg(np.arcsin(dot[1] / dist))
         radial_speed, _ = calculate_doppler_and_radial_speed(wedge_center, dot)
         detected_with_radial_speeds.append((dot[0], dot[1], radial_speed))
+        # Update radial speed history
+        if dot not in radial_speeds_over_time:
+            radial_speeds_over_time[dot] = []  # Initialize for new dots
+        radial_speeds_over_time[dot].append((frame, radial_speed))
+
+
 
     # Fit and plot the curve
     phi_fit, radial_speed_fit = estimating_self_speed_cosine(detected_with_radial_speeds)
@@ -263,6 +282,11 @@ def update(frame):
     ax_curve.set_ylabel("Radial Speed (m/s)")
     ax_curve.set_xlim(-90, 90)
     ax_curve.set_ylim(-10, 10)
+    # Update radial speed vs time plot
+    ax_time.clear()
+    ax_time.set_title("Radial Speed vs Time")
+    ax_time.set_xlabel("Time (frames)")
+    ax_time.set_ylabel("Radial Speed (m/s)")
 
     if phi_fit is not None and radial_speed_fit is not None:
         for dot in detected_with_radial_speeds:
@@ -271,6 +295,14 @@ def update(frame):
             ax_curve.plot(phi, dot[2], 'kx')  # Detected points
         ax_curve.plot(phi_fit, radial_speed_fit, 'b-', label="Fitted Curve")
         ax_curve.legend()
+    
+    # Plot radial speed history for each dot
+    for dot, speeds in radial_speeds_over_time.items():
+        if speeds:
+            times, rspeeds = zip(*speeds)  # Separate times and speeds
+            ax_time.plot(times, rspeeds, label=f"Dot {dot}")
+
+    ax_time.legend()
 
     return square, wedge
 
