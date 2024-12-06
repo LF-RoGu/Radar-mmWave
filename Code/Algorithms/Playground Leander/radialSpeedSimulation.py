@@ -147,13 +147,13 @@ def update_radial_speed_plot(time_history, radial_speed_history):
 
 
 
-def model(params, x):
+def model3(params, x):
     a, b, c, d = params
     return a * x**3 + b * x**2 + c * x + d
 
 # Define the objective function (sum of absolute residuals)
-def objective(params, x, y):
-    predictions = model(params, x)
+def objective3(params, x, y):
+    predictions = model3(params, x)
     residuals = np.abs(y - predictions)
     return np.sum(residuals)
 
@@ -178,10 +178,10 @@ def estimating_self_speed(point_cloud):
 
     #Fitting the a curve into the points
     initial_guess = [0.0, 0.0, 0.0, 0.0]
-    result = minimize(objective, initial_guess, args=(phi_radspeed[:,0], phi_radspeed[:,1]), method='Powell')
+    result = minimize(objective3, initial_guess, args=(phi_radspeed[:,0], phi_radspeed[:,1]), method='Powell')
     optimized_params = result.x
     phi_fit = np.linspace(-90, 90, 100)
-    radial_speed_fit = model(optimized_params, phi_fit)
+    radial_speed_fit = model3(optimized_params, phi_fit)
 
     #Preparing plot
     ax4.clear()
@@ -194,7 +194,6 @@ def estimating_self_speed(point_cloud):
     #Plotting all points
     for i in range(len(phi_radspeed)):
         ax4.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
-        selfspeed = phi_radspeed[i][1] * np.cos(phi_radspeed[i][0])
 
     #Plotting fitted curve
     ax4.plot(phi_fit, radial_speed_fit)
@@ -219,6 +218,11 @@ def estimating_self_speed2(point_cloud):
     #Converting array of tuples to NumPy array
     phi_selfspeed = np.array(phi_selfspeed)
     
+    #Fitting the a curve into the points
+    poly_coeff = np.polyfit(phi_selfspeed[:,0], phi_selfspeed[:,1], deg=1)  # Polynomial coefficients
+    poly_model = np.poly1d(poly_coeff)  # Polynomial model
+    phi_fit = np.linspace(-90, 90, 100)
+    radial_speed_fit = poly_model(phi_fit)
 
     #Preparing plot
     ax5.clear()
@@ -231,6 +235,9 @@ def estimating_self_speed2(point_cloud):
     #Plotting all points
     for i in range(len(phi_selfspeed)):
         ax5.plot(phi_selfspeed[i][0], phi_selfspeed[i][1], 'kx')
+
+    #Plotting fitted curve
+    ax5.plot(phi_fit, radial_speed_fit)
     
 
 
