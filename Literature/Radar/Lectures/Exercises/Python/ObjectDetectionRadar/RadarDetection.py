@@ -38,6 +38,10 @@ wedge_config = {
     'alpha': 0.5
 }
 
+NUM_SLICES = 500  # Number of angular slices
+angular_slices = np.linspace(-wedge_config['angle'] / 2, wedge_config['angle'] / 2, NUM_SLICES)
+slice_width = angular_slices[1] - angular_slices[0]  # Width of each slice
+
 # Generate random dots
 dots = [
     (random.uniform(dots_start_x, plot_x_limits[1]), random.uniform(plot_y_limits[0], plot_y_limits[1]))
@@ -233,6 +237,82 @@ def is_point_in_wedge(point, wedge_center, wedge_radius, wedge_angle, wedge_dire
 
     return -wedge_angle / 2 <= relative_angle <= wedge_angle / 2
 
+def is_point_in_wedge_with_shadow(point, wedge_center, wedge_radius, wedge_angle, slice_width, closest_points):
+    """
+    Check if a point is in the wedge and simulate shadowing.
+
+    Parameters:
+    - point: (x, y) position of the object.
+    - wedge_center: (x, y) center of the wedge.
+    - wedge_radius: Maximum detection range of the wedge.
+    - wedge_angle: Total angular range of the wedge (degrees).
+    - slice_width: Angular width of each slice (degrees).
+    - closest_points: Dictionary of the closest detected object for each angular slice.
+
+    Returns:
+    - True if the point is detected (not occluded); False otherwise.
+    """
+    px, py = point
+    cx, cy = wedge_center
+
+    # Calculate the relative position
+    dx, dy = px - cx, py - cy
+    distance = np.sqrt(dx**2 + dy**2)
+
+    # Ignore points outside the wedge's radius
+    if distance > wedge_radius:
+        return False
+
+    # Calculate the angle of the point relative to the wedge center
+    angle_to_point = np.degrees(np.arctan2(dy, dx))
+
+    # Check if the angle is within the wedge's range
+    if not (-wedge_angle / 2 <= angle_to_point <= wedge_angle / 2):
+        return False
+
+    # Determine which slice the point belongs to
+    slice_index = int((angle_to_point + wedge_angle / 2) / slice_width)
+
+    # Simulate shadowing: Check if this point is closer than the current closest
+    if slice_index in closest_points:
+        if distance >= closest_points[slice_index]['distance']:
+            return False  # Occluded by a closer point
+
+    # Update the closest point for this slice
+    closest_points[slice_index] = {'distance': distance, 'point': point}
+    return True
+
+def add_shadow(ax, detected_point, wedge_center, wedge_radius, slice_width, angle_to_point):
+    """
+    Add a shadow wedge to the plot to simulate occlusion.
+
+    Parameters:
+    - ax: The Matplotlib axis to draw on.
+    - detected_point: (x, y) coordinates of the detected object.
+    - wedge_center: (x, y) center of the wedge.
+    - wedge_radius: Maximum radius of the wedge.
+    - slice_width: Width of an angular slice (degrees).
+    - angle_to_point: Angle of the detected object relative to the wedge center.
+
+    Returns:
+    - A Wedge patch representing the shadow.
+    """
+    # Calculate shadow start and end angles
+    start_angle = angle_to_point - slice_width / 2
+    end_angle = angle_to_point + slice_width / 2
+
+    # Create a shadow wedge segment
+    shadow_wedge = patches.Wedge(
+        center=wedge_center,
+        r=wedge_radius,
+        theta1=start_angle,
+        theta2=end_angle,
+        color='gray',
+        alpha=0.3  # Semi-transparent to show occlusion
+    )
+    ax.add_patch(shadow_wedge)
+    return shadow_wedge
+
 def update(frame):
     """
     Update function for the animation. Detects and tracks dots using Kalman Filter,
@@ -250,21 +330,31 @@ def update(frame):
     wedge_center = ((frame * v_s) + square_config['width'], wedge_config['start_y'])
     wedge.set_center(wedge_center)
 
+    # Simulate shadowing
+    closest_points = {}  # Track the closest points in each angular slice
+
     # Check for new detections
     new_detections = [
-        dot for dot in dots if is_point_in_wedge(
-            dot, wedge_center, wedge_config['radius'], wedge_config['angle'], 0
+        dot for dot in dots if is_point_in_wedge_with_shadow(
+            dot, wedge_center, wedge_config['radius'], wedge_config['angle'], slice_width, closest_points
         )
     ]
 
     for dot in new_detections:
         if dot not in detected_dots:
-            # Initialize Kalman filter for new detection
-            kalman_filters[dot] = create_kalman_filter(dot[0], dot[1])
             detected_dots.append(dot)
+            if dot not in radial_speeds_over_time:
+                radial_speeds_over_time[dot] = []  # Initialize radial speed history
 
-            # Mark detected dot with a cross
-            ax_main.plot(dot[0], dot[1], 'x', color='red')  # Cross for detected dots
+            # Calculate angle to the detected point
+            dx, dy = dot[0] - wedge_center[0], dot[1] - wedge_center[1]
+            angle_to_point = np.degrees(np.arctan2(dy, dx))
+
+            # Add a shadow for this detection
+            shadow_wedge = add_shadow(ax_main, dot, wedge_center, wedge_config['radius'], slice_width, angle_to_point)
+
+            ax_main.plot(dot[0], dot[1], 'x', color='red')  # Mark as detected
+
 
     # Predict and update Kalman filters for tracked dots and calculate Doppler effect
     for dot, kf in kalman_filters.items():
