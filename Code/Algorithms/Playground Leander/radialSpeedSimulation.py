@@ -62,27 +62,39 @@ ax1, ax2, ax3, ax4, ax5 = axes
 radial_speed_history = {i: [] for i in range(len(objects))}
 time_history = []
 
-def radar_detection(car_pos, objects):
+def radar_detection_with_noise(car_pos, objects, noise_std=0.5):
     """
-    Simulate radar sensor that detects objects ahead within range and outputs point cloud.
+    Simulate radar sensor that detects objects ahead within range and outputs noisy point cloud.
     Args:
         car_pos (ndarray): Car's current position [x, y].
         objects (ndarray): Positions of the objects [[x1, y1], [x2, y2], ...].
+        noise_std (float): Standard deviation of noise for x and y coordinates.
     Returns:
-        point_cloud (ndarray): Detected objects ahead as [[x, y, radial_speed], ...].
+        point_cloud (ndarray): Detected objects as [[x, y, radial_speed], ...].
+        point_cloud_noisy (ndarray): Noisy detected objects.
         detected_indices (list): Indices of detected objects.
     """
     point_cloud = []
+    point_cloud_noisy = []
     detected_indices = []
+    
     for i, obj in enumerate(objects):
         relative_pos = obj - car_pos
         distance = np.linalg.norm(relative_pos)
+        
         # Check if the object is within radar range and ahead of the car
         if distance <= radar_range and relative_pos[0] > 0:
             radial_speed = -car_speed * (relative_pos[0] / distance)
             point_cloud.append([relative_pos[0], relative_pos[1], radial_speed])
             detected_indices.append(i)
-    return np.array(point_cloud), detected_indices
+            
+            # Add noise to x and y coordinates
+            noisy_x = relative_pos[0] + np.random.normal(0, noise_std)
+            noisy_y = relative_pos[1] + np.random.normal(0, noise_std)
+            noisy_radial_speed = -car_speed * (noisy_x / np.sqrt(noisy_x**2 + noisy_y**2))
+            point_cloud_noisy.append([noisy_x, noisy_y, noisy_radial_speed])
+    
+    return np.array(point_cloud), np.array(point_cloud_noisy), detected_indices
 
 def update_car_visualization(car_pos, objects, point_cloud):
     """
@@ -250,11 +262,11 @@ for t in np.arange(0, simulation_time, dt):
     car_position[0] += car_speed * dt
 
     # Simulate radar detection
-    point_cloud, detected_indices = radar_detection(car_position, objects)
+    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 1)
 
     #Estimating the self_speed by both algorithms
-    estimating_self_speed(point_cloud)
-    estimating_self_speed2(point_cloud)
+    estimating_self_speed(point_cloud_noisy)
+    estimating_self_speed2(point_cloud_noisy)
 
 
     # Update radial speed history
