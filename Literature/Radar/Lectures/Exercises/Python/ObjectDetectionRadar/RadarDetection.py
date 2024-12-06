@@ -288,11 +288,117 @@ def visualize_cluster_movement(file_name, radar_position, plot_x_limits, plot_y_
             angle = 90 - angle
         ax.text(updated_pos[0], updated_pos[1] - 0.5, f"{angle:.1f}°", fontsize=9, color='black')  # Annotate angle
 
-    ax.legend()
+    #ax.legend()
     ax.set_title("Cluster Movement with Angles and Average Doppler Speeds")
     ax.set_xlabel("X Position (m)")
     ax.set_ylabel("Y Position (m)")
     plt.show()
+
+def estimate_vehicle_speed(file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, eps=1.0, min_samples=3, min_distance=1.0, max_distance=float('inf')):
+    """
+    Estimate vehicle speed for each cluster based on Doppler speed and angle.
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, file_name)
+    if not os.path.exists(file_path):
+        print(f"Error: File not found at {file_path}")
+        return
+
+    # Load data
+    data = pd.read_csv(file_path)
+    if num_frames > 0:
+        frames_to_plot = data['Frame'].unique()[:num_frames]
+        data = data[data['Frame'].isin(frames_to_plot)]
+    data['Distance'] = np.sqrt(data['X [m]']**2 + data['Y [m]']**2)
+    data = data[(data['Distance'] > min_distance) & (data['Distance'] <= max_distance)]
+    
+    # Perform clustering
+    labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
+    data['Cluster'] = labels
+    clusters = {label: data[data['Cluster'] == label][['X [m]', 'Y [m]']].mean().values for label in np.unique(labels) if label != -1}
+
+    # Calculate average Doppler speed and cluster sizes
+    cluster_doppler = {}
+    cluster_sizes = {}
+    for cluster_id in np.unique(labels):
+        if cluster_id != -1:  # Ignore noise points
+            cluster_points = data[data['Cluster'] == cluster_id]
+            avg_doppler = cluster_points['Doppler [m/s]'].mean()  # Compute average Doppler speed
+            cluster_doppler[cluster_id] = avg_doppler
+            cluster_sizes[cluster_id] = len(cluster_points)  # Number of points in the cluster
+
+    # Estimate vehicle speed for each cluster
+    vehicle_speeds = {}
+    for cluster_id, cluster_pos in clusters.items():
+        avg_doppler = cluster_doppler.get(cluster_id, 0)
+        angle = np.degrees(np.arctan2(cluster_pos[1] - radar_position[1], cluster_pos[0] - radar_position[0]))
+        angle_radians = np.radians(angle)
+        try:
+            # Avoid division by zero for angles near 90°
+            vehicle_speed = avg_doppler / np.cos(angle_radians)
+            vehicle_speeds[cluster_id] = vehicle_speed
+        except ZeroDivisionError:
+            vehicle_speeds[cluster_id] = float('inf')  # Indicates perpendicular motion
+
+
+    # Compute weighted average speed
+    total_weight = sum(cluster_sizes.values())
+    actual_speed = sum(cluster_sizes[cluster_id] * vehicle_speeds[cluster_id] for cluster_id in vehicle_speeds) / total_weight
+
+    # Display results
+    print("Cluster Vehicle Speeds (approximate):")
+    for cluster_id, speed in vehicle_speeds.items():
+        print(f"Cluster {cluster_id}: {speed:.2f} m/s")
+
+    print(f"\nEstimated Actual Vehicle Speed: {actual_speed:.2f} m/s")
+
+    # Plot results
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.set_xlim(plot_x_limits)
+    ax.set_ylim(plot_y_limits)
+    ax.set_aspect('equal')
+
+    # Draw vertical centerline
+    ax.plot([0, 0], [plot_y_limits[0], plot_y_limits[1]], linestyle=':', color='green', linewidth=1, label='Centerline')
+
+    for cluster_id, cluster_pos in clusters.items():
+        avg_doppler = cluster_doppler.get(cluster_id, 0)
+        speed = vehicle_speeds.get(cluster_id, 0)
+        angle = np.degrees(np.arctan2(cluster_pos[1] - radar_position[1], cluster_pos[0] - radar_position[0]))
+        color = cm.get_cmap('tab10')(cluster_id % 10)
+
+        # Draw dotted line to cluster
+        ax.plot([radar_position[0], cluster_pos[0]], [radar_position[1], cluster_pos[1]], linestyle=':', color=color, linewidth=1)
+        ax.scatter(cluster_pos[0], cluster_pos[1], color=color, label=f'Cluster {cluster_id}')
+
+        # Annotate Doppler and speed
+        ax.text(cluster_pos[0], cluster_pos[1] + 0.5, f"Doppler: {avg_doppler:.2f} m/s", fontsize=9, color='blue')
+        ax.text(cluster_pos[0], cluster_pos[1] - 0.5, f"Speed: {speed:.2f} m/s", fontsize=9, color='purple')
+
+    # Add the estimated actual vehicle speed below the x-axis label
+    plt.text(
+        0.5, -0.10, f"Estimated Actual Vehicle Speed: {actual_speed:.2f} m/s",
+        fontsize=12, color='red', transform=ax.transAxes, ha='center'
+    )
+    # Add the estimated actual vehicle speed below the x-axis label in kph
+    actual_speed_kph = actual_speed * 3.6  # Convert speed to kph
+    plt.text(
+        0.5, -0.14, f"Estimated Actual Vehicle Speed: {actual_speed_kph:.2f} km/h",
+        fontsize=12, color='red', transform=ax.transAxes, ha='center'
+    )
+
+
+    ax.legend()
+    ax.set_title("Estimated Vehicle Speeds with Doppler and Angles")
+    ax.set_xlabel("X Position (m)")
+    ax.set_ylabel("Y Position (m)")
+    plt.show()
+
+
+numFrames = 60
+gridSpacing = 1
+eps = 0.2
+minSamples = 3
 
 # Example usage
 visualize_radar_with_clustering_and_distance_filter(
@@ -300,10 +406,10 @@ visualize_radar_with_clustering_and_distance_filter(
     radar_position=(0, 0),
     plot_x_limits=[-10, 10],
     plot_y_limits=[0, 15],
-    num_frames=30,
-    grid_spacing=1,
-    eps=0.4,  # DBSCAN clustering radius
-    min_samples=3,  # Minimum points to form a cluster
+    num_frames=numFrames,
+    grid_spacing=gridSpacing,
+    eps=eps,  # DBSCAN clustering radius
+    min_samples=minSamples,  # Minimum points to form a cluster
     min_distance=1.5,  # Minimum distance from radar
     max_distance=15.0  # Maximum distance from radar
 )
@@ -313,8 +419,18 @@ visualize_cluster_movement(
     radar_position=(0, 0),
     plot_x_limits=[-10, 10],
     plot_y_limits=[0, 15],
-    num_frames=50,
-    grid_spacing=1,
-    eps=0.4,
-    min_samples=3
+    num_frames=numFrames,
+    grid_spacing=gridSpacing,
+    eps=eps,  # DBSCAN clustering radius
+    min_samples=minSamples,  # Minimum points to form a cluster
+)
+# Example usage
+estimate_vehicle_speed(
+    file_name="coordinates.csv",
+    radar_position=(0, 0),
+    plot_x_limits=[-10, 10],
+    plot_y_limits=[0, 15],
+    num_frames=numFrames,
+    eps=eps,  # DBSCAN clustering radius
+    min_samples=minSamples,  # Minimum points to form a cluster
 )

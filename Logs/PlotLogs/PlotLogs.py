@@ -393,7 +393,7 @@ if __name__ == "__main__":
     # Define the relative path to your log file
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
     parent_dir = os.path.dirname(script_dir)  # One directory above the current directory
-    log_file = os.path.join(parent_dir, 'azim60_elev30_lane_log_2024-11-28.csv')
+    log_file = os.path.join(parent_dir, 'azimut60_elev30_wall3x3_approach_log_2024-11-28.csv')
 
     # Load the CSV file
     data = pd.read_csv(log_file)
