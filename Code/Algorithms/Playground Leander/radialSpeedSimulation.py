@@ -1,6 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+class KalmanFilter:
+    def __init__(self, process_variance, measurement_variance):
+        self.process_variance = process_variance
+        self.measurement_variance = measurement_variance
+        self.estimated_value = 0.0
+        self.estimated_error = 1.0
+
+    def update(self, measurement):
+        # Kalman Gain
+        kalman_gain = self.estimated_error / (self.estimated_error + self.measurement_variance)
+        # Update the estimated value
+        self.estimated_value = self.estimated_value + kalman_gain * (measurement - self.estimated_value)
+        # Update the error covariance
+        self.estimated_error = (1 - kalman_gain) * self.estimated_error + self.process_variance
+        return self.estimated_value
+
+
 # Simulation Parameters
 dt = 0.1  # Time step (seconds)
 car_speed = 5.0  # Car speed in m/s (constant)
@@ -47,9 +64,10 @@ objects = np.array([
 
     [50.0, 5.0],
     [50.0, -5.0],
-    #[55.0, 0.0],
+    [55.0, 0.0],
     [55.0, 10.0],
-    [55.0, -10.0]
+    [55.0, -10.0],
+    [55.0, 0.0]
 ])
 
 # Initialize figure for visualization
@@ -60,6 +78,14 @@ ax1, ax2, ax3, ax4, ax5 = axes
 # Dictionary to store radial speeds over time for each object
 radial_speed_history = {i: [] for i in range(len(objects))}
 time_history = []
+
+#Adding everything for kalman filtering the self speed
+self_speed1_history = []
+self_speed2_history = []
+kf_self_speed1_history = []
+kf_self_speed2_history = []
+kf_self_speed1 = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
+kf_self_speed2 = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
 
 def radar_detection_with_noise(car_pos, objects, noise_std=0.5):
     """
@@ -227,7 +253,7 @@ def estimating_self_speed2(point_cloud):
     #Returning the self-speed after interpolating
     return poly_model(0)
     
-def update_self_speed_plot(time_history, self_speed1_history, self_speed2_history):
+def update_self_speed_plot(time_history, self_speed1_history, self_speed2_history, kf_self_speed1_history, kf_self_speed2_history):
     ax5.clear()
     ax5.set_xlim(0, 10)
     ax5.set_ylim(-10, 0)
@@ -235,12 +261,16 @@ def update_self_speed_plot(time_history, self_speed1_history, self_speed2_histor
     ax5.set_xlabel("t (s)")
     ax5.set_ylabel("Self-speed (m/s)")
 
-    ax5.plot(time_history, self_speed1_history)
-    ax5.plot(time_history, self_speed2_history)
+    # Plot raw self-speeds
+    ax5.plot(time_history, self_speed1_history, label="Self-Speed 1 (Raw)")
+    ax5.plot(time_history, self_speed2_history, label="Self-Speed 2 (Raw)")
 
-    
-self_speed1_history = []
-self_speed2_history = []
+    # Plot filtered self-speeds
+    ax5.plot(time_history, kf_self_speed1_history, label="Self-Speed 1 (Filtered)", linestyle='--')
+    ax5.plot(time_history, kf_self_speed2_history, label="Self-Speed 2 (Filtered)", linestyle='--')
+
+    #ax5.legend()
+
 
 # Simulation loop
 for t in np.arange(0, simulation_time, dt):
@@ -253,15 +283,19 @@ for t in np.arange(0, simulation_time, dt):
     #Estimating the self_speed by both algorithms
     self_speed1 = estimating_self_speed(point_cloud_noisy)
     self_speed2 = estimating_self_speed2(point_cloud_noisy)
+    filtered_self_speed1 = kf_self_speed1.update(self_speed1)
+    filtered_self_speed2 = kf_self_speed1.update(self_speed2)
     self_speed1_history.append(self_speed1)
     self_speed2_history.append(self_speed2)
+    kf_self_speed1_history.append(filtered_self_speed1)
+    kf_self_speed2_history.append(filtered_self_speed2)
 
     time_history.append(t)
 
     # Update visualizations
     update_car_visualization(car_position, objects, point_cloud)
     update_detection_visualization(point_cloud_noisy)
-    update_self_speed_plot(time_history, self_speed1_history, self_speed2_history)
+    update_self_speed_plot(time_history, self_speed1_history, self_speed2_history, kf_self_speed1_history, kf_self_speed2_history)
 
     plt.pause(0.01)
 
