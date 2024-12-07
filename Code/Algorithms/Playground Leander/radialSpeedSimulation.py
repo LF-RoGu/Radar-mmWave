@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 dt = 0.1  # Time step (seconds)
 car_speed = 5.0  # Car speed in m/s (constant)
 simulation_time = 10  # Total simulation time in seconds
-radar_range = 50.0  # Radar detection range in meters
+radar_range = 20.0  # Radar detection range in meters
 
 # Initialize car position (x, y)
 car_position = np.array([0.0, 0.0])
