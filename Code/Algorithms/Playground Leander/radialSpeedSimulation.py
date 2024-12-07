@@ -138,24 +138,6 @@ def update_detection_visualization(point_cloud):
 
     ax2.legend()
 
-def update_radial_speed_plot(time_history, radial_speed_history):
-    """
-    Update the radial speed plot for detected objects over time.
-    """
-    ax3.clear()
-    ax3.set_title("Radial Speed Over Time")
-    ax3.set_xlabel("Time (s)")
-    ax3.set_ylabel("Radial Speed (m/s)")
-
-    # Plot radial speeds
-    for obj_idx, speeds in radial_speed_history.items():
-        # Filter out None values for plotting
-        valid_times = [time_history[i] for i in range(len(speeds)) if speeds[i] is not None]
-        valid_speeds = [speed for speed in speeds if speed is not None]
-        ax3.plot(valid_times, valid_speeds, label=f"Object {obj_idx + 1}")
-
-    #ax3.legend()
-
 
 
 #Method 1 begin: Fitting a curve into different angles and radial speeds
@@ -184,19 +166,19 @@ def estimating_self_speed(point_cloud):
     phi_radial_speed_fit = poly_model(phi_fit)
 
     #Preparing plot
-    ax4.clear()
-    ax4.set_xlim(-90, 90)
-    ax4.set_ylim(-10, 1)
-    ax4.set_title("Radial speeds vs angles")
-    ax4.set_xlabel("phi (deg)")
-    ax4.set_ylabel("Radial speed (m/s)")
+    ax3.clear()
+    ax3.set_xlim(-90, 90)
+    ax3.set_ylim(-10, 1)
+    ax3.set_title("Radial speeds vs angles")
+    ax3.set_xlabel("phi (deg)")
+    ax3.set_ylabel("Radial speed (m/s)")
 
     #Plotting all points
     for i in range(len(phi_radspeed)):
-        ax4.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
+        ax3.plot(phi_radspeed[i][0], phi_radspeed[i][1], 'kx')
 
     #Plotting fitted curve
-    ax4.plot(phi_fit, phi_radial_speed_fit)
+    ax3.plot(phi_fit, phi_radial_speed_fit)
 
     #Returning the self-speed after interpolating
     return poly_model(0)
@@ -228,27 +210,37 @@ def estimating_self_speed2(point_cloud):
     radial_speed_fit = poly_model(phi_fit)
 
     #Preparing plot
-    ax5.clear()
-    ax5.set_xlim(-90, 90)
-    ax5.set_ylim(-10, 1)
-    ax5.set_title("Re-calculated self-speed vs angles")
-    ax5.set_xlabel("phi (deg)")
-    ax5.set_ylabel("Self-speed (m/s)")
+    ax4.clear()
+    ax4.set_xlim(-90, 90)
+    ax4.set_ylim(-10, 1)
+    ax4.set_title("Re-calculated self-speed vs angles")
+    ax4.set_xlabel("phi (deg)")
+    ax4.set_ylabel("Self-speed (m/s)")
 
     #Plotting all points
     for i in range(len(phi_selfspeed)):
-        ax5.plot(phi_selfspeed[i][0], phi_selfspeed[i][1], 'kx')
+        ax4.plot(phi_selfspeed[i][0], phi_selfspeed[i][1], 'kx')
 
     #Plotting fitted curve
-    ax5.plot(phi_fit, radial_speed_fit)
+    ax4.plot(phi_fit, radial_speed_fit)
 
     #Returning the self-speed after interpolating
     return poly_model(0)
     
+def update_self_speed_plot(time_history, self_speed1_history, self_speed2_history):
+    ax5.clear()
+    ax5.set_xlim(0, 10)
+    ax5.set_ylim(-10, 0)
+    ax5.set_title("Re-calculated self-speed over time")
+    ax5.set_xlabel("t (s)")
+    ax5.set_ylabel("Self-speed (m/s)")
 
+    ax5.plot(time_history, self_speed1_history)
+    ax5.plot(time_history, self_speed2_history)
 
     
-
+self_speed1_history = []
+self_speed2_history = []
 
 # Simulation loop
 for t in np.arange(0, simulation_time, dt):
@@ -256,27 +248,20 @@ for t in np.arange(0, simulation_time, dt):
     car_position[0] += car_speed * dt
 
     # Simulate radar detection
-    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 1)
+    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 0.5)
 
     #Estimating the self_speed by both algorithms
-    estimating_self_speed(point_cloud_noisy)
-    estimating_self_speed2(point_cloud_noisy)
-
-
-    # Update radial speed history
-    for i in range(len(objects)):
-        if i in detected_indices:
-            radial_speed = point_cloud[detected_indices.index(i)][2]
-            radial_speed_history[i].append(radial_speed)
-        else:
-            radial_speed_history[i].append(None)  # None for missed detection
+    self_speed1 = estimating_self_speed(point_cloud_noisy)
+    self_speed2 = estimating_self_speed2(point_cloud_noisy)
+    self_speed1_history.append(self_speed1)
+    self_speed2_history.append(self_speed2)
 
     time_history.append(t)
 
     # Update visualizations
     update_car_visualization(car_position, objects, point_cloud)
     update_detection_visualization(point_cloud_noisy)
-    update_radial_speed_plot(time_history, radial_speed_history)
+    update_self_speed_plot(time_history, self_speed1_history, self_speed2_history)
 
     plt.pause(0.01)
 
