@@ -22,7 +22,7 @@ class KalmanFilter:
 dt = 0.1  # Time step (seconds)
 car_speed = 5.0  # Car speed in m/s (constant)
 simulation_time = 10  # Total simulation time in seconds
-radar_range = 20.0  # Radar detection range in meters
+radar_range = 15.0  # Radar detection range in meters
 
 # Initialize car position (x, y)
 car_position = np.array([0.0, 0.0])
@@ -67,25 +67,21 @@ objects = np.array([
     [55.0, 0.0],
     [55.0, 10.0],
     [55.0, -10.0],
-    [55.0, 0.0]
 ])
 
 # Initialize figure for visualization
 plt.ion()
-fig, axes = plt.subplots(5, 1, figsize=(10, 6))
-ax1, ax2, ax3, ax4, ax5 = axes
+fig, axes = plt.subplots(4, 1, figsize=(10, 6))
+ax1, ax2, ax3, ax4 = axes
 
 # Dictionary to store radial speeds over time for each object
 radial_speed_history = {i: [] for i in range(len(objects))}
 time_history = []
 
 #Adding everything for kalman filtering the self speed
-self_speed1_history = []
-self_speed2_history = []
-kf_self_speed1_history = []
-kf_self_speed2_history = []
-kf_self_speed1 = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
-kf_self_speed2 = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
+self_speed_history = []
+kf_self_speed_history = []
+kf_self_speed = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
 
 def radar_detection_with_noise(car_pos, objects, noise_std=0.5):
     """
@@ -166,7 +162,7 @@ def update_detection_visualization(point_cloud):
 
 
 
-#Method 1 begin: Fitting a curve into different angles and radial speeds
+#Method 1: Fitting a curve into different angles and radial speeds
 def estimating_self_speed(point_cloud):
     #Preparing an array to contain angle to target and radial speed
     phi_radspeed = []
@@ -208,66 +204,20 @@ def estimating_self_speed(point_cloud):
 
     #Returning the self-speed after interpolating
     return poly_model(0)
-
-#Method 2: Recalculating self-speed from different angles before fitting
-def estimating_self_speed2(point_cloud):
-    #Preparing an array to contain phi and the re-calculated self-speed
-    phi_selfspeed = []
     
-    #Iterating over all points
-    for i in range(len(point_cloud)):
-        #Calculating the distance from car to target
-        dist = np.sqrt(point_cloud[i][0]**2 + point_cloud[i][1]**2)
-
-        #Calculating the angle to the target
-        phi = np.rad2deg(np.arcsin(point_cloud[i][1]/dist))
-        
-        #Re-calculating the self-speed from phi and radial speed of target
-        selfspeed = point_cloud[i][2]/np.cos(np.deg2rad(phi))
-        phi_selfspeed.append([phi, selfspeed])
-    
-    #Converting array of tuples to NumPy array
-    phi_selfspeed = np.array(phi_selfspeed)
-    
-    #Fitting a first order polynominal into the points
-    poly_coeff = np.polyfit(phi_selfspeed[:,0], phi_selfspeed[:,1], deg=1)  # Polynomial coefficients
-    poly_model = np.poly1d(poly_coeff)  # Polynomial model
-    phi_fit = np.linspace(-90, 90, 100)
-    radial_speed_fit = poly_model(phi_fit)
-
-    #Preparing plot
+def update_self_speed_plot(time_history, self_speed_history, kf_self_speed_history):
     ax4.clear()
-    ax4.set_xlim(-90, 90)
-    ax4.set_ylim(-10, 1)
-    ax4.set_title("Re-calculated self-speed vs angles")
-    ax4.set_xlabel("phi (deg)")
+    ax4.set_xlim(0, 10)
+    ax4.set_ylim(-10, 0)
+    ax4.set_title("Re-calculated self-speed over time")
+    ax4.set_xlabel("t (s)")
     ax4.set_ylabel("Self-speed (m/s)")
 
-    #Plotting all points
-    for i in range(len(phi_selfspeed)):
-        ax4.plot(phi_selfspeed[i][0], phi_selfspeed[i][1], 'kx')
+    # Plot raw self-speed
+    ax4.plot(time_history, self_speed_history, label="Self-Speed 1 (Raw)", linestyle='--')
 
-    #Plotting fitted curve
-    ax4.plot(phi_fit, radial_speed_fit)
-
-    #Returning the self-speed after interpolating
-    return poly_model(0)
-    
-def update_self_speed_plot(time_history, self_speed1_history, self_speed2_history, kf_self_speed1_history, kf_self_speed2_history):
-    ax5.clear()
-    ax5.set_xlim(0, 10)
-    ax5.set_ylim(-10, 0)
-    ax5.set_title("Re-calculated self-speed over time")
-    ax5.set_xlabel("t (s)")
-    ax5.set_ylabel("Self-speed (m/s)")
-
-    # Plot raw self-speeds
-    ax5.plot(time_history, self_speed1_history, label="Self-Speed 1 (Raw)")
-    ax5.plot(time_history, self_speed2_history, label="Self-Speed 2 (Raw)")
-
-    # Plot filtered self-speeds
-    ax5.plot(time_history, kf_self_speed1_history, label="Self-Speed 1 (Filtered)", linestyle='--')
-    ax5.plot(time_history, kf_self_speed2_history, label="Self-Speed 2 (Filtered)", linestyle='--')
+    # Plot filtered self-speed
+    ax4.plot(time_history, kf_self_speed_history, label="Self-Speed 1 (Filtered)")
 
     #ax5.legend()
 
@@ -278,24 +228,20 @@ for t in np.arange(0, simulation_time, dt):
     car_position[0] += car_speed * dt
 
     # Simulate radar detection
-    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 0.5)
+    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 1.5)
 
     #Estimating the self_speed by both algorithms
-    self_speed1 = estimating_self_speed(point_cloud_noisy)
-    self_speed2 = estimating_self_speed2(point_cloud_noisy)
-    filtered_self_speed1 = kf_self_speed1.update(self_speed1)
-    filtered_self_speed2 = kf_self_speed1.update(self_speed2)
-    self_speed1_history.append(self_speed1)
-    self_speed2_history.append(self_speed2)
-    kf_self_speed1_history.append(filtered_self_speed1)
-    kf_self_speed2_history.append(filtered_self_speed2)
+    self_speed = estimating_self_speed(point_cloud_noisy)
+    filtered_self_speed = kf_self_speed.update(self_speed)
+    self_speed_history.append(self_speed)
+    kf_self_speed_history.append(filtered_self_speed)
 
     time_history.append(t)
 
     # Update visualizations
     update_car_visualization(car_position, objects, point_cloud)
     update_detection_visualization(point_cloud_noisy)
-    update_self_speed_plot(time_history, self_speed1_history, self_speed2_history, kf_self_speed1_history, kf_self_speed2_history)
+    update_self_speed_plot(time_history, self_speed_history, kf_self_speed_history)
 
     plt.pause(0.01)
 
