@@ -29,22 +29,13 @@ car_position = np.array([0.0, 0.0])
 
 # Object positions (x, y)
 objects = np.array([
-    [10.0, 5.0],
-    [10.0, -5.0],
-    [12.5, 7.5],
-    [12.5, -7.5],
-    [15.0, 10.0],
-    [15.0, -10.0],
-    [17.5, 7.5],
-    [17.5, -7.5],
+    [15.0, -3.0],
+    [16.5, 10.0],
+    [18.0, -5.0],
     [20.0, 5.0],
-    [20.0, -5.0],
-    [22.5, 7.5],
-    [22.5, -7.5],
-    [25.0, 10.0],
+    [22.5, -3.0],
     [25.0, -10.0],
-    [27.5, 7.5],
-    [27.5, -7.5],
+    [27.5, 8.0],
     [30.0, 5.0],
     [30.0, -5.0],
     [32.5, 7.5],
@@ -53,6 +44,8 @@ objects = np.array([
     [35.0, -10.0],
     [37.5, 7.5],
     [37.5, -7.5],
+    
+    
     [40.0, 5.0],
     [40.0, -5.0],
     [42.5, 7.5],
@@ -66,7 +59,7 @@ objects = np.array([
     [50.0, -5.0],
     [55.0, 0.0],
     [55.0, 10.0],
-    [55.0, -10.0],
+    [55.0, -10.0]
 ])
 
 # Initialize figure for visualization
@@ -164,6 +157,9 @@ def update_detection_visualization(point_cloud):
 
 #Method 1: Fitting a curve into different angles and radial speeds
 def estimating_self_speed(point_cloud):
+    if len(point_cloud) < 1:
+        return 0
+    
     #Preparing an array to contain angle to target and radial speed
     phi_radspeed = []
 
@@ -228,7 +224,7 @@ for t in np.arange(0, simulation_time, dt):
     car_position[0] += car_speed * dt
 
     # Simulate radar detection
-    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 1.5)
+    point_cloud, point_cloud_noisy, detected_indices = radar_detection_with_noise(car_position, objects, 0.5)
 
     #Estimating the self_speed by both algorithms
     self_speed = estimating_self_speed(point_cloud_noisy)
