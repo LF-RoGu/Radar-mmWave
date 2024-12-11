@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 from matplotlib.patches import Wedge
+from sklearn.cluster import DBSCAN
 
 # Utility function to load data
 def load_data(file_name, y_threshold=None):
@@ -28,9 +29,14 @@ def load_data(file_name, y_threshold=None):
     # Load the CSV data
     df = pd.read_csv(file_name)
     
+    # Debug: Print initial data size
+    print(f"Initial data size: {df.shape}")
+
     # Apply filtering based on y_threshold if provided
     if y_threshold is not None:
         df = df[df["Y [m]"] >= y_threshold]
+        # Debug: Print data size after filtering
+        print(f"Filtered data size (Y >= {y_threshold}): {df.shape}")
     
     # Group data by frame and organize the output
     frames_data = {}
@@ -40,6 +46,7 @@ def load_data(file_name, y_threshold=None):
         frames_data[frame] = (coordinates, doppler)
     
     return frames_data
+
 
 def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.42, buffer=0.3, azimuth=60, elevation=30):
     """
@@ -122,10 +129,25 @@ def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
 
     # Optionally, add the sensor's location as a point
     ax.scatter(*sensor_origin, color="green", label="Sensor Location")
-    ax.legend()
+
+# Function to cluster points
+def cluster_static_objects(coordinates, eps=0.5, min_samples=5):
+    """
+    Apply DBSCAN clustering to radar points.
+
+    Parameters:
+        coordinates (list of tuples): List of (X, Y) points.
+        eps (float): Maximum distance between two points to be considered in the same cluster.
+        min_samples (int): Minimum number of points required to form a cluster.
+
+    Returns:
+        list: Cluster labels for each point (-1 indicates noise).
+    """
+    clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(coordinates)
+    return clustering.labels_
 
 # Plotting function
-def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
+def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons,
     including a grid with customizable spacing. Annotates points in ax2 with Doppler values.
@@ -137,20 +159,25 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
         grid_spacing (int): Spacing between grid lines (default is 1).
     """
     # Create the figure and subplots
-    fig, axes = plt.subplots(2, 1, figsize=(10, 6))
-    ax1, ax2 = axes
+    fig, axes = plt.subplots(3, 1, figsize=(10, 6))
+    ax1, ax2, ax3 = axes
     plt.subplots_adjust(left=0.25, bottom=0.25)
 
     # Create lines for ax1
-    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")  # Change 'o-' to 'o'
+    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
     ax1.set_xlim(*x_limits)
     ax1.set_ylim(*y_limits)
-    ax1.legend()
+    ax1.legend(["Cumulative dots"], loc="upper left")
 
     # ax2 settings
     ax2.set_xlim(*x_limits)
     ax2.set_ylim(*y_limits)
-    ax2.legend(["Current Frame - Ax2"], loc="upper left")
+    ax2.legend(["Dots Per Frame"], loc="upper left")
+
+    # ax3 settings, Cluster plot
+    ax3.set_xlim(*x_limits)
+    ax3.set_ylim(*y_limits)
+    ax3.legend(["Clusters"], loc="upper left")
 
     # Function to draw the grid with specified spacing
     def draw_grid(ax, x_limits, y_limits, grid_spacing):
@@ -161,13 +188,9 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
         for y in y_ticks:
             ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-    # Draw grids on both axes
-    draw_grid(ax1, x_limits, y_limits, grid_spacing)
-    draw_grid(ax2, x_limits, y_limits, grid_spacing)
-
-    # Draw the sensor's detection area as a wedge in both plots
-    draw_sensor_area(ax1)
-    draw_sensor_area(ax2)
+    # Draw grids and wedges on all axes
+    for ax in [ax1, ax2, ax3]:
+        draw_grid(ax, x_limits, y_limits, grid_spacing)
 
     # Add slider
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
@@ -186,7 +209,10 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
 
         # Update ax1 with cumulative data
         line1.set_data(x1, y1)
-
+        #draw_sensor_area(ax1) # Redraw wedge
+        """
+        ax2 starts here
+        """
         # Update ax2 with only the current frame's data
         ax2.cla()  # Clear ax2
         ax2.set_xlim(*x_limits)  # Reset x-axis limits
@@ -206,6 +232,22 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
         ax2.set_title(f"Frame {current_frame}")
         ax2.legend(["Current Frame"], loc="upper left")
 
+        """
+        ax3 starts here
+        """
+        # Update ax3 with clustered data
+        ax3.cla()  # Clear ax3
+        draw_grid(ax3, x_limits, y_limits, grid_spacing)
+        if len(coordinates) > 0:
+            cluster_labels = cluster_static_objects(np.array(coordinates), eps=eps, min_samples=min_samples)
+            for cluster in set(cluster_labels):
+                cluster_points = np.array(coordinates)[np.array(cluster_labels) == cluster]
+                color = "gray" if cluster == -1 else np.random.rand(3,)
+                ax3.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=f"Cluster {cluster}")
+        #ax3.set_title(f"Clusters for Frame {current_frame}")
+        draw_sensor_area(ax3) # Redraw wedge
+        #ax3.legend()
+
         fig.canvas.draw_idle()
 
     # Connect the slider to the update function
@@ -219,7 +261,7 @@ file_name = "coordinates.csv"  # Replace with your file path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, file_name)
 
-y_threshold = 0.0  # Disregard points with Y < num
+y_threshold = 1.5  # Disregard points with Y < num
 
 frames_data = load_data(file_path, y_threshold)
 
@@ -232,5 +274,8 @@ filter_vehicle_zone(
     azimuth=60,
     elevation=30
 )
-
-create_interactive_plot(frames_data, x_limits=(-8, 8), y_limits=(0, 15))
+"""
+Having a legen of Cluster -1, means no cluster has been created
+Same as having Grey Clusters
+"""
+create_interactive_plot(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps=0.5, min_samples=2)
