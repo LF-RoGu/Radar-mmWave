@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
+from matplotlib.patches import Wedge
 
 # Utility function to load data
 def load_data(file_name, y_threshold=None):
@@ -63,6 +64,7 @@ def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.4
     min_distance = forward_distance - buffer  # Min radius (considering buffer)
 
     for frame, (coordinates, doppler) in frames_data.items():
+        # Prepare new lists for filtered coordinates and Doppler values
         filtered_coordinates = []
         filtered_doppler = []
 
@@ -74,7 +76,7 @@ def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.4
             azimuth_angle = np.arctan2(y, x)  # Azimuth in radians
             elevation_angle = np.arctan2(z, np.sqrt(x**2 + y**2))  # Elevation in radians
 
-            # Check if the point is outside the vehicle zone
+            # Append points only if they are outside the vehicle zone
             if radius > max_distance or radius < min_distance:
                 filtered_coordinates.append(coord)
                 filtered_doppler.append(doppler_value)
@@ -82,8 +84,9 @@ def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.4
                 filtered_coordinates.append(coord)
                 filtered_doppler.append(doppler_value)
 
-        # Update the frame data with the filtered points
+        # Update the frame data with only filtered points
         frames_data[frame] = (filtered_coordinates, filtered_doppler)
+
 
 # Plotting function
 def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
