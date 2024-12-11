@@ -45,7 +45,7 @@ def load_data(file_name, y_threshold=None):
 def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons,
-    including a grid with customizable spacing.
+    including a grid with customizable spacing. Annotates points in ax2 with Doppler values.
     
     Parameters:
         frames_data (dict): The frame data dictionary from `load_data`.
@@ -59,7 +59,7 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
     plt.subplots_adjust(left=0.25, bottom=0.25)
 
     # Create lines for ax1
-    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
+    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")  # Change 'o-' to 'o'
     ax1.set_xlim(*x_limits)
     ax1.set_ylim(*y_limits)
     ax1.legend()
@@ -106,10 +106,15 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
         ax2.set_ylim(*y_limits)  # Reset y-axis limits
         draw_grid(ax2, x_limits, y_limits, grid_spacing)  # Redraw grid
         
-        coordinates, _ = frames_data[current_frame]
+        coordinates, doppler = frames_data[current_frame]
         x2 = [coord[0] for coord in coordinates]
         y2 = [coord[1] for coord in coordinates]
         ax2.plot(x2, y2, 'ro')  # Plot current frame data
+
+        # Annotate each point with its Doppler value
+        for x, y, d in zip(x2, y2, doppler):
+            ax2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
+
         ax2.set_title(f"Frame {current_frame}")
         ax2.legend(["Current Frame"], loc="upper left")
 
