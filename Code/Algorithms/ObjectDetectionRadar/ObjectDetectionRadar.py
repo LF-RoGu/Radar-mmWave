@@ -4,10 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 from matplotlib.patches import Wedge
+from matplotlib.gridspec import GridSpec
 from sklearn.cluster import DBSCAN
 
 # Utility function to load data
-def load_data(file_name, y_threshold=None):
+def load_data(file_name, y_threshold=None, doppler_threshold=None):
     """
     Load CSV data from the specified file and organize it by frame, optionally filtering out points
     with Y-values below a specified threshold.
@@ -36,7 +37,12 @@ def load_data(file_name, y_threshold=None):
     if y_threshold is not None:
         df = df[df["Y [m]"] >= y_threshold]
         # Debug: Print data size after filtering
-        print(f"Filtered data size (Y >= {y_threshold}): {df.shape}")
+        print(f"Filtered data size (Y [m] >= {y_threshold}): {df.shape}")
+    # Apply filtering based on doppler_threshold if provided
+    if doppler_threshold is not None:
+        df = df[df["Doppler [m/s]"] <= doppler_threshold]
+        # Debug: Print data size after filtering
+        print(f"Filtered data size (Doppler [m/s] >= {doppler_threshold}): {df.shape}")
     
     # Group data by frame and organize the output
     frames_data = {}
@@ -159,8 +165,17 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
         grid_spacing (int): Spacing between grid lines (default is 1).
     """
     # Create the figure and subplots
-    fig, axes = plt.subplots(3, 1, figsize=(10, 6))
-    ax1, ax2, ax3 = axes
+    # Create the figure
+    fig = plt.figure(figsize=(12, 8))
+    # Define a 2x2 grid layout
+    gs = GridSpec(2, 2, figure=fig)
+
+    # Subplots
+    ax1 = fig.add_subplot(gs[0, 0])  # Top-left
+    ax2 = fig.add_subplot(gs[1, 0])  # Bottom-left
+    ax3 = fig.add_subplot(gs[0, 1])  # Top-right
+    ax4 = fig.add_subplot(gs[1, 1])  # Bottom-right
+
     plt.subplots_adjust(left=0.25, bottom=0.25)
 
     # Create lines for ax1
@@ -174,10 +189,16 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
     ax2.set_ylim(*y_limits)
     ax2.legend(["Dots Per Frame"], loc="upper left")
 
-    # ax3 settings, Cluster plot
+    # Create lines for ax3
+    (line2,) = ax1.plot([], [], 'o', label="Data - Ax1")
     ax3.set_xlim(*x_limits)
     ax3.set_ylim(*y_limits)
-    ax3.legend(["Clusters"], loc="upper left")
+    ax3.legend(["Cumulative Clusters"], loc="upper left")
+
+    # ax4 settings, Cluster plot
+    ax4.set_xlim(*x_limits)
+    ax4.set_ylim(*y_limits)
+    ax4.legend(["Clusters"], loc="upper left")
 
     # Function to draw the grid with specified spacing
     def draw_grid(ax, x_limits, y_limits, grid_spacing):
@@ -200,6 +221,9 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
     def update(val):
         current_frame = int(slider.val)  # Get the current frame from the slider
 
+        """
+        ax1 starts here
+        """
         # Get the data for all frames up to the current frame
         x1, y1 = [], []
         for frame in range(1, current_frame + 1):
@@ -235,17 +259,54 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
         """
         ax3 starts here
         """
-        # Update ax3 with clustered data
-        ax3.cla()  # Clear ax3
+        # Clear ax3 and reset limits
+        ax3.cla()
+        ax3.set_xlim(*x_limits)
+        ax3.set_ylim(*y_limits)
         draw_grid(ax3, x_limits, y_limits, grid_spacing)
+
+        # Get cumulative data for clusters up to the current frame
+        cumulative_coordinates = []
+        for frame in range(1, current_frame + 1):
+            coordinates, _ = frames_data[frame]
+            cumulative_coordinates.extend(coordinates)
+
+        # Perform clustering on cumulative data
+        if len(cumulative_coordinates) > 0:
+            cumulative_coordinates = np.array(cumulative_coordinates)  # Convert to NumPy array
+            cluster_labels = cluster_static_objects(cumulative_coordinates, eps=eps, min_samples=min_samples)
+
+            # Plot each cluster, ignoring noise points
+            for cluster in set(cluster_labels):
+                if cluster == -1:
+                    # Skip noise points
+                    continue
+
+                # Get points belonging to this cluster
+                cluster_points = cumulative_coordinates[np.array(cluster_labels) == cluster]
+
+                # Assign random color to the cluster
+                color = np.random.rand(3,)
+                ax3.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=f"Cluster {cluster}")
+
+        ax3.set_title(f"Cumulative Clusters up to Frame {current_frame}")
+        #ax3.legend()
+
+
+        """
+        ax4 starts here
+        """
+        # Update ax3 with clustered data
+        ax4.cla()  # Clear ax4
+        draw_grid(ax4, x_limits, y_limits, grid_spacing)
         if len(coordinates) > 0:
             cluster_labels = cluster_static_objects(np.array(coordinates), eps=eps, min_samples=min_samples)
             for cluster in set(cluster_labels):
                 cluster_points = np.array(coordinates)[np.array(cluster_labels) == cluster]
                 color = "gray" if cluster == -1 else np.random.rand(3,)
-                ax3.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=f"Cluster {cluster}")
+                ax4.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=f"Cluster {cluster}")
         #ax3.set_title(f"Clusters for Frame {current_frame}")
-        draw_sensor_area(ax3) # Redraw wedge
+        draw_sensor_area(ax4) # Redraw wedge
         #ax3.legend()
 
         fig.canvas.draw_idle()
@@ -261,16 +322,17 @@ file_name = "coordinates.csv"  # Replace with your file path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, file_name)
 
-y_threshold = 1.5  # Disregard points with Y < num
+y_threshold = 2.0  # Disregard points with Y < num
+doppler_threshold = 0.1 # Disregard points with doppler < num
 
-frames_data = load_data(file_path, y_threshold)
+frames_data = load_data(file_path, y_threshold, doppler_threshold)
 
 # Filter out points inside the vehicle zone
 filter_vehicle_zone(
     frames_data,
     forward_distance=0.3,
     diagonal_distance=0.42,
-    buffer=0.3,
+    buffer=0.0,
     azimuth=60,
     elevation=30
 )
@@ -278,4 +340,4 @@ filter_vehicle_zone(
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plot(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps=0.5, min_samples=2)
+create_interactive_plot(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5)
