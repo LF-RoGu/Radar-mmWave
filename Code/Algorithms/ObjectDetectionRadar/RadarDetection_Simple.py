@@ -104,7 +104,6 @@ def predict_cluster_trajectory(kalman_filters, steps=10):
             future_pos.append(state[:2])  # Save predicted position
         predictions[cluster_id] = future_pos
     return predictions
-
 # Function to visualize clusters being formed
 def visualize_radar_with_clustering_and_distance_filter(
     file_name, radar_position, plot_x_limits, plot_y_limits, num_frames=0, 
