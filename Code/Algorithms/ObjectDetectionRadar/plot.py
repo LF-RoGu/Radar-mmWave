@@ -17,15 +17,16 @@ def create_interactive_plot(x_data, y_data, x_limits, y_limits):
     ax1, ax2 = axes
     plt.subplots_adjust(left=0.25, bottom=0.25)
 
-    # Create lines for ax1 and ax2
+    # Create lines for ax1
     (line1,) = ax1.plot([], [], 'o-', label="Data - Ax1")
-    (line2,) = ax2.plot([], [], 'o-', label="Data - Ax2")
     ax1.set_xlim(*x_limits)
     ax1.set_ylim(*y_limits)
+    ax1.legend()
+
+    # ax2 settings
     ax2.set_xlim(*x_limits)
     ax2.set_ylim(*y_limits)
-    ax1.legend()
-    ax2.legend()
+    ax2.legend(["Current Value - Ax2"], loc="upper left")
 
     # Add sliders and radio buttons
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
@@ -45,12 +46,14 @@ def create_interactive_plot(x_data, y_data, x_limits, y_limits):
         elif mode == "new":
             line1.set_data([x_data[frame]], [y_data[frame]])
         
-        # Update ax2 (mirroring the behavior of ax1)
-        if mode == "continuous":
-            line2.set_data(x_data[: frame + 1], y_data[: frame + 1])
-        elif mode == "new":
-            line2.set_data([x_data[frame]], [y_data[frame]])
-        
+        # Update ax2 (clears the plot and shows only the current value)
+        ax2.cla()  # Clear ax2
+        ax2.set_xlim(*x_limits)  # Reset x-axis limits
+        ax2.set_ylim(*y_limits)  # Reset y-axis limits
+        ax2.plot([x_data[frame]], [y_data[frame]], 'ro')  # Plot only the current point
+        ax2.set_title("Current Value - Ax2")
+        ax2.legend(["Current Value"], loc="upper left")
+
         fig.canvas.draw_idle()
 
     # Connect the slider and radio buttons to the update function
@@ -63,4 +66,4 @@ def create_interactive_plot(x_data, y_data, x_limits, y_limits):
 # Example usage:
 x = np.linspace(0, 10, 100)
 y = 2 * x + 1  # Example: y = 2x + 1
-create_interactive_plot(x, y, x_limits=(0, 10), y_limits=(0, 10))
+create_interactive_plot(x, y, x_limits=(0, 10), y_limits=(0, 21))
