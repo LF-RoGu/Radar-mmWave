@@ -5,9 +5,15 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 
 # Utility function to load data
-def load_data(file_name):
+def load_data(file_name, y_threshold=None):
     """
-    Load CSV data from the specified file and organize it by frame.
+    Load CSV data from the specified file and organize it by frame, optionally filtering out points
+    with Y-values below a specified threshold.
+    
+    Parameters:
+        file_name (str): Path to the CSV file.
+        y_threshold (float, optional): Minimum Y-value to include points. Points with Y < y_threshold
+                                       will be excluded. Defaults to None (no filtering).
     
     Returns:
         dict: A dictionary where each key is a frame number, and the value is a tuple:
@@ -20,6 +26,10 @@ def load_data(file_name):
     
     # Load the CSV data
     df = pd.read_csv(file_name)
+    
+    # Apply filtering based on y_threshold if provided
+    if y_threshold is not None:
+        df = df[df["Y [m]"] >= y_threshold]
     
     # Group data by frame and organize the output
     frames_data = {}
@@ -115,6 +125,9 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
 file_name = "coordinates.csv"  # Replace with your file path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, file_name)
-frames_data = load_data(file_path)
+
+y_threshold = 0  # Disregard points with Y < 5
+
+frames_data = load_data(file_path, y_threshold)
 
 create_interactive_plot(frames_data, x_limits=(-5, 10), y_limits=(-5, 15))
