@@ -87,6 +87,42 @@ def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.4
         # Update the frame data with only filtered points
         frames_data[frame] = (filtered_coordinates, filtered_doppler)
 
+# Function to draw the sensor's detection area as a wedge
+def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
+    """
+    Draw a wedge to simulate the sensor's detection area pointing upwards.
+
+    Parameters:
+        ax (matplotlib.axes._subplots.AxesSubplot): The matplotlib axis to draw on.
+        sensor_origin (tuple): The (x, y) coordinates of the sensor's origin.
+        azimuth (float): The azimuth angle (in degrees) for the sensor's field of view.
+        max_distance (float): The maximum detection radius of the sensor.
+
+    Returns:
+        None
+    """
+    # Adjust the angles so the wedge points upwards (positive Y-axis)
+    start_angle = 90 - azimuth / 2
+    end_angle = 90 + azimuth / 2
+
+    # Create the wedge
+    wedge = Wedge(
+        center=sensor_origin,
+        r=max_distance,
+        theta1=start_angle,
+        theta2=end_angle,
+        facecolor="blue",
+        alpha=0.2,
+        edgecolor="black",
+        linewidth=1
+    )
+
+    # Add the wedge to the axis
+    ax.add_patch(wedge)
+
+    # Optionally, add the sensor's location as a point
+    ax.scatter(*sensor_origin, color="green", label="Sensor Location")
+    ax.legend()
 
 # Plotting function
 def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
@@ -129,6 +165,10 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
     draw_grid(ax1, x_limits, y_limits, grid_spacing)
     draw_grid(ax2, x_limits, y_limits, grid_spacing)
 
+    # Draw the sensor's detection area as a wedge in both plots
+    draw_sensor_area(ax1)
+    draw_sensor_area(ax2)
+
     # Add slider
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
     slider = Slider(ax_slider, "Frame", 1, len(frames_data), valinit=1, valstep=1)
@@ -152,6 +192,7 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
         ax2.set_xlim(*x_limits)  # Reset x-axis limits
         ax2.set_ylim(*y_limits)  # Reset y-axis limits
         draw_grid(ax2, x_limits, y_limits, grid_spacing)  # Redraw grid
+        draw_sensor_area(ax2) # Redraw wedge
         
         coordinates, doppler = frames_data[current_frame]
         x2 = [coord[0] for coord in coordinates]
@@ -192,4 +233,4 @@ filter_vehicle_zone(
     elevation=30
 )
 
-create_interactive_plot(frames_data, x_limits=(-5, 10), y_limits=(-5, 15))
+create_interactive_plot(frames_data, x_limits=(-8, 8), y_limits=(0, 15))
