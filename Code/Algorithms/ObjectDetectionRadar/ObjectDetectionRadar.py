@@ -6,6 +6,7 @@ from matplotlib.widgets import Slider, RadioButtons
 from matplotlib.patches import Wedge
 from matplotlib.gridspec import GridSpec
 from sklearn.cluster import DBSCAN
+from filterpy.kalman import KalmanFilter
 
 # Utility function to load data
 def load_data(file_name, y_threshold=None, doppler_threshold=None):
@@ -53,7 +54,7 @@ def load_data(file_name, y_threshold=None, doppler_threshold=None):
     
     return frames_data
 
-
+# Function ...
 def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.42, buffer=0.3, azimuth=60, elevation=30):
     """
     Filter out points detected within the vehicle zone in each frame.
@@ -100,6 +101,24 @@ def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.4
         # Update the frame data with only filtered points
         frames_data[frame] = (filtered_coordinates, filtered_doppler)
 
+# Function ...
+def setup_kalman_filter():
+    """
+    Set up a Kalman filter for 2D tracking (x, y).
+    """
+    kf = KalmanFilter(dim_x=4, dim_z=2)
+    kf.x = np.array([0., 0., 0., 0.])  # Initial state [x, y, x_velocity, y_velocity]
+    kf.F = np.array([[1, 0, 1, 0],    # State transition matrix
+                     [0, 1, 0, 1],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+    kf.H = np.array([[1, 0, 0, 0],    # Measurement function
+                     [0, 1, 0, 0]])
+    kf.P *= 1000  # Initial uncertainty
+    kf.R = np.array([[5, 0], [0, 5]])  # Measurement noise covariance
+    kf.Q = np.eye(4) * 0.1  # Process noise covariance
+    return kf
+
 # Function to draw the sensor's detection area as a wedge
 def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
     """
@@ -136,6 +155,30 @@ def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
     # Optionally, add the sensor's location as a point
     ax.scatter(*sensor_origin, color="green", label="Sensor Location")
 
+# Function
+def draw_lanes(ax, lane_boundaries, y_limits):
+    """
+    Draw lane representations on the given axis.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): The axis to draw lanes on.
+        lane_boundaries (list of tuples): List of (x_min, x_max) tuples for each lane.
+        y_limits (tuple): The y-axis limits as (y_min, y_max).
+    """
+    colors = ["lightblue", "lightgreen", "lightyellow", "lightpink"]
+    lane_labels = ["Left Side", "Left Center", "Right Center", "Right Side"]
+    # clear the lane so it does not get saturated
+    ax.cla()
+
+    for i, (x_min, x_max) in enumerate(lane_boundaries):
+        ax.fill_betweenx(y_limits, x_min, x_max, color=colors[i], alpha=0.3, label=lane_labels[i])
+        ax.axvline(x=x_min, color="black", linestyle="--", linewidth=0.5)
+        ax.axvline(x=x_max, color="black", linestyle="--", linewidth=0.5)
+
+    ax.set_xlim(min([b[0] for b in lane_boundaries]), max([b[1] for b in lane_boundaries]))
+    ax.set_ylim(y_limits)
+    ax.set_title("Lane Representation")
+
 # Function to cluster points
 def cluster_static_objects(coordinates, eps=0.5, min_samples=5):
     """
@@ -168,13 +211,15 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
     # Create the figure
     fig = plt.figure(figsize=(12, 8))
     # Define a 2x2 grid layout
-    gs = GridSpec(2, 2, figure=fig)
+    gs = GridSpec(2, 3, figure=fig)
 
     # Subplots
     ax1 = fig.add_subplot(gs[0, 0])  # Top-left
     ax2 = fig.add_subplot(gs[1, 0])  # Bottom-left
     ax3 = fig.add_subplot(gs[0, 1])  # Top-right
     ax4 = fig.add_subplot(gs[1, 1])  # Bottom-right
+    ax5 = fig.add_subplot(gs[0, 2])  # Bottom-right
+    ax6 = fig.add_subplot(gs[1, 2])  # Bottom-right
 
     plt.subplots_adjust(left=0.25, bottom=0.25)
 
@@ -296,7 +341,7 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
         """
         ax4 starts here
         """
-        # Update ax3 with clustered data
+        # Update ax4 with clustered data
         ax4.cla()  # Clear ax4
         draw_grid(ax4, x_limits, y_limits, grid_spacing)
         if len(coordinates) > 0:
@@ -308,6 +353,83 @@ def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1, eps
         #ax3.set_title(f"Clusters for Frame {current_frame}")
         draw_sensor_area(ax4) # Redraw wedge
         #ax3.legend()
+
+        """
+        ax5 starts here
+        """
+        ax5_lane_boundaries = [(-5, -2), (-2, 0), (0, 2), (2, 5)]  # Example lane boundaries
+        draw_lanes(ax5, ax5_lane_boundaries, y_limits)
+
+        # Clear ax6 and draw lanes
+        ax5.cla()
+        draw_lanes(ax5, ax5_lane_boundaries, y_limits)
+        draw_sensor_area(ax5, sensor_origin=(0, -1), azimuth=60, max_distance=12) # Redraw wedge
+
+        # Get current frame data
+        coordinates, doppler = frames_data[current_frame]
+
+        # Filter points within the inner lanes (-2, 2)
+        filtered_coordinates = [
+            coord for coord in coordinates if -2 <= coord[0] <= 2
+        ]
+        filtered_doppler = [
+            d for coord, d in zip(coordinates, doppler) if -2 <= coord[0] <= 2
+        ]
+
+        # Extract coordinates and apply DBSCAN
+        coordinates_np = np.array([[x, y] for x, y, _ in coordinates])  # Ignore Z values if present
+        cluster_labels = cluster_static_objects(coordinates_np, eps=0.6, min_samples=2)
+
+        # Prepare filtered data lists
+        filtered_x = []
+        filtered_y = []
+
+        # Process each cluster separately
+        for cluster in set(cluster_labels):
+            if cluster == -1:
+                continue  # Skip noise points
+
+            # Get points belonging to this cluster
+            cluster_points = coordinates_np[cluster_labels == cluster]
+
+            # Apply Kalman filter to this cluster
+            kf = setup_kalman_filter()
+            for x, y in cluster_points:
+                z = np.array([x, y])  # Current measurement
+                kf.predict()
+                kf.update(z)
+                filtered_x.append(kf.x[0])  # Filtered x-coordinate
+                filtered_y.append(kf.x[1])  # Filtered y-coordinate
+
+            # Plot filtered cluster points
+            ax5.plot(filtered_x, filtered_y, 'o', label=f"Cluster {cluster}")
+
+        # Annotate each filtered point with its Doppler value
+        for x, y, d in zip(filtered_x, filtered_y, doppler):
+            ax5.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
+
+        # Plot filtered data
+        ax5.plot(filtered_x, filtered_y, 'go', label="Filtered Data")
+        ax5.set_title("Filtered Data with Kalman Filter")
+
+        """
+        ax6 starts here
+        """      
+        ax6_lane_boundaries = [(-5, -3), (-3, 0), (0, 3), (3, 5)]  # Example lane boundaries
+        # Draw lane representations on ax5 and ax6
+        draw_lanes(ax6, ax6_lane_boundaries, y_limits)
+
+        # Update ax6 with only the current frame's data
+        draw_sensor_area(ax6, sensor_origin=(0, -1), azimuth=30, max_distance=12) # Redraw wedge
+        
+        coordinates, doppler = frames_data[current_frame]
+        x2 = [coord[0] for coord in coordinates]
+        y2 = [coord[1] for coord in coordinates]
+        ax6.plot(x2, y2, 'ro')  # Plot current frame data
+
+        # Annotate each point with its Doppler value
+        for x, y, d in zip(x2, y2, doppler):
+            ax6.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
 
         fig.canvas.draw_idle()
 
