@@ -40,6 +40,50 @@ def load_data(file_name, y_threshold=None):
     
     return frames_data
 
+def filter_vehicle_zone(frames_data, forward_distance=0.3, diagonal_distance=0.42, buffer=0.3, azimuth=60, elevation=30):
+    """
+    Filter out points detected within the vehicle zone in each frame.
+
+    Parameters:
+        frames_data (dict): The radar data grouped by frame, as returned by `load_data`.
+                            Each key is a frame number, and the value is a tuple (coordinates, doppler).
+        forward_distance (float): Distance from the sensor to the front of the vehicle (meters).
+        diagonal_distance (float): Diagonal distance from the sensor to the vehicle's edge (meters).
+        buffer (float): Additional buffer distance around the vehicle (meters).
+        azimuth (float): Sensor azimuth coverage in degrees.
+        elevation (float): Sensor elevation coverage in degrees.
+
+    Modifies:
+        frames_data (dict): Filters points within each frame to remove only points inside the vehicle zone.
+    """
+    azimuth_rad = np.radians(azimuth / 2)  # Half azimuth in radians
+    elevation_rad = np.radians(elevation / 2)  # Half elevation in radians
+
+    max_distance = diagonal_distance + buffer  # Max radius from sensor
+    min_distance = forward_distance - buffer  # Min radius (considering buffer)
+
+    for frame, (coordinates, doppler) in frames_data.items():
+        filtered_coordinates = []
+        filtered_doppler = []
+
+        for coord, doppler_value in zip(coordinates, doppler):
+            x, y, z = coord
+
+            # Calculate spherical coordinates
+            radius = np.sqrt(x**2 + y**2 + z**2)
+            azimuth_angle = np.arctan2(y, x)  # Azimuth in radians
+            elevation_angle = np.arctan2(z, np.sqrt(x**2 + y**2))  # Elevation in radians
+
+            # Check if the point is outside the vehicle zone
+            if radius > max_distance or radius < min_distance:
+                filtered_coordinates.append(coord)
+                filtered_doppler.append(doppler_value)
+            elif abs(azimuth_angle) > azimuth_rad or abs(elevation_angle) > elevation_rad:
+                filtered_coordinates.append(coord)
+                filtered_doppler.append(doppler_value)
+
+        # Update the frame data with the filtered points
+        frames_data[frame] = (filtered_coordinates, filtered_doppler)
 
 # Plotting function
 def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
@@ -131,8 +175,18 @@ file_name = "coordinates.csv"  # Replace with your file path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, file_name)
 
-y_threshold = 0  # Disregard points with Y < 5
+y_threshold = 0.0  # Disregard points with Y < num
 
 frames_data = load_data(file_path, y_threshold)
+
+# Filter out points inside the vehicle zone
+filter_vehicle_zone(
+    frames_data,
+    forward_distance=0.3,
+    diagonal_distance=0.42,
+    buffer=0.3,
+    azimuth=60,
+    elevation=30
+)
 
 create_interactive_plot(frames_data, x_limits=(-5, 10), y_limits=(-5, 15))
