@@ -1,154 +1,120 @@
-import pandas as pd
 import os
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
-from matplotlib.animation import FuncAnimation
+import pandas as pd
 import numpy as np
-from sklearn.cluster import DBSCAN
-from filterpy.kalman import KalmanFilter
-import time
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider, RadioButtons
 
-
-# Common Utility Function
+# Utility function to load data
 def load_data(file_name):
     """
-    Load CSV data from the specified file.
+    Load CSV data from the specified file and organize it by frame.
+    
+    Returns:
+        dict: A dictionary where each key is a frame number, and the value is a tuple:
+              (coordinates, doppler), where:
+              - coordinates: List of tuples (x, y, z) for each point in the frame.
+              - doppler: List of Doppler values for each point in the frame.
     """
     if not os.path.exists(file_name):
         raise FileNotFoundError(f"Error: File not found at {file_name}")
-    return pd.read_csv(file_name)
+    
+    # Load the CSV data
+    df = pd.read_csv(file_name)
+    
+    # Group data by frame and organize the output
+    frames_data = {}
+    for frame, group in df.groupby("Frame"):
+        coordinates = list(zip(group["X [m]"], group["Y [m]"], group["Z [m]"]))
+        doppler = group["Doppler [m/s]"].tolist()
+        frames_data[frame] = (coordinates, doppler)
+    
+    return frames_data
 
-def initialize_plot(plot_x_limits, plot_y_limits):
+
+# Plotting function
+def create_interactive_plot(frames_data, x_limits, y_limits, grid_spacing=1):
     """
-    Initialize a plot with specified axis limits and return the figure and axis.
+    Create an interactive plot with two subplots, a slider, and radio buttons,
+    including a grid with customizable spacing.
+    
+    Parameters:
+        frames_data (dict): The frame data dictionary from `load_data`.
+        x_limits (tuple): The x-axis limits as (xmin, xmax).
+        y_limits (tuple): The y-axis limits as (ymin, ymax).
+        grid_spacing (int): Spacing between grid lines (default is 1).
     """
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.set_xlim(plot_x_limits)
-    ax.set_ylim(plot_y_limits)
-    ax.set_aspect('equal')
-    ax.set_xlabel("X Position (m)")
-    ax.set_ylabel("Y Position (m)")
-    return fig, ax
+    # Create the figure and subplots
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6))
+    ax1, ax2 = axes
+    plt.subplots_adjust(left=0.25, bottom=0.25)
 
-# 1. Plot Data by Timestamp
-def plot_data_by_timestamp(data, dt=0.5, clear_plot=True):
-    """
-    Animate data based on timestamp intervals with a delay.
+    # Create lines for ax1
+    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
+    ax1.set_xlim(*x_limits)
+    ax1.set_ylim(*y_limits)
+    ax1.legend()
 
-    Args:
-    - data (pd.DataFrame): The radar data to animate.
-    - dt (float): Time delay (in seconds) between frames.
-    - clear_plot (bool): If True, clears the plot between frames. If False, overlays data on the existing plot.
-    """
-    # Sort data by timestamp
-    data = data.sort_values(by="Timestamp")
+    # ax2 settings
+    ax2.set_xlim(*x_limits)
+    ax2.set_ylim(*y_limits)
+    ax2.legend(["Current Frame - Ax2"], loc="upper left")
 
-    # Extract unique timestamps
-    unique_timestamps = data["Timestamp"].unique()
+    # Function to draw the grid with specified spacing
+    def draw_grid(ax, x_limits, y_limits, grid_spacing):
+        x_ticks = range(int(np.floor(x_limits[0])), int(np.ceil(x_limits[1])) + 1, grid_spacing)
+        y_ticks = range(int(np.floor(y_limits[0])), int(np.ceil(y_limits[1])) + 1, grid_spacing)
+        for x in x_ticks:
+            ax.plot([x, x], y_limits, linestyle='--', color='gray', linewidth=0.5)
+        for y in y_ticks:
+            ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
-    # Initialize the plot
-    fig, ax = initialize_plot(
-        plot_x_limits=(data["X [m]"].min() - 1, data["X [m]"].max() + 1),
-        plot_y_limits=(data["Y [m]"].min() - 1, data["Y [m]"].max() + 1)
-    )
-    scatter = ax.scatter([], [], c='blue', label="Data Points")
-    ax.set_title("Radar Data Animation by Timestamp")
-    ax.legend()
+    # Draw grids on both axes
+    draw_grid(ax1, x_limits, y_limits, grid_spacing)
+    draw_grid(ax2, x_limits, y_limits, grid_spacing)
 
-    # Animate by updating the scatter plot for each timestamp
-    for current_time in unique_timestamps:
-        if clear_plot:
-            # Clear existing points and re-plot
-            scatter.set_offsets(data.iloc[0:0])  # Effectively clears the scatter plot
+    # Add slider
+    ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
+    slider = Slider(ax_slider, "Frame", 1, len(frames_data), valinit=1, valstep=1)
 
-        # Filter data for the current timestamp
-        current_data = data[data["Timestamp"] == current_time]
+    # Update function
+    def update(val):
+        current_frame = int(slider.val)  # Get the current frame from the slider
 
-        # Update scatter plot
-        scatter.set_offsets(current_data[["X [m]", "Y [m]"]])
-        ax.set_title(f"Radar Data (Time: {current_time:.2f} s)")
+        # Get the data for all frames up to the current frame
+        x1, y1 = [], []
+        for frame in range(1, current_frame + 1):
+            coordinates, _ = frames_data[frame]
+            x1.extend([coord[0] for coord in coordinates])
+            y1.extend([coord[1] for coord in coordinates])
 
-        # Pause for dt seconds to create an animation effect
-        plt.pause(dt)
+        # Update ax1 with cumulative data
+        line1.set_data(x1, y1)
 
-    # Keep the final frame displayed
+        # Update ax2 with only the current frame's data
+        ax2.cla()  # Clear ax2
+        ax2.set_xlim(*x_limits)  # Reset x-axis limits
+        ax2.set_ylim(*y_limits)  # Reset y-axis limits
+        draw_grid(ax2, x_limits, y_limits, grid_spacing)  # Redraw grid
+        
+        coordinates, _ = frames_data[current_frame]
+        x2 = [coord[0] for coord in coordinates]
+        y2 = [coord[1] for coord in coordinates]
+        ax2.plot(x2, y2, 'ro')  # Plot current frame data
+        ax2.set_title(f"Frame {current_frame}")
+        ax2.legend(["Current Frame"], loc="upper left")
+
+        fig.canvas.draw_idle()
+
+    # Connect the slider to the update function
+    slider.on_changed(update)
+
     plt.show()
-
-
-
-# 2. Plot Data with Slider
-def plot_data_with_slider(data, clear_plot=True):
-    """
-    Use a slider to navigate through frames and plot the data.
-
-    Args:
-    - data (pd.DataFrame): The radar data to animate.
-    - clear_plot (bool): If True, clears the plot between frames. If False, overlays data on the existing plot.
-    """
-    unique_frames = sorted(data["Frame"].unique())
-    fig, ax = initialize_plot(data["X [m]"].min() - 1, data["X [m]"].max() + 1)
-    scatter = ax.scatter([], [], label="Data Points")
-    ax.set_title("Radar Data by Frame")
-
-    def update(frame_idx):
-        if clear_plot:
-            scatter.set_offsets(data.iloc[0:0])  # Clear existing scatter data
-
-        frame_data = data[data["Frame"] == unique_frames[frame_idx]]
-        scatter.set_offsets(frame_data[["X [m]", "Y [m]"]])
-        ax.set_title(f"Frame: {unique_frames[frame_idx]}")
-
-    slider_ax = plt.axes([0.2, 0.1, 0.6, 0.03])
-    slider = Slider(slider_ax, "Frame", 0, len(unique_frames) - 1, valinit=0, valstep=1)
-    slider.on_changed(lambda val: update(int(val)))
-
-    update(0)
-    plt.show()
-
-
-# 3. Plot Data by FPS
-def plot_data_by_fps(data, fps=10, clear_plot=True):
-    """
-    Plot data using frames per second (FPS).
-
-    Args:
-    - data (pd.DataFrame): The radar data to animate.
-    - fps (int): Frames per second for animation.
-    - clear_plot (bool): If True, clears the plot between frames. If False, overlays data on the existing plot.
-    """
-    unique_frames = sorted(data["Frame"].unique())
-    fig, ax = initialize_plot(data["X [m]"].min() - 1, data["X [m]"].max() + 1)
-    scatter = ax.scatter([], [], label="Data Points")
-    ax.set_title("Radar Data Animation")
-
-    def update(frame_idx):
-        if clear_plot:
-            scatter.set_offsets(data.iloc[0:0])  # Clear existing scatter data
-
-        frame_data = data[data["Frame"] == unique_frames[frame_idx]]
-        scatter.set_offsets(frame_data[["X [m]", "Y [m]"]])
-        ax.set_title(f"Frame: {unique_frames[frame_idx]}")
-
-    ani = FuncAnimation(fig, update, frames=len(unique_frames), interval=1000 / fps, repeat=True)
-    plt.show()
-
 
 # Example Usage
 # Get the absolute path to the CSV file
 file_name = "coordinates.csv"  # Replace with your file path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir, file_name)
-data = load_data(file_path)
+frames_data = load_data(file_path)
 
-# 1. Plot by timestamp
-#plot_data_by_timestamp(data, dt=0.5, clear_plot=True) # Clears the plot
-#plot_data_by_timestamp(data, dt=0.5, clear_plot=False) # Overlays data
-
-# 2. Plot with slider
-plot_data_with_slider(data, clear_plot=True)  # Clears the plot
-#plot_data_with_slider(data, clear_plot=False)  # Overlays data
-
-# 3. Plot by FPS
-#plot_data_by_fps(data, fps=10, clear_plot=True)  # Clears the plot
-#plot_data_by_fps(data, fps=10, clear_plot=False)  # Overlays data
-
+create_interactive_plot(frames_data, x_limits=(-5, 10), y_limits=(-5, 15))
