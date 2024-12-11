@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 
-def create_interactive_plot(x_data, y_data, x_limits, y_limits):
+def create_interactive_plot(x_data, y_data, x_limits, y_limits, grid_spacing=1):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons.
     
@@ -27,6 +27,19 @@ def create_interactive_plot(x_data, y_data, x_limits, y_limits):
     ax2.set_xlim(*x_limits)
     ax2.set_ylim(*y_limits)
     ax2.legend(["Current Value - Ax2"], loc="upper left")
+
+    # Function to draw the grid with specified spacing
+    def draw_grid(ax, x_limits, y_limits, grid_spacing):
+        x_ticks = range(int(np.floor(x_limits[0])), int(np.ceil(x_limits[1])) + 1, grid_spacing)
+        y_ticks = range(int(np.floor(y_limits[0])), int(np.ceil(y_limits[1])) + 1, grid_spacing)
+        for x in x_ticks:
+            ax.plot([x, x], y_limits, linestyle='--', color='gray', linewidth=0.5)
+        for y in y_ticks:
+            ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
+
+    # Draw grids on both axes
+    draw_grid(ax1, x_limits, y_limits, grid_spacing)
+    draw_grid(ax2, x_limits, y_limits, grid_spacing)
 
     # Add sliders and radio buttons
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
