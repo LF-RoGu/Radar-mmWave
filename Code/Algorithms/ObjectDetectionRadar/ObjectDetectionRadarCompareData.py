@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 from matplotlib.patches import Wedge
 from matplotlib.gridspec import GridSpec
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 # Utility function to load data
 def load_data(file_name, y_threshold=None, z_threshold=None, doppler_threshold=None):
@@ -142,7 +143,7 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     return occupancy_grid
 
 # Plotting function
-def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5):
+def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons,
     including a grid with customizable spacing. Annotates points in ax2 with Doppler values.
@@ -153,11 +154,72 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
         y_limits (tuple): The y-axis limits as (ymin, ymax).
         grid_spacing (int): Spacing between grid lines (default is 1).
     """
+
+    # Helper function to draw the grid with specified spacing
+    def draw_grid(ax, x_limits, y_limits, grid_spacing):
+        x_ticks = range(int(np.floor(x_limits[0])), int(np.ceil(x_limits[1])) + 1, grid_spacing)
+        y_ticks = range(int(np.floor(y_limits[0])), int(np.ceil(y_limits[1])) + 1, grid_spacing)
+        for x in x_ticks:
+            ax.plot([x, x], y_limits, linestyle='--', color='gray', linewidth=0.5)
+        for y in y_ticks:
+            ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
+    # Helper function to calculate cumulative occupancy over history
+    def calculate_cumulative_occupancy(frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames):
+        """
+        Calculate a cumulative occupancy grid over the last `history_frames` frames.
+
+        Parameters:
+            frames_data (dict): Frame data dictionary.
+            frame_idx (int): Current frame index.
+            x_limits (tuple): X-axis limits.
+            y_limits (tuple): Y-axis limits.
+            grid_spacing (int): Spacing between grid cells.
+            history_frames (int): Number of frames to include in the history.
+
+        Returns:
+            np.ndarray: Cumulative occupancy grid.
+        """
+        cumulative_grid = np.zeros((int((x_limits[1] - x_limits[0]) / grid_spacing),
+                                    int((y_limits[1] - y_limits[0]) / grid_spacing)))
+
+        for i in range(max(1, frame_idx - history_frames + 1), frame_idx + 1):
+            coordinates, _ = frames_data.get(i, ([], []))
+            occupancy_grid = calculate_occupancy_grid(coordinates, x_limits, y_limits, grid_spacing)
+            cumulative_grid += occupancy_grid
+
+        # Normalize cumulative grid to [0, 1] (optional for visualization purposes)
+        cumulative_grid = np.clip(cumulative_grid, 0, 10)  # Limit max values to 10
+        return cumulative_grid
+    # Helper function 
+    def create_custom_colormap():
+        """
+        Create a custom colormap for the occupancy grid.
+        Returns:
+            cmap: Custom colormap with a specific background color.
+            norm: Normalizer to map data values to colormap levels.
+        """
+        # Define colors: First is the background color, followed by density colors
+        colors = [
+            "white",      # Background color (e.g., for 0)
+            "#d1e5f0",    # Light blue (low density)
+            "#92c5de",    # Blue
+            "#4393c3",    # Medium density
+            "#2166ac",    # Dark blue (high density)
+            "#053061"     # Very high density
+        ]
+        cmap = ListedColormap(colors)
+
+        # Define boundaries for each color bin
+        boundaries = [0, 1, 2, 3, 4, 5, np.inf]  # Bins for densities
+        norm = BoundaryNorm(boundaries, cmap.N, clip=True)
+
+        return cmap, norm
+
     # Create the figure and subplots
     # Create the figure
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(14, 14))
     # Define a 2x2 grid layout
-    gs = GridSpec(3, 2, figure=fig)
+    gs = GridSpec(4, 2, figure=fig)
 
     # Subplots
     ax1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
@@ -166,11 +228,17 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
     ax4 = fig.add_subplot(gs[1, 1])  # Middle-right: per-frame data for dataset 2
     ax5 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
     ax6 = fig.add_subplot(gs[2, 1])  # Bottom-right: occupancy grid for dataset 2
-    
+    ax7 = fig.add_subplot(gs[3, 0])  # History-based occupancy grid for dataset 1
+    ax8 = fig.add_subplot(gs[3, 1])  # History-based occupancy grid for dataset 2
 
     # Adjust subplot spacing
     plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.4)
 
+    # Get the custom colormap and normalizer
+    cmap, norm = create_custom_colormap()
+
+    print("Custom Colormap Colors:", cmap.colors)
+    print("Custom Norm Boundaries:", norm.boundaries)
 
     # Create lines for ax1
     (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
@@ -206,17 +274,8 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
     ax6.set_ylim(*y_limits)
     ax6.legend(["Cumulative dots"], loc="upper left")
 
-    # Function to draw the grid with specified spacing
-    def draw_grid(ax, x_limits, y_limits, grid_spacing):
-        x_ticks = range(int(np.floor(x_limits[0])), int(np.ceil(x_limits[1])) + 1, grid_spacing)
-        y_ticks = range(int(np.floor(y_limits[0])), int(np.ceil(y_limits[1])) + 1, grid_spacing)
-        for x in x_ticks:
-            ax.plot([x, x], y_limits, linestyle='--', color='gray', linewidth=0.5)
-        for y in y_ticks:
-            ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
-
     # Draw grids and wedges on all axes
-    for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
+    for ax in [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8]:
         draw_grid(ax, x_limits, y_limits, grid_spacing)
 
     # Add slider
@@ -329,6 +388,27 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
         draw_grid(ax6, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax6)
 
+        """
+        Update ax7 and ax8: Occupancy Grids
+        """
+        cumulative_grid1 = calculate_cumulative_occupancy(frames_data1, slider_value, x_limits, y_limits, grid_spacing, history_frames)
+        cumulative_grid2 = calculate_cumulative_occupancy(frames_data2, slider_value, x_limits, y_limits, grid_spacing, history_frames)
+
+        ax7.cla()
+        ax7.imshow(cumulative_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax7.set_title(f"History Grid - Dataset 1 (Last {history_frames} Frames)")
+        ax7.set_xlabel("X [m]")
+        ax7.set_ylabel("Y [m]")
+        draw_grid(ax7, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax7)
+
+        ax8.cla()
+        ax8.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax8.set_title(f"History Grid - Dataset 2 (Last {history_frames} Frames)")
+        ax8.set_xlabel("X [m]")
+        ax8.set_ylabel("Y [m]")
+        draw_grid(ax8, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax8)
 
         fig.canvas.draw_idle()
 
@@ -338,6 +418,7 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
     slider1.on_changed(update)
 
     plt.show()
+
 
 # Example Usage
 # Get the absolute path to the CSV file
@@ -361,4 +442,4 @@ frames_data2 = load_data(file_path2, y_threshold, z_threshold, doppler_threshold
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plots(frames_data1, frames_data2, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5)
+create_interactive_plots(frames_data1, frames_data2, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5, history_frames = 5)
