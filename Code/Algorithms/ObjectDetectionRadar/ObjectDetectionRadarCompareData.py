@@ -112,6 +112,35 @@ def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
     # Optionally, add the sensor's location as a point
     ax.scatter(*sensor_origin, color="green", label="Sensor Location")
 
+def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
+    """
+    Calculate an occupancy grid for the given points.
+
+    Parameters:
+        points (list of tuples): List of (x, y, z) coordinates.
+        x_limits (tuple): The x-axis limits as (xmin, xmax).
+        y_limits (tuple): The y-axis limits as (ymin, ymax).
+        grid_spacing (int): Spacing between grid cells.
+
+    Returns:
+        np.ndarray: 2D occupancy grid.
+    """
+    # Calculate grid size
+    x_bins = int((x_limits[1] - x_limits[0]) / grid_spacing)
+    y_bins = int((y_limits[1] - y_limits[0]) / grid_spacing)
+
+    # Initialize the grid
+    occupancy_grid = np.zeros((x_bins, y_bins))
+
+    # Populate the grid
+    for x, y, _ in points:
+        if x_limits[0] <= x < x_limits[1] and y_limits[0] <= y < y_limits[1]:
+            x_idx = int((x - x_limits[0]) / grid_spacing)
+            y_idx = int((y - y_limits[0]) / grid_spacing)
+            occupancy_grid[x_idx, y_idx] += 1
+
+    return occupancy_grid
+
 # Plotting function
 def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5):
     """
@@ -128,15 +157,20 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
     # Create the figure
     fig = plt.figure(figsize=(12, 8))
     # Define a 2x2 grid layout
-    gs = GridSpec(2, 2, figure=fig)
+    gs = GridSpec(3, 2, figure=fig)
 
     # Subplots
-    ax1 = fig.add_subplot(gs[0, 0])  # Top-left
-    ax2 = fig.add_subplot(gs[1, 0])  # Bottom-left
-    ax3 = fig.add_subplot(gs[0, 1])  # Top-right
-    ax4 = fig.add_subplot(gs[1, 1])  # Bottom-right
+    ax1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
+    ax2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
+    ax3 = fig.add_subplot(gs[0, 1])  # Top-right: cumulative data for dataset 2
+    ax4 = fig.add_subplot(gs[1, 1])  # Middle-right: per-frame data for dataset 2
+    ax5 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
+    ax6 = fig.add_subplot(gs[2, 1])  # Bottom-right: occupancy grid for dataset 2
+    
 
-    plt.subplots_adjust(left=0.25, bottom=0.25)
+    # Adjust subplot spacing
+    plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.4)
+
 
     # Create lines for ax1
     (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
@@ -160,6 +194,18 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
     ax4.set_ylim(*y_limits)
     ax4.legend(["Dots Per Frame"], loc="upper left")
 
+    # Create occupancy grid for ax5
+    (line5,) = ax5.plot([], [], 'o', label="Data - Ax5")
+    ax5.set_xlim(*x_limits)
+    ax5.set_ylim(*y_limits)
+    ax5.legend(["Cumulative dots"], loc="upper left")
+
+    # Create occupancy grid for ax5
+    (line6,) = ax6.plot([], [], 'o', label="Data - Ax6")
+    ax6.set_xlim(*x_limits)
+    ax6.set_ylim(*y_limits)
+    ax6.legend(["Cumulative dots"], loc="upper left")
+
     # Function to draw the grid with specified spacing
     def draw_grid(ax, x_limits, y_limits, grid_spacing):
         x_ticks = range(int(np.floor(x_limits[0])), int(np.ceil(x_limits[1])) + 1, grid_spacing)
@@ -170,7 +216,7 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
             ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
 
     # Draw grids and wedges on all axes
-    for ax in [ax1, ax2, ax3]:
+    for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
         draw_grid(ax, x_limits, y_limits, grid_spacing)
 
     # Add slider
@@ -257,6 +303,32 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
             ax4.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
         ax4.set_title(f"Frame {frame2}")
         ax4.legend(["Current Frame"], loc="upper left")
+
+        """
+        Update ax5 and ax6: Occupancy Grids
+        """
+        # Calculate occupancy grids
+        occupancy_grid1 = calculate_occupancy_grid(coordinates1, x_limits, y_limits, grid_spacing)
+        occupancy_grid2 = calculate_occupancy_grid(coordinates2, x_limits, y_limits, grid_spacing)
+
+        # Update ax5 for dataset 1
+        ax5.cla()
+        ax5.imshow(occupancy_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap='viridis', aspect='auto')
+        ax5.set_title(f"Occupancy Grid - Dataset 1 (Frame {slider_value})")
+        ax5.set_xlabel("X [m]")
+        ax5.set_ylabel("Y [m]")
+        draw_grid(ax5, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax5)
+
+        # Update ax6 for dataset 2
+        ax6.cla()
+        ax6.imshow(occupancy_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap='viridis', aspect='auto')
+        ax6.set_title(f"Occupancy Grid - Dataset 2 (Frame {slider_value})")
+        ax6.set_xlabel("X [m]")
+        ax6.set_ylabel("Y [m]")
+        draw_grid(ax6, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax6)
+
 
         fig.canvas.draw_idle()
 
