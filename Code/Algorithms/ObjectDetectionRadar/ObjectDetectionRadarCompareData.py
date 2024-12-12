@@ -68,11 +68,6 @@ def load_data(file_name, y_threshold=None, z_threshold=None, doppler_threshold=N
         if coordinates:  # Ensure frames with no points are skipped
             frames_data[frame] = (coordinates, doppler)
     
-    # Debug: Print resulting frames and point counts
-    print("\nFiltered Frames and Point Counts:")
-    for frame, data in frames_data.items():
-        print(f"Frame {frame}: {len(data[0])} points")
-    
     return frames_data
 
 
@@ -143,16 +138,19 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     return occupancy_grid
 
 # Plotting function
-def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
+def create_interactive_plots(frames_data1, frames_data2, frames_data3, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons,
     including a grid with customizable spacing. Annotates points in ax2 with Doppler values.
     
     Parameters:
-        frames_data (dict): The frame data dictionary from `load_data`.
+        frames_data1 (dict): Data for dataset 1.
+        frames_data2 (dict): Data for dataset 2.
+        frames_data3 (dict): Data for dataset 3.
         x_limits (tuple): The x-axis limits as (xmin, xmax).
         y_limits (tuple): The y-axis limits as (ymin, ymax).
         grid_spacing (int): Spacing between grid lines (default is 1).
+        history_frames (int): Number of frames for history-based visualization.
     """
 
     # Helper function to draw the grid with specified spacing
@@ -216,230 +214,342 @@ def create_interactive_plots(frames_data1, frames_data2, x_limits, y_limits, gri
         return cmap, norm
 
     # Create the figure and subplots
-    # Create the figure
-    fig = plt.figure(figsize=(14, 14))
-    # Define a 2x2 grid layout
-    gs = GridSpec(4, 2, figure=fig)
+    fig = plt.figure(figsize=(18, 14))
+    # Define a 4x3 grid layout
+    gs = GridSpec(4, 3, figure=fig)
 
     # Subplots
-    ax1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
-    ax2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
-    ax3 = fig.add_subplot(gs[0, 1])  # Top-right: cumulative data for dataset 2
-    ax4 = fig.add_subplot(gs[1, 1])  # Middle-right: per-frame data for dataset 2
-    ax5 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
-    ax6 = fig.add_subplot(gs[2, 1])  # Bottom-right: occupancy grid for dataset 2
-    ax7 = fig.add_subplot(gs[3, 0])  # History-based occupancy grid for dataset 1
-    ax8 = fig.add_subplot(gs[3, 1])  # History-based occupancy grid for dataset 2
+    # Dataset 1
+    ax1_1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
+    ax1_2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
+    ax1_3 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
+    ax1_4 = fig.add_subplot(gs[3, 0])  # History-based occupancy grid for dataset 1
+
+    # Dataset 2
+    ax2_1 = fig.add_subplot(gs[0, 1])  # Top-center: cumulative data for dataset 2
+    ax2_2 = fig.add_subplot(gs[1, 1])  # Middle-center: per-frame data for dataset 2
+    ax2_3 = fig.add_subplot(gs[2, 1])  # Bottom-center: occupancy grid for dataset 2
+    ax2_4 = fig.add_subplot(gs[3, 1])  # History-based occupancy grid for dataset 2
+
+    # Dataset 3
+    ax3_1 = fig.add_subplot(gs[0, 2])  # Top-right: cumulative data for dataset 3
+    ax3_2 = fig.add_subplot(gs[1, 2])  # Middle-right: per-frame data for dataset 3
+    ax3_3 = fig.add_subplot(gs[2, 2])  # Bottom-right: occupancy grid for dataset 3
+    ax3_4 = fig.add_subplot(gs[3, 2])  # History-based occupancy grid for dataset 3
 
     # Adjust subplot spacing
-    plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.4)
+    plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.6)
+
+    # Apply grid to all subplots
+    for ax in [ax1_1, ax1_2, ax1_3, ax1_4, ax2_1, ax2_2, ax2_3, ax2_4, ax3_1, ax3_2, ax3_3, ax3_4]:
+        draw_grid(ax, x_limits, y_limits, grid_spacing)
 
     # Get the custom colormap and normalizer
     cmap, norm = create_custom_colormap()
 
-    print("Custom Colormap Colors:", cmap.colors)
-    print("Custom Norm Boundaries:", norm.boundaries)
+    # Initialize cumulative plots
+    (line1_1,) = ax1_1.plot([], [], 'o', label="Dataset 1: Cumulative Data")
+    (line2_1,) = ax2_1.plot([], [], 'o', label="Dataset 2: Cumulative Data")
+    (line3_1,) = ax3_1.plot([], [], 'o', label="Dataset 3: Cumulative Data")
 
-    # Create lines for ax1
-    (line1,) = ax1.plot([], [], 'o', label="Data - Ax1")
-    ax1.set_xlim(*x_limits)
-    ax1.set_ylim(*y_limits)
-    ax1.legend(["Cumulative dots"], loc="upper left")
+    for ax, title in zip([ax1_1, ax2_1, ax3_1], ["Dataset 1", "Dataset 2", "Dataset 3"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.legend(loc="upper left")
+        ax.set_title(f"{title} - Cumulative Data")
 
-    # ax2 settings
-    ax2.set_xlim(*x_limits)
-    ax2.set_ylim(*y_limits)
-    ax2.legend(["Dots Per Frame"], loc="upper left")
+    # Initialize per-frame plots
+    for ax, title in zip([ax1_2, ax2_2, ax3_2], ["Dataset 1", "Dataset 2", "Dataset 3"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.legend(["Dots Per Frame"], loc="upper left")
+        ax.set_title(f"{title} - Per Frame Data")
 
-    # Create lines for ax3
-    (line2,) = ax3.plot([], [], 'o', label="Data - Ax3")
-    ax3.set_xlim(*x_limits)
-    ax3.set_ylim(*y_limits)
-    ax3.legend(["Cumulative dots"], loc="upper left")
+    # Initialize occupancy grids
+    for ax, title in zip([ax1_3, ax2_3, ax3_3], ["Dataset 1", "Dataset 2", "Dataset 3"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.set_title(f"{title} - Occupancy Grid")
 
-    # ax4 settings, Cluster plot
-    ax4.set_xlim(*x_limits)
-    ax4.set_ylim(*y_limits)
-    ax4.legend(["Dots Per Frame"], loc="upper left")
-
-    # Create occupancy grid for ax5
-    (line5,) = ax5.plot([], [], 'o', label="Data - Ax5")
-    ax5.set_xlim(*x_limits)
-    ax5.set_ylim(*y_limits)
-    ax5.legend(["Cumulative dots"], loc="upper left")
-
-    # Create occupancy grid for ax5
-    (line6,) = ax6.plot([], [], 'o', label="Data - Ax6")
-    ax6.set_xlim(*x_limits)
-    ax6.set_ylim(*y_limits)
-    ax6.legend(["Cumulative dots"], loc="upper left")
-
-    # Draw grids and wedges on all axes
-    for ax in [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8]:
-        draw_grid(ax, x_limits, y_limits, grid_spacing)
-
-    # Add slider
-    ax_slider1 = plt.axes([0.25, 0.1, 0.65, 0.03])  # [left, bottom, width, height]
+    # Initialize history-based grids
+    for ax, title in zip([ax1_4, ax2_4, ax3_4], ["Dataset 1", "Dataset 2", "Dataset 3"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.set_title(f"{title} - History-Based Grid")
 
     # Update function
     def update(val):
         # Get the current slider value
-        slider_value = int(slider1.val)
-        
-        # Calculate the corresponding frame for each dataset
-        max_len = max(len(frames_data1), len(frames_data2))
-        frame1 = min(slider_value, len(frames_data1))  # Ensure it doesn't exceed frames_data1
-        frame2 = min(slider_value, len(frames_data2))  # Ensure it doesn't exceed frames_data2
+        frame1 = int(slider1.val)
+        frame2 = int(slider2.val)
+        frame3 = int(slider3.val)
 
         """
-        Update Ax1 and Ax3 with cumulative data up to the current frame
+        Dataset 1
         """
-        # Ax1: Update cumulative data for dataset 1
+        coordinates1, doppler1 = frames_data1.get(frame1, ([], []))  # Current frame's data
+        if not coordinates1:
+            print(f"Frame {frame1} for Dataset 1 has no points after filtering.")
+            return
+        
+        # Ax1_1: Update cumulative data for dataset 1
         x1, y1 = [], []
-        for frame in range(1, frame1 + 1):
-            coordinates1, doppler1 = frames_data1.get(frame1, ([], []))
-            coordinates2, doppler2 = frames_data2.get(frame2, ([], []))
-            if not coordinates1 and not coordinates2:
-                print(f"Frame {frame1} has no points after filtering.")
-                return
+        for frame in range(1, frame1 + 1):  # Accumulate data up to the current frame
             x1.extend([coord[0] for coord in coordinates1])
             y1.extend([coord[1] for coord in coordinates1])
-        line1.set_data(x1, y1)
 
-        # Ax3: Update cumulative data for dataset 2
+        line1_1.set_data(x1, y1)
+        ax1_1.set_xlabel("X [m]")
+        ax1_1.set_ylabel("Y [m]")
+
+        # Ax1_2: Update current frame data for dataset 1
+        ax1_2.cla()
+        ax1_2.set_xlim(*x_limits)
+        ax1_2.set_ylim(*y_limits)
+        draw_grid(ax1_2, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax1_2)  # Assuming this function visualizes the sensor's area
+
+        x1 = [coord[0] for coord in coordinates1]
+        y1 = [coord[1] for coord in coordinates1]
+        ax1_2.plot(x1, y1, 'ro')
+
+        # Annotate Doppler values on the plot
+        for x, y, d in zip(x1, y1, doppler1):
+            ax1_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
+
+        ax1_2.set_title(f"Frame {frame1} - Dataset 1")
+        ax1_2.legend(["Current Frame"], loc="upper left")
+        ax1_2.set_xlabel("X [m]")
+        ax1_2.set_ylabel("Y [m]")
+
+        # Update ax1_3: Occupancy Grid for Dataset 1
+        occupancy_grid1 = calculate_occupancy_grid(coordinates1, x_limits, y_limits, grid_spacing)
+        ax1_3.cla()
+        ax1_3.imshow(occupancy_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax1_3.set_title(f"Occupancy Grid - Dataset 1 (Frame {frame1})")
+        ax1_3.set_xlabel("X [m]")
+        ax1_3.set_ylabel("Y [m]")
+        draw_grid(ax1_3, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax1_3)
+
+        # Update ax1_4: History-Based Occupancy Grid for Dataset 1
+        cumulative_grid1 = calculate_cumulative_occupancy(
+            frames_data1, frame1, x_limits, y_limits, grid_spacing, history_frames
+        )
+        ax1_4.cla()
+        ax1_4.imshow(cumulative_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax1_4.set_title(f"History Grid - Dataset 1 (Last {history_frames} Frames)")
+        ax1_4.set_xlabel("X [m]")
+        ax1_4.set_ylabel("Y [m]")
+        draw_grid(ax1_4, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax1_4)
+
+
+        """
+        Dataset 2
+        """
+        coordinates2, doppler2 = frames_data2.get(frame2, ([], []))  # Current frame's data
+        if not coordinates2:
+            print(f"Frame {frame2} for Dataset 2 has no points after filtering.")
+            return
+        # Ax2_1: Update cumulative data for dataset 2
         x2, y2 = [], []
-        for frame in range(1, frame2 + 1):
-            coordinates1, doppler1 = frames_data1.get(frame1, ([], []))
-            coordinates2, doppler2 = frames_data2.get(frame2, ([], []))
-            if not coordinates1 and not coordinates2:
-                print(f"Frame {frame1} has no points after filtering.")
-                return
+        for frame in range(1, frame2 + 1):  # Accumulate data up to the current frame
             x2.extend([coord[0] for coord in coordinates2])
             y2.extend([coord[1] for coord in coordinates2])
-        line2.set_data(x2, y2)
 
-        """
-        Update Ax2 and Ax4 with only the current frame's data
-        """
-        # Ax2: Update current frame data for dataset 1
-        ax2.cla()
-        ax2.set_xlim(*x_limits)
-        ax2.set_ylim(*y_limits)
-        draw_grid(ax2, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax2)
+        line2_1.set_data(x2, y2)
+        ax2_1.set_xlabel("X [m]")
+        ax2_1.set_ylabel("Y [m]")
 
-        coordinates1, doppler1 = frames_data1.get(frame1, ([], []))
-        coordinates2, doppler2 = frames_data2.get(frame2, ([], []))
-        if not coordinates1 and not coordinates2:
-            print(f"Frame {frame1} has no points after filtering.")
-            return
-        x2 = [coord[0] for coord in coordinates1]
-        y2 = [coord[1] for coord in coordinates1]
-        ax2.plot(x2, y2, 'ro')
+        # Ax2_2: Update current frame data for dataset 2
+        ax2_2.cla()
+        ax2_2.set_xlim(*x_limits)
+        ax2_2.set_ylim(*y_limits)
+        ax2_2.set_xlabel("X [m]")
+        ax2_2.set_ylabel("Y [m]")
+        draw_grid(ax2_2, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_2)  # Assuming this function visualizes the sensor's area
 
-        for x, y, d in zip(x2, y2, doppler1):
-            ax2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
-        ax2.set_title(f"Frame {frame1}")
-        ax2.legend(["Current Frame"], loc="upper left")
+        x2 = [coord[0] for coord in coordinates2]
+        y2 = [coord[1] for coord in coordinates2]
+        ax2_2.plot(x2, y2, 'ro')
 
-        # Ax4: Update current frame data for dataset 2
-        ax4.cla()
-        ax4.set_xlim(*x_limits)
-        ax4.set_ylim(*y_limits)
-        draw_grid(ax4, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax4)
+        # Annotate Doppler values on the plot
+        for x, y, d in zip(x2, y2, doppler2):
+            ax2_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
 
-        coordinates1, doppler1 = frames_data1.get(frame1, ([], []))
-        coordinates2, doppler2 = frames_data2.get(frame2, ([], []))
-        if not coordinates1 and not coordinates2:
-            print(f"Frame {frame1} has no points after filtering.")
-            return
-        x4 = [coord[0] for coord in coordinates2]
-        y4 = [coord[1] for coord in coordinates2]
-        ax4.plot(x4, y4, 'ro')
+        ax2_2.set_title(f"Frame {frame2} - Dataset 2")
+        ax2_2.legend(["Current Frame"], loc="upper left")
 
-        for x, y, d in zip(x4, y4, doppler2):
-            ax4.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
-        ax4.set_title(f"Frame {frame2}")
-        ax4.legend(["Current Frame"], loc="upper left")
-
-        """
-        Update ax5 and ax6: Occupancy Grids
-        """
-        # Calculate occupancy grids
-        occupancy_grid1 = calculate_occupancy_grid(coordinates1, x_limits, y_limits, grid_spacing)
+        # Update ax2_3: Occupancy Grid for Dataset 2
         occupancy_grid2 = calculate_occupancy_grid(coordinates2, x_limits, y_limits, grid_spacing)
+        ax2_3.cla()
+        ax2_3.imshow(occupancy_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax2_3.set_title(f"Occupancy Grid - Dataset 2 (Frame {frame2})")
+        ax2_3.set_xlabel("X [m]")
+        ax2_3.set_ylabel("Y [m]")
+        draw_grid(ax2_3, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_3)
 
-        # Update ax5 for dataset 1
-        ax5.cla()
-        ax5.imshow(occupancy_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap='viridis', aspect='auto')
-        ax5.set_title(f"Occupancy Grid - Dataset 1 (Frame {slider_value})")
-        ax5.set_xlabel("X [m]")
-        ax5.set_ylabel("Y [m]")
-        draw_grid(ax5, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax5)
+        # Update ax2_4: History-Based Occupancy Grid for Dataset 2
+        cumulative_grid2 = calculate_cumulative_occupancy(
+            frames_data2, frame2, x_limits, y_limits, grid_spacing, history_frames
+        )
+        ax2_4.cla()
+        ax2_4.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax2_4.set_title(f"History Grid - Dataset 2 (Last {history_frames} Frames)")
+        ax2_4.set_xlabel("X [m]")
+        ax2_4.set_ylabel("Y [m]")
+        draw_grid(ax2_4, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_4)
 
-        # Update ax6 for dataset 2
-        ax6.cla()
-        ax6.imshow(occupancy_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap='viridis', aspect='auto')
-        ax6.set_title(f"Occupancy Grid - Dataset 2 (Frame {slider_value})")
-        ax6.set_xlabel("X [m]")
-        ax6.set_ylabel("Y [m]")
-        draw_grid(ax6, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax6)
 
         """
-        Update ax7 and ax8: Occupancy Grids
+        Dataset 3
         """
-        cumulative_grid1 = calculate_cumulative_occupancy(frames_data1, slider_value, x_limits, y_limits, grid_spacing, history_frames)
-        cumulative_grid2 = calculate_cumulative_occupancy(frames_data2, slider_value, x_limits, y_limits, grid_spacing, history_frames)
+        coordinates3, doppler3 = frames_data3.get(frame3, ([], []))  # Current frame's data
+        if not coordinates3:
+            print(f"Frame {frame3} for Dataset 3 has no points after filtering.")
+            return
+        
+        # Ax3_1: Update cumulative data for dataset 3
+        x3, y3 = [], []
+        for frame in range(1, frame3 + 1):  # Accumulate data up to the current frame
+            x3.extend([coord[0] for coord in coordinates3])
+            y3.extend([coord[1] for coord in coordinates3])
 
-        ax7.cla()
-        ax7.imshow(cumulative_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
-        ax7.set_title(f"History Grid - Dataset 1 (Last {history_frames} Frames)")
-        ax7.set_xlabel("X [m]")
-        ax7.set_ylabel("Y [m]")
-        draw_grid(ax7, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax7)
+        line3_1.set_data(x3, y3)
+        ax3_1.set_xlabel("X [m]")
+        ax3_1.set_ylabel("Y [m]")
 
-        ax8.cla()
-        ax8.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
-        ax8.set_title(f"History Grid - Dataset 2 (Last {history_frames} Frames)")
-        ax8.set_xlabel("X [m]")
-        ax8.set_ylabel("Y [m]")
-        draw_grid(ax8, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax8)
+        # Ax3_2: Update current frame data for dataset 3
+        ax3_2.cla()
+        ax3_2.set_xlim(*x_limits)
+        ax3_2.set_ylim(*y_limits)
+        ax3_2.set_xlabel("X [m]")
+        ax3_2.set_ylabel("Y [m]")
+        draw_grid(ax3_2, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax3_2)  # Assuming this function visualizes the sensor's area
+
+        x3 = [coord[0] for coord in coordinates3]
+        y3 = [coord[1] for coord in coordinates3]
+        ax3_2.plot(x3, y3, 'ro')
+
+        # Annotate Doppler values on the plot
+        for x, y, d in zip(x3, y3, doppler3):
+            ax3_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
+
+        ax3_2.set_title(f"Frame {frame3} - Dataset 3")
+        ax3_2.legend(["Current Frame"], loc="upper left")
+
+        # Check if coordinates exist for the current frame
+        if not coordinates3:
+            print(f"Frame {frame3} for Dataset 3 has no points after filtering.")
+            return
+
+        # Calculate the occupancy grid for Dataset 3
+        occupancy_grid3 = calculate_occupancy_grid(coordinates3, x_limits, y_limits, grid_spacing)
+
+        # Clear and update ax3_3 with the occupancy grid
+        ax3_3.cla()
+        ax3_3.imshow(occupancy_grid3.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax3_3.set_title(f"Occupancy Grid - Dataset 3 (Frame {frame3})")
+        ax3_3.set_xlabel("X [m]")
+        ax3_3.set_ylabel("Y [m]")
+
+        # Draw grid lines and sensor area
+        draw_grid(ax3_3, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax3_3)  # Assuming this function visualizes the sensor's area
+
+        # Update ax3_4: History-Based Occupancy Grid for Dataset 3
+        # Calculate the cumulative occupancy grid for Dataset 3 over the last `history_frames`
+        cumulative_grid3 = calculate_cumulative_occupancy(
+            frames_data3, frame3, x_limits, y_limits, grid_spacing, history_frames
+        )
+
+        # Clear and update ax3_4 with the cumulative occupancy grid
+        ax3_4.cla()
+        ax3_4.imshow(cumulative_grid3.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
+        ax3_4.set_title(f"History Grid - Dataset 3 (Last {history_frames} Frames)")
+        ax3_4.set_xlabel("X [m]")
+        ax3_4.set_ylabel("Y [m]")
+
+        # Draw grid lines and sensor area
+        draw_grid(ax3_4, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax3_4)  # Assuming this function visualizes the sensor's area
 
         fig.canvas.draw_idle()
 
+    # Get the union of all frames across datasets
+    all_frames = sorted(set(frames_data1.keys()) | set(frames_data2.keys()) | set(frames_data3.keys()))
     # Update the slider to cover the maximum range
-    max_len = max(len(frames_data1), len(frames_data2))
-    slider1 = Slider(ax_slider1, "Frame", min(frames_data1.keys()), max(frames_data1.keys()), valinit=min(frames_data1.keys()), valstep=1)
+    max_len = max(len(frames_data1), len(frames_data2), len(frames_data3))
+    # Add slider
+    # [left, bottom, width, height]
+    ax_slider1 = plt.axes([0.25, 0.02, 0.65, 0.03])  # Slider for Dataset 1
+    ax_slider2 = plt.axes([0.25, 0.06, 0.65, 0.03])  # Slider for Dataset 2
+    ax_slider3 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 3
+    # Initialize sliders with respective frame ranges
+    slider1 = Slider(
+        ax_slider1, 
+        "Frame 1", 
+        min(frames_data1.keys()), 
+        max(frames_data1.keys()), 
+        valinit=min(frames_data1.keys()), 
+        valstep=1
+    )
+
+    slider2 = Slider(
+        ax_slider2, 
+        "Frame 2", 
+        min(frames_data2.keys()), 
+        max(frames_data2.keys()), 
+        valinit=min(frames_data2.keys()), 
+        valstep=1
+    )
+
+    slider3 = Slider(
+        ax_slider3, 
+        "Frame 3", 
+        min(frames_data3.keys()), 
+        max(frames_data3.keys()), 
+        valinit=min(frames_data3.keys()), 
+        valstep=1
+    )
     slider1.on_changed(update)
+    slider2.on_changed(update)
+    slider3.on_changed(update)
 
     plt.show()
 
 
 # Example Usage
 # Get the absolute path to the CSV file
-file_name1 = "coordinates_at1.csv"  # Replace with your file path
+file_name1 = "coordinates_sl_at1.csv"  # Replace with your file path
 script_dir1 = os.path.dirname(os.path.abspath(__file__))
 file_path1 = os.path.join(script_dir1, file_name1)
 
 # Get the absolute path to the CSV file
-file_name2 = "coordinates_at3.csv"  # Replace with your file path
+file_name2 = "coordinates_sl_at2.csv"  # Replace with your file path
 script_dir2 = os.path.dirname(os.path.abspath(__file__))
 file_path2 = os.path.join(script_dir2, file_name2)
 
+# Get the absolute path to the CSV file
+file_name3 = "coordinates_sl_at3.csv"  # Replace with your file path
+script_dir3 = os.path.dirname(os.path.abspath(__file__))
+file_path3 = os.path.join(script_dir3, file_name3)
+
 y_threshold = 0.0  # Disregard points with Y < num
 z_threshold = (-0.30, 3.0)
-doppler_threshold = 0.1 # Disregard points with doppler < num
+doppler_threshold = 0.0 # Disregard points with doppler < num
 
 frames_data1 = load_data(file_path1, y_threshold, z_threshold, doppler_threshold)
 frames_data2 = load_data(file_path2, y_threshold, z_threshold, doppler_threshold)
+frames_data3 = load_data(file_path3, y_threshold, z_threshold, doppler_threshold)
 
 """
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plots(frames_data1, frames_data2, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5, history_frames = 5)
+create_interactive_plots(frames_data1, frames_data2, frames_data3, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5, history_frames = 5)
