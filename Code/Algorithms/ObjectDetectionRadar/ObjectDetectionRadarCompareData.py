@@ -279,7 +279,7 @@ script_dir2 = os.path.dirname(os.path.abspath(__file__))
 file_path2 = os.path.join(script_dir2, file_name2)
 
 y_threshold = 0.0  # Disregard points with Y < num
-z_threshold = (-0.30, 2.0)
+z_threshold = (-0.30, 3.0)
 doppler_threshold = 0.1 # Disregard points with doppler < num
 
 frames_data1 = load_data(file_path1, y_threshold, z_threshold, doppler_threshold)
