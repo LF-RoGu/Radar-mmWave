@@ -487,9 +487,9 @@ def create_interactive_plots(frames_data1, frames_data2, frames_data3, x_limits,
     max_len = max(len(frames_data1), len(frames_data2), len(frames_data3))
     # Add slider
     # [left, bottom, width, height]
-    ax_slider1 = plt.axes([0.25, 0.02, 0.65, 0.03])  # Slider for Dataset 1
+    ax_slider3 = plt.axes([0.25, 0.02, 0.65, 0.03])  # Slider for Dataset 3
     ax_slider2 = plt.axes([0.25, 0.06, 0.65, 0.03])  # Slider for Dataset 2
-    ax_slider3 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 3
+    ax_slider1 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
     # Initialize sliders with respective frame ranges
     slider1 = Slider(
         ax_slider1, 
