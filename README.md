@@ -14,7 +14,3 @@ This repository contains materials and projects for the Radar and SiCo2 classes.
   - [Radar](Literature/Radar):
   - [PDF Resources](Literature/PDF Resources):
 - [Radar](Literature/Radar/): Contains radar-related literature.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE.md).
