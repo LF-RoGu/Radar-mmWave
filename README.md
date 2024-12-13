@@ -13,7 +13,19 @@ This repository contains materials and projects for the Radar and SiCo2 classes.
   - [Notes](Literature/Notes):
   - [Radar](Literature/Radar):
   - [PDF Resources](Literature/PDF Resources):
-- [Radar](Literature/Radar/): Contains radar-related literature.
+- [Logs](Logs/): Contain logs captured in the vehicle.
+  - [LogsPart1](Logs/LogsPart1):
+  - [LogsPart2](Logs/LogsPart2):
+  - [PlotLogs](Logs/PlotLogs):
+    - [PlotLogs.py](Logs/PlotLogs/PlotLogs.py): Containg the file to visualize.
+      - In line 397.
+      - For the variable 'log_file', modify the folder "LogsPart2" to access the folder that you whish to obtain the data.
+      - For the variable 'log_file', modify the folder "3_Target_straightLine_attempt1_log_2024-12-09.csv" to access the file that you whish to visualze
+      - In line 407 & 410. Modify the parameter "doppler_threshold" for any threshold that you want. It will mean that points below that threshold will appear in one plot or the other.
+        - The program will provide 2 option.
+          - The data will be able to be seen in 2 different plots. One for stationary data (All data below a Doppler speed of 0.1 mps). The later is data that is considered as actual data.
+          - Visualze line [1]. This one as the name states, will use the timestamp stored in the files to show a real life data-motion as it was recorded.
+          - Visualize all data [2]. This one as the name states, will only put in a 3d plot all the recorded data.
 
 
 ## Subjects to Cover
