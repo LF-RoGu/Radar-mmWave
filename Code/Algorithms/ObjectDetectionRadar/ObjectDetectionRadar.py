@@ -302,8 +302,9 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
         # Initialize a persistent cumulative grid for ax2_4
         if not hasattr(update, "cumulative_grid"):
-            update.cumulative_grid = np.zeros((int((x_limits[1] - x_limits[0]) / grid_spacing),
-                                            int((y_limits[1] - y_limits[0]) / grid_spacing)))
+                x_bins = int((x_limits[1] - x_limits[0]) / grid_spacing)
+                y_bins = int((y_limits[1] - y_limits[0]) / grid_spacing)
+                update.cumulative_grid = np.zeros((x_bins, y_bins))  # Initialize cumulative grid
 
 
         """
