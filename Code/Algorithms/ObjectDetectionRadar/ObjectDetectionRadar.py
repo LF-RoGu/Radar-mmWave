@@ -117,7 +117,7 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     Calculate an occupancy grid for the given points.
 
     Parameters:
-        points (list of tuples): List of (x, y, z) coordinates.
+        points (list of tuples): List of (x, y) or (x, y, z) coordinates.
         x_limits (tuple): The x-axis limits as (xmin, xmax).
         y_limits (tuple): The y-axis limits as (ymin, ymax).
         grid_spacing (int): Spacing between grid cells.
@@ -133,7 +133,14 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     occupancy_grid = np.zeros((x_bins, y_bins))
 
     # Populate the grid
-    for x, y, _ in points:
+    for point in points:
+        if len(point) == 3:
+            x, y, _ = point  # Unpack x, y, z
+        elif len(point) == 2:
+            x, y = point  # Unpack x, y only
+        else:
+            raise ValueError(f"Point format not supported: {point}")
+
         if x_limits[0] <= x < x_limits[1] and y_limits[0] <= y < y_limits[1]:
             x_idx = int((x - x_limits[0]) / grid_spacing)
             y_idx = int((y - y_limits[0]) / grid_spacing)
@@ -159,15 +166,13 @@ def dbscan_clustering(data, eps=1.0, min_samples=3):
 
 
 # Plotting function
-def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
+def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
     """
     Create an interactive plot with two subplots, a slider, and radio buttons,
     including a grid with customizable spacing. Annotates points in ax2 with Doppler values.
     
     Parameters:
-        frames_data1 (dict): Data for dataset 1.
-        frames_data1 (dict): Data for dataset 2.
-        frames_data3 (dict): Data for dataset 3.
+        frames_data (dict): Data for dataset.
         x_limits (tuple): The x-axis limits as (xmin, xmax).
         y_limits (tuple): The y-axis limits as (ymin, ymax).
         grid_spacing (int): Spacing between grid lines (default is 1).
@@ -183,13 +188,13 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         for y in y_ticks:
             ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
     # Helper function to calculate cumulative occupancy over history
-    def calculate_cumulative_occupancy(frames_data, frame2, x_limits, y_limits, grid_spacing, history_frames):
+    def calculate_cumulative_occupancy(frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames):
         """
         Calculate a cumulative occupancy grid over the last `history_frames` frames.
 
         Parameters:
             frames_data (dict): Frame data dictionary.
-            frame2 (int): Current frame index.
+            frame_idx (int): Current frame index.
             x_limits (tuple): X-axis limits.
             y_limits (tuple): Y-axis limits.
             grid_spacing (int): Spacing between grid cells.
@@ -201,7 +206,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         cumulative_grid = np.zeros((int((x_limits[1] - x_limits[0]) / grid_spacing),
                                     int((y_limits[1] - y_limits[0]) / grid_spacing)))
 
-        for i in range(max(1, frame2 - history_frames + 1), frame2 + 1):
+        for i in range(max(1, frame_idx - history_frames + 1), frame_idx + 1):
             coordinates, _ = frames_data.get(i, ([], []))
             occupancy_grid = calculate_occupancy_grid(coordinates, x_limits, y_limits, grid_spacing)
             cumulative_grid += occupancy_grid
@@ -293,22 +298,22 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
     # Update function
     def update(val):
         # Get the current slider value
-        frame1 = int(slider1.val)
-        frame2 = int(slider2.val)
+        frame_idx = int(slider_idx.val)
 
         """
         Dataset 1
         """
-        coordinates1, doppler1 = frames_data1.get(frame1, ([], []))  # Current frame's data
+        coordinates1, doppler1 = frames_data.get(frame_idx, ([], []))  # Current frame's data
         if not coordinates1:
-            print(f"Frame {frame1} for Dataset 1 has no points after filtering.")
+            print(f"Frame {frame_idx} for Dataset 1 has no points after filtering.")
             return
         
         # Ax1_1: Update cumulative data for dataset 1
         x1, y1 = [], []
-        for frame in range(1, frame1 + 1):  # Accumulate data up to the current frame
-            x1.extend([coord[0] for coord in coordinates1])
-            y1.extend([coord[1] for coord in coordinates1])
+        for frame in range(1, frame_idx + 1):  # Accumulate data up to the current frame
+            coords, _ = frames_data.get(frame, ([], []))
+            x1.extend([coord[0] for coord in coords])
+            y1.extend([coord[1] for coord in coords])
 
         line1_1.set_data(x1, y1)
         ax1_1.set_xlabel("X [m]")
@@ -329,7 +334,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         for x, y, d in zip(x1, y1, doppler1):
             ax1_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
 
-        ax1_2.set_title(f"Frame {frame1} - Dataset 1")
+        ax1_2.set_title(f"Frame {frame_idx} - Dataset 1")
         ax1_2.legend(["Current Frame"], loc="upper left")
         ax1_2.set_xlabel("X [m]")
         ax1_2.set_ylabel("Y [m]")
@@ -338,7 +343,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         occupancy_grid1 = calculate_occupancy_grid(coordinates1, x_limits, y_limits, grid_spacing)
         ax1_3.cla()
         ax1_3.imshow(occupancy_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
-        ax1_3.set_title(f"Occupancy Grid - Dataset 1 (Frame {frame1})")
+        ax1_3.set_title(f"Occupancy Grid - Dataset 1 (Frame {frame_idx})")
         ax1_3.set_xlabel("X [m]")
         ax1_3.set_ylabel("Y [m]")
         draw_grid(ax1_3, x_limits, y_limits, grid_spacing)
@@ -346,7 +351,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
 
         # Update ax1_4: History-Based Occupancy Grid for Dataset 1
         cumulative_grid1 = calculate_cumulative_occupancy(
-            frames_data1, frame1, x_limits, y_limits, grid_spacing, history_frames
+            frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames
         )
         ax1_4.cla()
         ax1_4.imshow(cumulative_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
@@ -359,14 +364,16 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         """
         Dataset 2 (with DBSCAN clustering)
         """
-        coordinates2, _ = frames_data1.get(frame2, ([], []))
+        eps2 = 0.4
+        min_samples2 = 2
+        coordinates2, _ = frames_data.get(frame_idx, ([], []))  # Ensure this is the same frame data
         if not coordinates2:
-            print(f"Frame {frame2} for Dataset 2 has no points after filtering.")
+            print(f"Frame {frame_idx} for Dataset 2 has no points after filtering.")
             return
 
         # Prepare DataFrame for clustering
         df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]", "Z [m]"])
-        labels = dbscan_clustering(df, eps=eps, min_samples=min_samples)
+        labels = dbscan_clustering(df, eps=eps2, min_samples=min_samples2)
 
         # Ax2_1: Update cumulative clusters
         if not hasattr(update, "cumulative_clusters"):
@@ -399,24 +406,44 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
             xy = df[class_member_mask][["X [m]", "Y [m]"]].values
             ax2_2.scatter(xy[:, 0], xy[:, 1], c=[col], label=f"Cluster {k}")
 
-        ax2_2.set_title(f"Frame {frame2} - DBSCAN Clusters")
+        ax2_2.set_title(f"Frame {frame_idx} - DBSCAN Clusters")
         ax2_2.legend()
 
         # Ax2_3: Occupancy grid for clusters
         ax2_3.cla()
-        clustered_points = df[labels != -1][["X [m]", "Y [m]"]].values
-        occupancy_grid2 = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
-        ax2_3.imshow(occupancy_grid2.T, extent=(*x_limits, *y_limits), origin="lower", cmap=cmap, aspect="auto")
         ax2_3.set_xlim(*x_limits)
         ax2_3.set_ylim(*y_limits)
+
+        # Filter only clustered points (ignore noise points with labels == -1)
+        clustered_points = df[labels != -1][["X [m]", "Y [m]"]].values
+
+        if clustered_points.size == 0:
+            print(f"No clustered points for frame {frame_idx}. Displaying an empty grid.")
+        else:
+            # Calculate the occupancy grid for clustered points
+            occupancy_grid2 = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
+
+            # Debug: Print non-zero cells in the grid for verification
+            print(f"Non-zero cells in occupancy grid: {np.count_nonzero(occupancy_grid2)}")
+
+            # Plot the occupancy grid
+            ax2_3.imshow(
+                occupancy_grid2.T,  # Transpose for proper orientation
+                extent=(*x_limits, *y_limits),
+                origin="lower",
+                cmap=cmap,
+                aspect="auto"
+            )
+
         ax2_3.set_title("Clustered Occupancy Grid")
         draw_grid(ax2_3, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax2_3)
 
+
         # Ax2_4: History-based occupancy grid for clusters
         ax2_4.cla()
         cumulative_grid2 = calculate_cumulative_occupancy(
-            frames_data1, frame2, x_limits, y_limits, grid_spacing, history_frames
+            frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames
         )
         ax2_4.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin="lower", cmap=cmap, aspect="auto")
         ax2_4.set_xlim(*x_limits)
@@ -428,28 +455,18 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         fig.canvas.draw_idle()
     # Add slider
     # [left, bottom, width, height]
-    ax_slider1 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
-    ax_slider2 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
+    ax_slider = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
     # Initialize sliders with respective frame ranges
-    slider1 = Slider(
-        ax_slider1, 
-        "Frame", 
-        min(frames_data1.keys()), 
-        max(frames_data1.keys()), 
-        valinit=min(frames_data1.keys()), 
+    slider_idx = Slider(
+        ax_slider, 
+        "Column 1", 
+        min(frames_data.keys()), 
+        max(frames_data.keys()), 
+        valinit=min(frames_data.keys()), 
         valstep=1
     )
 
-    slider2 = Slider(
-        ax_slider2, 
-        "Frame", 
-        min(frames_data1.keys()), 
-        max(frames_data1.keys()), 
-        valinit=min(frames_data1.keys()), 
-        valstep=1
-    )
-
-    slider1.on_changed(update)
+    slider_idx.on_changed(update)
 
     plt.show()
 
@@ -464,10 +481,10 @@ y_threshold = 0.0  # Disregard points with Y < num
 z_threshold = (-0.30, 3.0)
 doppler_threshold = 0.0 # Disregard points with doppler < num
 
-frames_data1 = load_data(file_path1, y_threshold, z_threshold, doppler_threshold)
+frames_data = load_data(file_path1, y_threshold, z_threshold, doppler_threshold)
 
 """
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plots(frames_data1, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=4, history_frames = 10)
+create_interactive_plots(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=4, history_frames = 10)
