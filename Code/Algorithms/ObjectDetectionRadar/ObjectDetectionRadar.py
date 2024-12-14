@@ -7,6 +7,10 @@ from matplotlib.patches import Wedge
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+
+
 # Utility function to load data
 def load_data(file_name, y_threshold=None, z_threshold=None, doppler_threshold=None):
     """
@@ -137,6 +141,23 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
 
     return occupancy_grid
 
+def dbscan_clustering(data, eps=1.0, min_samples=3):
+    """
+    Perform DBSCAN clustering on the X and Y coordinates from the data.
+
+    Args:
+    - data (DataFrame): The data containing 'X [m]' and 'Y [m]' columns.
+    - eps (float): The maximum distance between two samples for one to be considered in the neighborhood of the other.
+    - min_samples (int): The number of samples in a neighborhood for a point to be considered a core point.
+
+    Returns:
+    - labels (array): Cluster labels for each point. Noise points are labeled as -1.
+    """
+    points = data[['X [m]', 'Y [m]']].values
+    db = DBSCAN(eps=eps, min_samples=min_samples).fit(points)
+    return db.labels_
+
+
 # Plotting function
 def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, eps=0.5, min_samples=5, history_frames=5):
     """
@@ -145,7 +166,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
     
     Parameters:
         frames_data1 (dict): Data for dataset 1.
-        frames_data2 (dict): Data for dataset 2.
+        frames_data1 (dict): Data for dataset 2.
         frames_data3 (dict): Data for dataset 3.
         x_limits (tuple): The x-axis limits as (xmin, xmax).
         y_limits (tuple): The y-axis limits as (ymin, ymax).
@@ -162,13 +183,13 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         for y in y_ticks:
             ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
     # Helper function to calculate cumulative occupancy over history
-    def calculate_cumulative_occupancy(frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames):
+    def calculate_cumulative_occupancy(frames_data, frame2, x_limits, y_limits, grid_spacing, history_frames):
         """
         Calculate a cumulative occupancy grid over the last `history_frames` frames.
 
         Parameters:
             frames_data (dict): Frame data dictionary.
-            frame_idx (int): Current frame index.
+            frame2 (int): Current frame index.
             x_limits (tuple): X-axis limits.
             y_limits (tuple): Y-axis limits.
             grid_spacing (int): Spacing between grid cells.
@@ -180,7 +201,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         cumulative_grid = np.zeros((int((x_limits[1] - x_limits[0]) / grid_spacing),
                                     int((y_limits[1] - y_limits[0]) / grid_spacing)))
 
-        for i in range(max(1, frame_idx - history_frames + 1), frame_idx + 1):
+        for i in range(max(1, frame2 - history_frames + 1), frame2 + 1):
             coordinates, _ = frames_data.get(i, ([], []))
             occupancy_grid = calculate_occupancy_grid(coordinates, x_limits, y_limits, grid_spacing)
             cumulative_grid += occupancy_grid
@@ -215,8 +236,8 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
 
     # Create the figure and subplots
     fig = plt.figure(figsize=(18, 14))
-    # Define a 4x1 grid layout
-    gs = GridSpec(4, 1, figure=fig)
+    # Define a 4x2 grid layout
+    gs = GridSpec(4, 2, figure=fig)
 
     # Subplots
     # Dataset 1
@@ -224,6 +245,12 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
     ax1_2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
     ax1_3 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
     ax1_4 = fig.add_subplot(gs[3, 0])  # History-based occupancy grid for dataset 1
+
+    # Dataset 2 subplots (DBSCAN applied)
+    ax2_1 = fig.add_subplot(gs[0, 1])  # Cumulative data
+    ax2_2 = fig.add_subplot(gs[1, 1])  # Per-frame data
+    ax2_3 = fig.add_subplot(gs[2, 1])  # Occupancy grid
+    ax2_4 = fig.add_subplot(gs[3, 1])  # History-based occupancy grid
 
     # Adjust subplot spacing
     plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.6)
@@ -267,6 +294,7 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
     def update(val):
         # Get the current slider value
         frame1 = int(slider1.val)
+        frame2 = int(slider2.val)
 
         """
         Dataset 1
@@ -328,14 +356,93 @@ def create_interactive_plots(frames_data1, x_limits, y_limits, grid_spacing=1, e
         draw_grid(ax1_4, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax1_4)
 
+        """
+        Dataset 2 (with DBSCAN clustering)
+        """
+        coordinates2, _ = frames_data1.get(frame2, ([], []))
+        if not coordinates2:
+            print(f"Frame {frame2} for Dataset 2 has no points after filtering.")
+            return
+
+        # Prepare DataFrame for clustering
+        df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]", "Z [m]"])
+        labels = dbscan_clustering(df, eps=eps, min_samples=min_samples)
+
+        # Ax2_1: Update cumulative clusters
+        if not hasattr(update, "cumulative_clusters"):
+            update.cumulative_clusters = {"x": [], "y": []}
+        for cluster_label in set(labels):
+            if cluster_label != -1:  # Ignore noise points
+                cluster_points = df[labels == cluster_label][["X [m]", "Y [m]"]].values
+                update.cumulative_clusters["x"].extend(cluster_points[:, 0])
+                update.cumulative_clusters["y"].extend(cluster_points[:, 1])
+        ax2_1.cla()
+        ax2_1.scatter(update.cumulative_clusters["x"], update.cumulative_clusters["y"], c='purple', alpha=0.5, label="Cumulative Clusters")
+        ax2_1.set_xlim(*x_limits)
+        ax2_1.set_ylim(*y_limits)
+        ax2_1.set_title("Cumulative Clusters")
+        ax2_1.legend()
+
+        # Ax2_2: Current frame clusters
+        ax2_2.cla()
+        ax2_2.set_xlim(*x_limits)
+        ax2_2.set_ylim(*y_limits)
+        draw_grid(ax2_2, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_2)
+
+        unique_labels = set(labels)
+        colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
+        for k, col in zip(unique_labels, colors):
+            if k == -1:  # Noise points
+                col = [0, 0, 0, 1]
+            class_member_mask = (labels == k)
+            xy = df[class_member_mask][["X [m]", "Y [m]"]].values
+            ax2_2.scatter(xy[:, 0], xy[:, 1], c=[col], label=f"Cluster {k}")
+
+        ax2_2.set_title(f"Frame {frame2} - DBSCAN Clusters")
+        ax2_2.legend()
+
+        # Ax2_3: Occupancy grid for clusters
+        ax2_3.cla()
+        clustered_points = df[labels != -1][["X [m]", "Y [m]"]].values
+        occupancy_grid2 = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
+        ax2_3.imshow(occupancy_grid2.T, extent=(*x_limits, *y_limits), origin="lower", cmap=cmap, aspect="auto")
+        ax2_3.set_xlim(*x_limits)
+        ax2_3.set_ylim(*y_limits)
+        ax2_3.set_title("Clustered Occupancy Grid")
+        draw_grid(ax2_3, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_3)
+
+        # Ax2_4: History-based occupancy grid for clusters
+        ax2_4.cla()
+        cumulative_grid2 = calculate_cumulative_occupancy(
+            frames_data1, frame2, x_limits, y_limits, grid_spacing, history_frames
+        )
+        ax2_4.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin="lower", cmap=cmap, aspect="auto")
+        ax2_4.set_xlim(*x_limits)
+        ax2_4.set_ylim(*y_limits)
+        ax2_4.set_title("History-based Clustered Grid")
+        draw_grid(ax2_4, x_limits, y_limits, grid_spacing)
+        draw_sensor_area(ax2_4)
+
         fig.canvas.draw_idle()
     # Add slider
     # [left, bottom, width, height]
     ax_slider1 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
+    ax_slider2 = plt.axes([0.25, 0.10, 0.65, 0.03])  # Slider for Dataset 1
     # Initialize sliders with respective frame ranges
     slider1 = Slider(
         ax_slider1, 
-        "Frame 1", 
+        "Frame", 
+        min(frames_data1.keys()), 
+        max(frames_data1.keys()), 
+        valinit=min(frames_data1.keys()), 
+        valstep=1
+    )
+
+    slider2 = Slider(
+        ax_slider2, 
+        "Frame", 
         min(frames_data1.keys()), 
         max(frames_data1.keys()), 
         valinit=min(frames_data1.keys()), 
@@ -363,4 +470,4 @@ frames_data1 = load_data(file_path1, y_threshold, z_threshold, doppler_threshold
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plots(frames_data1, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=5, history_frames = 10)
+create_interactive_plots(frames_data1, x_limits=(-8, 8), y_limits=(0, 15), eps=0.4, min_samples=4, history_frames = 10)
