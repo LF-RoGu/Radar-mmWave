@@ -300,6 +300,12 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         # Get the current slider value
         frame_idx = int(slider_idx.val)
 
+        # Initialize a persistent cumulative grid for ax2_4
+        if not hasattr(update, "cumulative_grid"):
+            update.cumulative_grid = np.zeros((int((x_limits[1] - x_limits[0]) / grid_spacing),
+                                            int((y_limits[1] - y_limits[0]) / grid_spacing)))
+
+
         """
         Dataset 1
         """
@@ -409,46 +415,50 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         ax2_2.set_title(f"Frame {frame_idx} - DBSCAN Clusters")
         ax2_2.legend()
 
-        # Ax2_3: Occupancy grid for clusters
+       # Ax2_3: Current frame occupancy grid for clusters
         ax2_3.cla()
         ax2_3.set_xlim(*x_limits)
         ax2_3.set_ylim(*y_limits)
 
-        # Filter only clustered points (ignore noise points with labels == -1)
+        # Filter only clustered points
         clustered_points = df[labels != -1][["X [m]", "Y [m]"]].values
-
         if clustered_points.size == 0:
             print(f"No clustered points for frame {frame_idx}. Displaying an empty grid.")
         else:
             # Calculate the occupancy grid for clustered points
-            occupancy_grid2 = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
-
-            # Debug: Print non-zero cells in the grid for verification
-            print(f"Non-zero cells in occupancy grid: {np.count_nonzero(occupancy_grid2)}")
-
-            # Plot the occupancy grid
+            frame_grid = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
+            # Update the cumulative grid
+            update.cumulative_grid += frame_grid
+            # Plot the current frame's occupancy grid
             ax2_3.imshow(
-                occupancy_grid2.T,  # Transpose for proper orientation
+                frame_grid.T,  # Transpose for proper orientation
                 extent=(*x_limits, *y_limits),
                 origin="lower",
                 cmap=cmap,
                 aspect="auto"
             )
-
         ax2_3.set_title("Clustered Occupancy Grid")
         draw_grid(ax2_3, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax2_3)
 
-
-        # Ax2_4: History-based occupancy grid for clusters
+        # Ax2_4: Cumulative history-based clustered occupancy grid
         ax2_4.cla()
-        cumulative_grid2 = calculate_cumulative_occupancy(
-            frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames
-        )
-        ax2_4.imshow(cumulative_grid2.T, extent=(*x_limits, *y_limits), origin="lower", cmap=cmap, aspect="auto")
         ax2_4.set_xlim(*x_limits)
         ax2_4.set_ylim(*y_limits)
-        ax2_4.set_title("History-based Clustered Grid")
+
+        # Normalize the cumulative grid for better visualization (optional)
+        cumulative_grid_normalized = np.clip(update.cumulative_grid, 0, 10)
+
+        # Plot the cumulative grid
+        ax2_4.imshow(
+            cumulative_grid_normalized.T,  # Transpose for proper orientation
+            extent=(*x_limits, *y_limits),
+            origin="lower",
+            cmap=cmap,  # Customize your colormap if needed
+            aspect="auto"
+        )
+
+        ax2_4.set_title("Cumulative Occupancy Grid")
         draw_grid(ax2_4, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax2_4)
 
