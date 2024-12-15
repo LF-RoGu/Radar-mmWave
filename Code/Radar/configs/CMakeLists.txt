@@ -1,1 +1,1 @@
-file(COPY xwr68xx_AOP_profile_2024_11_25T14_20_54_415.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)
+file(COPY BestRange_30fps.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)

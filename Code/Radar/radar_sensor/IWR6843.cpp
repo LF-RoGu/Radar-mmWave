@@ -237,8 +237,9 @@ int IWR6843::configSerialPort(int port_fd, int baudRate)
 int IWR6843::sendConfigFile(int port_fd, string configFilePath)
 {
 	ifstream configFileStream(configFilePath);
-	if (!configFileStream)
-	{
+	if (!configFileStream) {
+		std::cerr << "Failed to open file: " << configFilePath << std::endl;
+		std::cerr << "Error: " << std::strerror(errno) << std::endl;
 		return -1;
 	}
 	

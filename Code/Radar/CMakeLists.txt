@@ -29,6 +29,10 @@ add_executable (
     "radar_sensor/sensor_data/lib/SensorDataStr.h"
 )
 
+file(COPY ${CMAKE_SOURCE_DIR}/configs/BestRange_30fps.cfg 
+     DESTINATION ${CMAKE_BINARY_DIR}/configs)
+
+
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Radar PROPERTY CXX_STANDARD 20)

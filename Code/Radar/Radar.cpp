@@ -8,7 +8,7 @@ IWR6843 sensor;
 const int NUM_THREADS = 3;
 pthread_t threads[NUM_THREADS];
 
-const int NUM_FRAMES = 20;
+const int NUM_FRAMES = 200;
 vector<SensorData> totalFrames;
 
 int main() {
@@ -19,7 +19,7 @@ int main() {
 
     //Initializing the sensor
     sensor = IWR6843();
-    sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_2024_11_28T13_30_57_988_azim30_elev30.cfg");
+    sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "configs/BestRange_30fps.cfg");
     //sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_2024_11_28T11_50_49_422_azim60_elev30.cfg");
     
     //Creating an array holding the function pointers for the threads
