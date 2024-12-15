@@ -157,3 +157,7 @@ Code/Radar/out/Ubuntu/build/linux-debug/.cmake/api/v1/reply/target-Radar-Debug-a
 Code/Radar/out/Ubuntu/build/linux-debug/.cmake/api/v1/reply/toolchains-v1-536a7eaeba1a33fdf7c1.json
 
 Code/Radar/out/Ubuntu/build/linux-debug/isenseconfig/-1008128345-iconfig.json
+
+*.ipch
+
+Code/Radar/out/Ubuntu/build/linux-debug/.cmake/api/v1/reply/
