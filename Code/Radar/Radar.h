@@ -14,8 +14,8 @@
 #include <sstream>
 
 //Private includes
-#include "IWR6843.h"
-#include "SensorData.h"
+#include "../Radar/radar_sensor/IWR6843.h"
+#include "../Radar/radar_sensor/SensorData.h"
 
 //Namespaces
 using namespace std;

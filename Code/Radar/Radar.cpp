@@ -8,7 +8,7 @@ IWR6843 sensor;
 const int NUM_THREADS = 3;
 pthread_t threads[NUM_THREADS];
 
-const int NUM_FRAMES = 200;
+const int NUM_FRAMES = 20;
 vector<SensorData> totalFrames;
 
 int main() {

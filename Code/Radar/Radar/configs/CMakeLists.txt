@@ -1,1 +1,0 @@
-file(COPY profile_2024_12_15T11_08_04_297.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)
