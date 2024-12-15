@@ -55,7 +55,7 @@ int main() {
 
     chrono::time_point<std::chrono::system_clock> timestamp = chrono::system_clock::now();
 
-    string filename = prefix + "_log_" + formatTimestamp(timestamp) + ".csv";
+    string filename = prefix + "_log" + ".csv";
 
     //Storing the data
     writeToCSV(filename, totalFrames);
