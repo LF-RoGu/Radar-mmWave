@@ -245,7 +245,7 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
     gs = GridSpec(4, 2, figure=fig)
 
     # Subplots
-    # Dataset 1
+    # Dataset 1 subplots (Cloud point visualization)
     ax1_1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
     ax1_2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
     ax1_3 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
@@ -270,27 +270,52 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
     # Initialize cumulative plots
     (line1_1,) = ax1_1.plot([], [], 'o', label="Dataset 1: Cumulative Data")
 
-    for ax, title in zip([ax1_1], ["Dataset 1"]):
+    for ax, title in zip([ax1_1], ["Point Cloud"]):
         ax.set_xlim(*x_limits)
         ax.set_ylim(*y_limits)
         ax.legend(loc="upper left")
         ax.set_title(f"{title} - Cumulative Data")
 
     # Initialize per-frame plots
-    for ax, title in zip([ax1_2], ["Dataset 1"]):
+    for ax, title in zip([ax1_2], ["Point Cloud"]):
         ax.set_xlim(*x_limits)
         ax.set_ylim(*y_limits)
         ax.legend(["Dots Per Frame"], loc="upper left")
         ax.set_title(f"{title} - Per Frame Data")
 
     # Initialize occupancy grids
-    for ax, title in zip([ax1_3], ["Dataset 1"]):
+    for ax, title in zip([ax1_3], ["Point Cloud"]):
         ax.set_xlim(*x_limits)
         ax.set_ylim(*y_limits)
         ax.set_title(f"{title} - Occupancy Grid")
 
     # Initialize history-based grids
-    for ax, title in zip([ax1_4], ["Dataset 1"]):
+    for ax, title in zip([ax1_4], ["Point Cloud"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.set_title(f"{title} - History-Based Grid")
+
+    for ax, title in zip([ax2_1], ["DBSCAN applied"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.legend(loc="upper left")
+        ax.set_title(f"{title} - Cumulative Data")
+
+    # Initialize per-frame plots
+    for ax, title in zip([ax2_2], ["DBSCAN applied"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.legend(["Dots Per Frame"], loc="upper left")
+        ax.set_title(f"{title} - Per Frame Data")
+
+    # Initialize occupancy grids
+    for ax, title in zip([ax2_3], ["DBSCAN applied"]):
+        ax.set_xlim(*x_limits)
+        ax.set_ylim(*y_limits)
+        ax.set_title(f"{title} - Occupancy Grid")
+
+    # Initialize history-based grids
+    for ax, title in zip([ax2_4], ["DBSCAN applied"]):
         ax.set_xlim(*x_limits)
         ax.set_ylim(*y_limits)
         ax.set_title(f"{title} - History-Based Grid")
@@ -484,7 +509,7 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
 # Example Usage
 # Get the absolute path to the CSV file
-file_name1 = "coordinates_sl_at1.csv"  # Replace with your file path
+file_name1 = "coordinates_sl_at3.csv"  # Replace with your file path
 script_dir1 = os.path.dirname(os.path.abspath(__file__))
 file_path1 = os.path.join(script_dir1, file_name1)
 
