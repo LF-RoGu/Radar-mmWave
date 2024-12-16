@@ -19,7 +19,7 @@ int main() {
 
     //Initializing the sensor
     sensor = IWR6843();
-    sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_2024_11_28T13_30_57_988_azim30_elev30.cfg");
+    sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_azim60_elev30_optimized.cfg");
     //sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_2024_11_28T11_50_49_422_azim60_elev30.cfg");
     
     //Creating an array holding the function pointers for the threads
@@ -149,7 +149,7 @@ std::string formatTimestamp(const std::chrono::time_point<std::chrono::system_cl
 
     std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
     std::ostringstream oss;
-    oss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+    oss << std::put_time(std::localtime(&time), "%Y-%m-%d");
     oss << "." << std::setw(9) << std::setfill('0') << nanoseconds.count();
     return oss.str();
 }
