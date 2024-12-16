@@ -509,7 +509,7 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
 # Example Usage
 # Get the absolute path to the CSV file
-file_name1 = "coordinates_sl_at3.csv"  # Replace with your file path
+file_name1 = "coordinates_30fps_15mts.csv"  # Replace with your file path
 script_dir1 = os.path.dirname(os.path.abspath(__file__))
 file_path1 = os.path.join(script_dir1, file_name1)
 

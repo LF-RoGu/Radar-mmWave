@@ -1,1 +1,0 @@
-file(COPY BestRange_30fps.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)

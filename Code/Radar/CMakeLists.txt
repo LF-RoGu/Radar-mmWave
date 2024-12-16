@@ -29,7 +29,7 @@ add_executable (
     "radar_sensor/sensor_data/lib/SensorDataStr.h"
 )
 
-file(COPY ${CMAKE_SOURCE_DIR}/configs/BestRange_30fps.cfg 
+file(COPY ${CMAKE_SOURCE_DIR}/configs/BestRangeRes_30fps_dis15mts_5mps.cfg 
      DESTINATION ${CMAKE_BINARY_DIR}/configs)
 
 
