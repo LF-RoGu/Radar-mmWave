@@ -3,10 +3,12 @@ import pandas as pd
 import numpy as np
 import struct
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, RadioButtons
+from matplotlib.widgets import Slider
 from matplotlib.patches import Wedge
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap, BoundaryNorm
+from mpl_toolkits.mplot3d import Axes3D
+
 
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
@@ -179,6 +181,20 @@ def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
     # Optionally, add the sensor's location as a point
     ax.scatter(*sensor_origin, color="green", label="Sensor Location")
 
+def draw_sensor_area_3d(ax, z_plane=0.30):
+    """
+    Draw the sensor area (e.g., a circle) on a fixed Z-plane in a 3D plot.
+
+    Args:
+    - ax: Matplotlib 3D axis.
+    - z_plane (float): Fixed Z-coordinate for the sensor area.
+    """
+    sensor_radius = 1.0  # Example radius for the sensor
+    theta = np.linspace(0, 2 * np.pi, 100)
+    x_circle = sensor_radius * np.cos(theta)
+    y_circle = sensor_radius * np.sin(theta)
+    ax.plot(x_circle, y_circle, zs=z_plane, color='red', linewidth=1.5, label="Sensor Area")
+
 def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     """
     Calculate an occupancy grid for the given points.
@@ -266,6 +282,28 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
             ax.plot([x, x], y_limits, linestyle='--', color='gray', linewidth=0.5)
         for y in y_ticks:
             ax.plot(x_limits, [y, y], linestyle='--', color='gray', linewidth=0.5)
+    def draw_grid_3d(ax, x_limits, y_limits, grid_spacing, z_plane=0):
+        """
+        Draw a 2D grid at a fixed Z-plane on a 3D plot.
+
+        Args:
+        - ax: Matplotlib 3D axis.
+        - x_limits (tuple): X-axis limits as (xmin, xmax).
+        - y_limits (tuple): Y-axis limits as (ymin, ymax).
+        - grid_spacing (float): Spacing between grid lines.
+        - z_plane (float): Fixed Z-coordinate for the grid.
+        """
+        x_range = np.arange(x_limits[0], x_limits[1] + grid_spacing, grid_spacing)
+        y_range = np.arange(y_limits[0], y_limits[1] + grid_spacing, grid_spacing)
+
+        # Draw grid lines parallel to X-axis
+        for y in y_range:
+            ax.plot([x_limits[0], x_limits[1]], [y, y], zs=z_plane, color='gray', linestyle='--', linewidth=0.5)
+
+        # Draw grid lines parallel to Y-axis
+        for x in x_range:
+            ax.plot([x, x], [y_limits[0], y_limits[1]], zs=z_plane, color='gray', linestyle='--', linewidth=0.5)
+
     # Helper function to calculate cumulative occupancy over history
     def calculate_cumulative_occupancy(frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames):
         """
@@ -321,23 +359,34 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
         return cmap, norm
 
-    # Create the figure and subplots
-    fig = plt.figure(figsize=(18, 14))
-    # Define a 4x2 grid layout
-    gs = GridSpec(4, 2, figure=fig)
+    # Create a larger figure to accommodate bigger 3D plots
+    fig = plt.figure(figsize=(24, 18))  # Larger figure size
 
-    # Subplots
-    # Dataset 1 subplots (Cloud point visualization)
-    ax1_1 = fig.add_subplot(gs[0, 0])  # Top-left: cumulative data for dataset 1
-    ax1_2 = fig.add_subplot(gs[1, 0])  # Middle-left: per-frame data for dataset 1
-    ax1_3 = fig.add_subplot(gs[2, 0])  # Bottom-left: occupancy grid for dataset 1
-    ax1_4 = fig.add_subplot(gs[3, 0])  # History-based occupancy grid for dataset 1
+    # Define a 4x3 grid layout with custom width ratios
+    gs = GridSpec(4, 3, figure=fig, width_ratios=[3, 3, 1], height_ratios=[3, 3, 1, 1])
 
-    # Dataset 2 subplots (DBSCAN applied)
-    ax2_1 = fig.add_subplot(gs[0, 1])  # Cumulative data
-    ax2_2 = fig.add_subplot(gs[1, 1])  # Per-frame data
-    ax2_3 = fig.add_subplot(gs[2, 1])  # Occupancy grid
-    ax2_4 = fig.add_subplot(gs[3, 1])  # History-based occupancy grid
+    # Expand the 3D plots over multiple rows
+    # Dataset 1 subplots (Cumulative and Current Frame)
+    ax1_1 = fig.add_subplot(gs[0:2, 0], projection='3d')  # Spanning first two rows in column 0
+    ax1_2 = fig.add_subplot(gs[2:4, 0], projection='3d')  # Spanning last two rows in column 0
+
+    # Dataset 2 subplots (Cumulative Clusters and Current Clusters)
+    ax2_1 = fig.add_subplot(gs[0:2, 1], projection='3d')  # Spanning first two rows in column 1
+    ax2_2 = fig.add_subplot(gs[2:4, 1], projection='3d')  # Spanning last two rows in column 1
+
+    elev = 0
+    azim = 90
+    # Set the initial 3D view orientation
+    ax1_1.view_init(elev=elev, azim=azim)
+    ax1_2.view_init(elev=elev, azim=azim)
+    ax2_1.view_init(elev=elev, azim=azim)
+    ax2_2.view_init(elev=elev, azim=azim)
+
+    # Subplots in the third column (occupancy grids, unchanged size)
+    ax1_3 = fig.add_subplot(gs[0, 2])  # Occupancy grid - Frame 22
+    ax1_4 = fig.add_subplot(gs[1, 2])  # History-based occupancy grid
+    ax2_3 = fig.add_subplot(gs[2, 2])  # Clustered occupancy grid
+    ax2_4 = fig.add_subplot(gs[3, 2])  # Cumulative occupancy grid
 
     # Adjust subplot spacing
     plt.subplots_adjust(left=0.1, bottom=0.2, right=0.9, top=0.9, wspace=0.5, hspace=0.6)
@@ -427,10 +476,11 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         for point in current_frame_points:
             x_coord = point["X [m]"]
             y_coord = point["Y [m]"]
-            doppler_speed = point["Doppler [m/s]"]
+            z_coord = point["Y [m]"]
+            #doppler_speed = point["Doppler [m/s]"]
 
-            coordinates1.append((x_coord, y_coord))
-            doppler1.append(doppler_speed)
+            coordinates1.append((x_coord, y_coord, z_coord))
+            #doppler1.append(doppler_speed)
 
         # Check if the current frame has no valid points
         if not coordinates1:
@@ -440,39 +490,45 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         # -----------------------------------------
         # Ax1_1: Update cumulative data for dataset 1
         # -----------------------------------------
-        x1, y1 = [], []
-        for frame in range(1, frame_idx + 1):  # Accumulate data up to the current frame
-            historical_points = frames_data.get(frame, [])  # Retrieve historical points
-            for point in historical_points:
+        x1, y1, z1 = [], [], []
+        # Accumulate historical data
+        for frame in range(1, frame_idx + 1):
+            points = frames_data.get(frame, [])
+            for point in points:
                 x1.append(point["X [m]"])
                 y1.append(point["Y [m]"])
+                z1.append(point["Z [m]"])
 
-        line1_1.set_data(x1, y1)  # Update the cumulative plot
+        # Plot cumulative data in 3D
+        ax1_1.cla()
+        ax1_1.scatter3D(x1, y1, z1, c='blue', label="Cumulative Data")
         ax1_1.set_xlabel("X [m]")
         ax1_1.set_ylabel("Y [m]")
+        ax1_1.set_zlabel("Z [m]")
+        ax1_1.set_title("Cumulative Data (3D)")
+        # Draw 2D grid and sensor area at Z=0
+        draw_grid_3d(ax1_1, x_limits, y_limits, grid_spacing, z_plane=0)
+        draw_sensor_area_3d(ax1_1)
 
         # -----------------------------------------
         # Ax1_2: Update current frame data for dataset 1
         # -----------------------------------------
+        # Extract X, Y, and Z coordinates for the current frame
+        x2 = [point[0] for point in coordinates1]
+        y2 = [point[1] for point in coordinates1]
+        z2 = [point["Z [m]"] for point in current_frame_points]
+
+        # Plot current frame points in 3D
         ax1_2.cla()
-        ax1_2.set_xlim(*x_limits)
-        ax1_2.set_ylim(*y_limits)
-        draw_grid(ax1_2, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax1_2)
-
-        # Extract X and Y coordinates for the current frame
-        x1 = [coord[0] for coord in coordinates1]
-        y1 = [coord[1] for coord in coordinates1]
-        ax1_2.plot(x1, y1, 'ro')  # Plot current frame points
-
-        # Annotate Doppler values on the plot
-        for (x, y), d in zip(coordinates1, doppler1):
-            ax1_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
-
-        ax1_2.set_title(f"Frame {frame_idx} - Dataset 1")
-        ax1_2.legend(["Current Frame"], loc="upper left")
+        ax1_2.scatter3D(z2, y2, z2, c='red', label="Current Frame")
         ax1_2.set_xlabel("X [m]")
         ax1_2.set_ylabel("Y [m]")
+        ax1_2.set_zlabel("Z [m]")
+        ax1_2.set_title(f"Frame {frame_idx} - Current Frame (3D)")
+        # Draw 2D grid and sensor area at Z=0
+        draw_grid_3d(ax1_2, x_limits, y_limits, grid_spacing, z_plane=0)
+        draw_sensor_area_3d(ax1_2)
+
 
         # -----------------------------------------
         # Ax1_3: Update Occupancy Grid for Dataset 1
@@ -516,7 +572,8 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         for point in current_frame_points:
             x_coord = point["X [m]"]
             y_coord = point["Y [m]"]
-            coordinates2.append([x_coord, y_coord])
+            z_coord = point["Z [m]"]
+            coordinates2.append([x_coord, y_coord, z_coord])
 
         # Check if the current frame has no valid points
         if not coordinates2:
@@ -525,49 +582,58 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
         # Prepare DataFrame for clustering
         # Prepare DataFrame for clustering
-        df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]"])
+        df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]", "Z [m]"])
         labels = dbscan_clustering(df, eps=eps2, min_samples=min_samples2)
 
         # -----------------------------------------
         # Ax2_1: Update cumulative clusters
         # -----------------------------------------
         if not hasattr(update, "cumulative_clusters"):
-            update.cumulative_clusters = {"x": [], "y": []}  # Initialize cumulative clusters
+            update.cumulative_clusters = {"x": [], "y": [], "z": []}
 
         for cluster_label in set(labels):
             if cluster_label != -1:  # Ignore noise points
-                cluster_points = df.loc[labels == cluster_label, ["X [m]", "Y [m]"]].values
+                cluster_points = df.loc[labels == cluster_label, ["X [m]", "Y [m]", "Z [m]"]].values
                 update.cumulative_clusters["x"].extend(cluster_points[:, 0])
                 update.cumulative_clusters["y"].extend(cluster_points[:, 1])
+                update.cumulative_clusters["z"].extend(cluster_points[:, 2])
 
+        # Plot cumulative clusters in 3D
         ax2_1.cla()
-        ax2_1.scatter(update.cumulative_clusters["x"], update.cumulative_clusters["y"], c='purple', alpha=0.5, label="Cumulative Clusters")
-        ax2_1.set_xlim(*x_limits)
-        ax2_1.set_ylim(*y_limits)
-        ax2_1.set_title("Cumulative Clusters")
-        ax2_1.legend()
+        ax2_1.scatter3D(update.cumulative_clusters["x"], update.cumulative_clusters["y"], update.cumulative_clusters["z"],
+                        c='purple', alpha=0.5, label="Cumulative Clusters")
+        ax2_1.set_xlabel("X [m]")
+        ax2_1.set_ylabel("Y [m]")
+        ax2_1.set_zlabel("Z [m]")
+        ax2_1.set_title("Cumulative Clusters (3D)")
+        # Draw 2D grid and sensor area at Z=0
+        draw_grid_3d(ax2_1, x_limits, y_limits, grid_spacing, z_plane=0)
+        draw_sensor_area_3d(ax2_1)
 
         # -----------------------------------------
         # Ax2_2: Current frame clusters
         # -----------------------------------------
         ax2_2.cla()
-        ax2_2.set_xlim(*x_limits)
-        ax2_2.set_ylim(*y_limits)
-        draw_grid(ax2_2, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax2_2)
+        ax2_2.set_xlabel("X [m]")
+        ax2_2.set_ylabel("Y [m]")
+        ax2_2.set_zlabel("Z [m]")
+        ax2_2.set_title(f"Frame {frame_idx} - Current Frame Clusters (3D)")
 
         unique_labels = set(labels)
         colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
 
-        for k, col in zip(unique_labels, colors):
-            if k == -1:  # Noise points
+        for cluster_label, col in zip(set(labels), colors):
+            if cluster_label == -1:  # Noise points
                 col = [0, 0, 0, 1]  # Black for noise
-            class_member_mask = (labels == k)
-            xy = df[class_member_mask][["X [m]", "Y [m]"]].values
-            ax2_2.scatter(xy[:, 0], xy[:, 1], c=[col], label=f"Cluster {k}")
-
-        ax2_2.set_title(f"Frame {frame_idx} - DBSCAN Clusters")
-        #ax2_2.legend()
+            else:
+                class_member_mask = (labels == cluster_label)
+                cluster_points = df.loc[class_member_mask, ["X [m]", "Y [m]", "Z [m]"]].values
+                ax2_2.scatter3D(cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2],
+                                c=[col], label=f"Cluster {cluster_label}")
+        
+        # Draw 2D grid and sensor area at Z=0
+        draw_grid_3d(ax2_2, x_limits, y_limits, grid_spacing, z_plane=0)
+        draw_sensor_area_3d(ax2_2)
 
         # -----------------------------------------
         # Ax2_3: Current frame occupancy grid for clusters
@@ -651,8 +717,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_log_2024-12-16.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
-y_threshold = 0.0  # Disregard points with Y < num
-z_threshold = (0, 3.0)
+y_threshold = 1.0  # Disregard points with Y < num
+z_threshold = (-0.3, 3.0)
 doppler_threshold = 0.0 # Disregard points with doppler < num
 
 print(f"Processing file: {file_path}")
