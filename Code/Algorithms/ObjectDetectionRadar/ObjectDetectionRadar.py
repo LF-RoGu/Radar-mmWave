@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import struct
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, RadioButtons
 from matplotlib.patches import Wedge
@@ -10,71 +11,137 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
+# Parse Frame Header
+def parse_frame_header(raw_data):
+    if len(raw_data) < 40:
+        raise ValueError("Insufficient data for Frame Header")
+    raw_bytes = bytes([raw_data.pop(0) for _ in range(40)])
+    frame_header = struct.unpack('<QIIIIIIII', raw_bytes)
+    return {
+        "Magic Word": f"0x{frame_header[0]:016X}",
+        "Version": f"0x{frame_header[1]:08X}",
+        "Total Packet Length": frame_header[2],
+        "Platform": f"0x{frame_header[3]:08X}",
+        "Frame Number": frame_header[4],
+        "Time [in CPU Cycles]": frame_header[5],
+        "Num Detected Obj": frame_header[6],
+        "Num TLVs": frame_header[7],
+        "Subframe Number": frame_header[8]
+    }
 
-# Utility function to load data
-def load_data(file_name, y_threshold=None, z_threshold=None, doppler_threshold=None):
+# Parse TLV Header
+def parse_tlv_header(raw_data):
+    if len(raw_data) < 8:
+        raise ValueError("Insufficient data for TLV Header")
+    raw_bytes = bytes([raw_data.pop(0) for _ in range(8)])
+    tlv_type, tlv_length = struct.unpack('<II', raw_bytes)
+    return {"TLV Type": tlv_type, "TLV Length": tlv_length}
+
+# Parse TLV Payload
+def parse_tlv_payload(tlv_header, raw_data):
+    tlv_type = tlv_header["TLV Type"]
+    payload_length = tlv_header["TLV Length"]
+    payload = [raw_data.pop(0) for _ in range(payload_length)]
+
+    # Detected Points Example
+    if tlv_type == 1:  # Detected Points
+        point_size = 16
+        detected_points = []
+        for i in range(payload_length // point_size):
+            point_bytes = bytes(payload[i * point_size:(i + 1) * point_size])
+            x, y, z, doppler = struct.unpack('<ffff', point_bytes)
+            detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
+        return {"Detected Points": detected_points}
+    return None
+
+# Process the CSV file and parse data
+def process_log_file(file_path):
     """
-    Load CSV data from the specified file and organize it by frame, filtering out rows where
-    any value violates the thresholds.
-
-    Parameters:
-        file_name (str): Path to the CSV file.
-        y_threshold (float, optional): Minimum Y-value to include points. Points with Y < y_threshold
-                                       will be excluded. Defaults to None (no filtering).
-        z_threshold (tuple, optional): Tuple (lower_bound, upper_bound) for filtering Z values.
-                                       Defaults to None (no filtering).
-        doppler_threshold (float, optional): Minimum absolute Doppler value to include points. Points with
-                                             abs(Doppler) <= doppler_threshold will be excluded. Defaults to None (no filtering).
+    Parses the log file and returns all frames and detected points as a dictionary.
     
     Returns:
-        dict: A dictionary where each key is a frame number, and the value is a tuple:
-              (coordinates, doppler), where:
-              - coordinates: List of tuples (x, y, z) for each point in the frame.
-              - doppler: List of Doppler values for each point in the frame.
+        dict: A dictionary containing frame headers and their respective detected points.
     """
-    if not os.path.exists(file_name):
-        raise FileNotFoundError(f"Error: File not found at {file_name}")
-    
-    # Load the CSV data
-    df = pd.read_csv(file_name)
-    
-    # Debug: Print initial data size
-    print(f"Initial data size: {df.shape}")
-    
-    # Apply filtering: Remove rows where any condition fails
-    if y_threshold is not None:
-        df = df[df["Y [m]"] >= y_threshold]
-        print(f"Filtered data size (Y [m] >= {y_threshold}): {df.shape}")
+    frames_dict = {}  # Dictionary to hold all parsed frame data
 
-    if z_threshold is not None:
-        # Ensure z_threshold is a tuple with lower and upper bounds
-        if isinstance(z_threshold, tuple) and len(z_threshold) == 2:
-            lower_bound, upper_bound = z_threshold
-            df = df[(df["Z [m]"] >= lower_bound) & (df["Z [m]"] <= upper_bound)]
-            print(f"Filtered data size ({lower_bound} <= Z [m] <= {upper_bound}): {df.shape}")
-        else:
-            raise ValueError("z_threshold must be a tuple with two elements: (lower_bound, upper_bound).")
+    # Load the CSV data, skip the header row
+    data = pd.read_csv(file_path, names=["Timestamp", "RawData"], skiprows=1)
 
-    if doppler_threshold is not None:
-        df = df[df["Doppler [m/s]"].abs() > doppler_threshold]
-        print(f"Filtered data size (Doppler [m/s] > {doppler_threshold}): {df.shape}")
-    
-    # Handle empty dataset case
-    if df.empty:
-        print(f"Warning: No data points remain after applying filters.")
-        return {}
-    
-    # Group data by frame and organize the output
-    frames_data = {}
-    for frame, group in df.groupby("Frame"):
-        coordinates = list(zip(group["X [m]"], group["Y [m]"], group["Z [m]"]))
-        doppler = group["Doppler [m/s]"].tolist()
-        if coordinates:  # Ensure frames with no points are skipped
-            frames_data[frame] = (coordinates, doppler)
-    
-    return frames_data
+    for row_idx in range(len(data)):
+        try:
+            # Skip invalid rows
+            if pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Skipping row {row_idx + 1}: Invalid or null data.")
+                continue
 
+            # Convert raw data to a list of integers
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
 
+            # Parse the Frame Header
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+            frame_number = frame_header["Frame Number"]
+            #print(f"Parsing Frame {frame_number}: {frame_header}")
+
+            # Initialize the frame entry
+            frames_dict[frame_number] = {
+                "Frame Header": frame_header,
+                "Detected Points": []
+            }
+
+            # Parse TLVs
+            for _ in range(num_tlvs):
+                if len(raw_data_list) < 8:
+                    print(f"Skipping incomplete TLV data in Frame {frame_number}")
+                    break
+                
+                tlv_header = parse_tlv_header(raw_data_list)
+
+                # Only process Detected Points (TLV Type 1)
+                if tlv_header["TLV Type"] == 1:
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        frames_dict[frame_number]["Detected Points"].extend(tlv_payload["Detected Points"])
+
+        except (ValueError, IndexError) as e:
+            print(f"Error parsing row {row_idx + 1}: {e}")
+
+    return frames_dict
+
+# Create a new dictionary with frame numbers and coordinates + Doppler speed
+def extract_coordinates_with_doppler(frames_data, y_threshold=None, z_threshold=None, doppler_threshold=None):
+    coordinates_dict = {}
+
+    for frame_num, frame_content in frames_data.items():
+        # Extract detected points for the current frame
+        points = frame_content["Detected Points"]
+
+        # Create a list of dictionaries with required fields and filters
+        coordinates = []
+        for point in points:
+            # Apply threshold filters
+            if y_threshold is not None and point["Y [m]"] < y_threshold:
+                continue  # Skip if Y is below the threshold
+            
+            if z_threshold is not None and not (z_threshold[0] <= point["Z [m]"] <= z_threshold[1]):
+                continue  # Skip if Z is outside the range
+            
+            if doppler_threshold is not None and abs(point["Doppler [m/s]"]) <= doppler_threshold:
+                continue  # Skip if Doppler speed is below the threshold
+
+            # Add the point to the list if it passes all filters
+            coordinates.append({
+                "X [m]": point["X [m]"],
+                "Y [m]": point["Y [m]"],
+                "Z [m]": point["Z [m]"],
+                "Doppler [m/s]": point["Doppler [m/s]"]
+            })
+        
+        # Add the filtered coordinates list to the dictionary
+        if coordinates:  # Only add frames with valid points
+            coordinates_dict[frame_num] = coordinates
+
+    return coordinates_dict
 
 # Function to draw the sensor's detection area as a wedge
 def draw_sensor_area(ax, sensor_origin=(0, -1), azimuth=60, max_distance=12):
@@ -153,15 +220,27 @@ def dbscan_clustering(data, eps=1.0, min_samples=3):
     Perform DBSCAN clustering on the X and Y coordinates from the data.
 
     Args:
-    - data (DataFrame): The data containing 'X [m]' and 'Y [m]' columns.
-    - eps (float): The maximum distance between two samples for one to be considered in the neighborhood of the other.
+    - data (list or DataFrame): Data containing X and Y coordinates.
+    - eps (float): The maximum distance between two samples for one to be considered in the neighborhood.
     - min_samples (int): The number of samples in a neighborhood for a point to be considered a core point.
 
     Returns:
     - labels (array): Cluster labels for each point. Noise points are labeled as -1.
     """
-    points = data[['X [m]', 'Y [m]']].values
-    db = DBSCAN(eps=eps, min_samples=min_samples).fit(points)
+    # If data is a list, convert it to a numpy array
+    if isinstance(data, list):
+        if not data:  # Handle empty list
+            print("DBSCAN: No data points provided.")
+            return np.array([])  # Return empty labels
+        data = np.array(data)
+
+    # Ensure data is in 2D format
+    if data.shape[0] == 0:
+        print("DBSCAN: No valid points for clustering.")
+        return np.array([])
+
+    # Perform DBSCAN
+    db = DBSCAN(eps=eps, min_samples=min_samples).fit(data)
     return db.labels_
 
 
@@ -207,8 +286,11 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
                                     int((y_limits[1] - y_limits[0]) / grid_spacing)))
 
         for i in range(max(1, frame_idx - history_frames + 1), frame_idx + 1):
-            coordinates, _ = frames_data.get(i, ([], []))
-            occupancy_grid = calculate_occupancy_grid(coordinates, x_limits, y_limits, grid_spacing)
+            coordinates = frames_data.get(i, [])  # Retrieve the list of points
+            # Extract X and Y coordinates as tuples
+            points = [(point["X [m]"], point["Y [m]"]) for point in coordinates]
+            # Update the cumulative grid
+            occupancy_grid = calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing)
             cumulative_grid += occupancy_grid
 
         # Normalize cumulative grid to [0, 1] (optional for visualization purposes)
@@ -273,7 +355,6 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
     for ax, title in zip([ax1_1], ["Point Cloud"]):
         ax.set_xlim(*x_limits)
         ax.set_ylim(*y_limits)
-        ax.legend(loc="upper left")
         ax.set_title(f"{title} - Cumulative Data")
 
     # Initialize per-frame plots
@@ -335,35 +416,57 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         """
         Dataset 1
         """
-        coordinates1, doppler1 = frames_data.get(frame_idx, ([], []))  # Current frame's data
+        # Initialize lists to store X, Y coordinates and Doppler values for the current frame
+        coordinates1 = []
+        doppler1 = []
+
+        # Get the list of points for the current frame
+        current_frame_points = frames_data.get(frame_idx, [])
+
+        # Extract X, Y coordinates and Doppler values
+        for point in current_frame_points:
+            x_coord = point["X [m]"]
+            y_coord = point["Y [m]"]
+            doppler_speed = point["Doppler [m/s]"]
+
+            coordinates1.append((x_coord, y_coord))
+            doppler1.append(doppler_speed)
+
+        # Check if the current frame has no valid points
         if not coordinates1:
             print(f"Frame {frame_idx} for Dataset 1 has no points after filtering.")
             return
-        
+
+        # -----------------------------------------
         # Ax1_1: Update cumulative data for dataset 1
+        # -----------------------------------------
         x1, y1 = [], []
         for frame in range(1, frame_idx + 1):  # Accumulate data up to the current frame
-            coords, _ = frames_data.get(frame, ([], []))
-            x1.extend([coord[0] for coord in coords])
-            y1.extend([coord[1] for coord in coords])
+            historical_points = frames_data.get(frame, [])  # Retrieve historical points
+            for point in historical_points:
+                x1.append(point["X [m]"])
+                y1.append(point["Y [m]"])
 
-        line1_1.set_data(x1, y1)
+        line1_1.set_data(x1, y1)  # Update the cumulative plot
         ax1_1.set_xlabel("X [m]")
         ax1_1.set_ylabel("Y [m]")
 
+        # -----------------------------------------
         # Ax1_2: Update current frame data for dataset 1
+        # -----------------------------------------
         ax1_2.cla()
         ax1_2.set_xlim(*x_limits)
         ax1_2.set_ylim(*y_limits)
         draw_grid(ax1_2, x_limits, y_limits, grid_spacing)
-        draw_sensor_area(ax1_2)  # Assuming this function visualizes the sensor's area
+        draw_sensor_area(ax1_2)
 
+        # Extract X and Y coordinates for the current frame
         x1 = [coord[0] for coord in coordinates1]
         y1 = [coord[1] for coord in coordinates1]
-        ax1_2.plot(x1, y1, 'ro')
+        ax1_2.plot(x1, y1, 'ro')  # Plot current frame points
 
         # Annotate Doppler values on the plot
-        for x, y, d in zip(x1, y1, doppler1):
+        for (x, y), d in zip(coordinates1, doppler1):
             ax1_2.text(x, y, f"{d:.2f}", fontsize=8, ha="center", va="bottom", color="blue")
 
         ax1_2.set_title(f"Frame {frame_idx} - Dataset 1")
@@ -371,7 +474,9 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         ax1_2.set_xlabel("X [m]")
         ax1_2.set_ylabel("Y [m]")
 
-        # Update ax1_3: Occupancy Grid for Dataset 1
+        # -----------------------------------------
+        # Ax1_3: Update Occupancy Grid for Dataset 1
+        # -----------------------------------------
         occupancy_grid1 = calculate_occupancy_grid(coordinates1, x_limits, y_limits, grid_spacing)
         ax1_3.cla()
         ax1_3.imshow(occupancy_grid1.T, extent=(*x_limits, *y_limits), origin='lower', cmap=cmap, aspect='auto')
@@ -381,7 +486,9 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         draw_grid(ax1_3, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax1_3)
 
-        # Update ax1_4: History-Based Occupancy Grid for Dataset 1
+        # -----------------------------------------
+        # Ax1_4: Update History-Based Occupancy Grid for Dataset 1
+        # -----------------------------------------
         cumulative_grid1 = calculate_cumulative_occupancy(
             frames_data, frame_idx, x_limits, y_limits, grid_spacing, history_frames
         )
@@ -398,23 +505,41 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         """
         eps2 = 0.4
         min_samples2 = 2
-        coordinates2, _ = frames_data.get(frame_idx, ([], []))  # Ensure this is the same frame data
+
+        # Initialize lists to store X, Y, and Z coordinates
+        coordinates2 = []
+
+        # Get the list of points for the current frame
+        current_frame_points = frames_data.get(frame_idx, [])
+
+        # Extract X, Y, and Z coordinates for clustering
+        for point in current_frame_points:
+            x_coord = point["X [m]"]
+            y_coord = point["Y [m]"]
+            coordinates2.append([x_coord, y_coord])
+
+        # Check if the current frame has no valid points
         if not coordinates2:
             print(f"Frame {frame_idx} for Dataset 2 has no points after filtering.")
             return
 
         # Prepare DataFrame for clustering
-        df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]", "Z [m]"])
+        # Prepare DataFrame for clustering
+        df = pd.DataFrame(coordinates2, columns=["X [m]", "Y [m]"])
         labels = dbscan_clustering(df, eps=eps2, min_samples=min_samples2)
 
+        # -----------------------------------------
         # Ax2_1: Update cumulative clusters
+        # -----------------------------------------
         if not hasattr(update, "cumulative_clusters"):
-            update.cumulative_clusters = {"x": [], "y": []}
+            update.cumulative_clusters = {"x": [], "y": []}  # Initialize cumulative clusters
+
         for cluster_label in set(labels):
             if cluster_label != -1:  # Ignore noise points
-                cluster_points = df[labels == cluster_label][["X [m]", "Y [m]"]].values
+                cluster_points = df.loc[labels == cluster_label, ["X [m]", "Y [m]"]].values
                 update.cumulative_clusters["x"].extend(cluster_points[:, 0])
                 update.cumulative_clusters["y"].extend(cluster_points[:, 1])
+
         ax2_1.cla()
         ax2_1.scatter(update.cumulative_clusters["x"], update.cumulative_clusters["y"], c='purple', alpha=0.5, label="Cumulative Clusters")
         ax2_1.set_xlim(*x_limits)
@@ -422,7 +547,9 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         ax2_1.set_title("Cumulative Clusters")
         ax2_1.legend()
 
+        # -----------------------------------------
         # Ax2_2: Current frame clusters
+        # -----------------------------------------
         ax2_2.cla()
         ax2_2.set_xlim(*x_limits)
         ax2_2.set_ylim(*y_limits)
@@ -431,17 +558,20 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
         unique_labels = set(labels)
         colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
+
         for k, col in zip(unique_labels, colors):
             if k == -1:  # Noise points
-                col = [0, 0, 0, 1]
+                col = [0, 0, 0, 1]  # Black for noise
             class_member_mask = (labels == k)
             xy = df[class_member_mask][["X [m]", "Y [m]"]].values
             ax2_2.scatter(xy[:, 0], xy[:, 1], c=[col], label=f"Cluster {k}")
 
         ax2_2.set_title(f"Frame {frame_idx} - DBSCAN Clusters")
-        ax2_2.legend()
+        #ax2_2.legend()
 
-       # Ax2_3: Current frame occupancy grid for clusters
+        # -----------------------------------------
+        # Ax2_3: Current frame occupancy grid for clusters
+        # -----------------------------------------
         ax2_3.cla()
         ax2_3.set_xlim(*x_limits)
         ax2_3.set_ylim(*y_limits)
@@ -449,12 +579,16 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
         # Filter only clustered points
         clustered_points = df[labels != -1][["X [m]", "Y [m]"]].values
         if clustered_points.size == 0:
-            print(f"No clustered points for frame {frame_idx}. Displaying an empty grid.")
+            pass  # Do nothing if there are no clustered points
         else:
             # Calculate the occupancy grid for clustered points
             frame_grid = calculate_occupancy_grid(clustered_points, x_limits, y_limits, grid_spacing)
+
             # Update the cumulative grid
+            if not hasattr(update, "cumulative_grid"):
+                update.cumulative_grid = np.zeros_like(frame_grid)  # Initialize cumulative grid
             update.cumulative_grid += frame_grid
+
             # Plot the current frame's occupancy grid
             ax2_3.imshow(
                 frame_grid.T,  # Transpose for proper orientation
@@ -463,16 +597,19 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
                 cmap=cmap,
                 aspect="auto"
             )
+
         ax2_3.set_title("Clustered Occupancy Grid")
         draw_grid(ax2_3, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax2_3)
 
+        # -----------------------------------------
         # Ax2_4: Cumulative history-based clustered occupancy grid
+        # -----------------------------------------
         ax2_4.cla()
         ax2_4.set_xlim(*x_limits)
         ax2_4.set_ylim(*y_limits)
 
-        # Normalize the cumulative grid for better visualization (optional)
+        # Normalize the cumulative grid for better visualization
         cumulative_grid_normalized = np.clip(update.cumulative_grid, 0, 10)
 
         # Plot the cumulative grid
@@ -480,13 +617,14 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
             cumulative_grid_normalized.T,  # Transpose for proper orientation
             extent=(*x_limits, *y_limits),
             origin="lower",
-            cmap=cmap,  # Customize your colormap if needed
+            cmap=cmap,
             aspect="auto"
         )
 
         ax2_4.set_title("Cumulative Occupancy Grid")
         draw_grid(ax2_4, x_limits, y_limits, grid_spacing)
         draw_sensor_area(ax2_4)
+
 
         fig.canvas.draw_idle()
     # Add slider
@@ -509,15 +647,19 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
 
 # Example Usage
 # Get the absolute path to the CSV file
-file_name1 = "coordinates_30fps_15mts.csv"  # Replace with your file path
-script_dir1 = os.path.dirname(os.path.abspath(__file__))
-file_path1 = os.path.join(script_dir1, file_name1)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_3_log_2024-12-16.csv")
+file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0  # Disregard points with Y < num
 z_threshold = (-0.30, 3.0)
 doppler_threshold = 0.0 # Disregard points with doppler < num
 
-frames_data = load_data(file_path1, y_threshold, z_threshold, doppler_threshold)
+print(f"Processing file: {file_path}")
+frames_data = process_log_file(file_path)
+
+# Extract new dictionary with frame numbers and coordinates + Doppler
+frames_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_threshold, doppler_threshold)
 
 """
 Having a legen of Cluster -1, means no cluster has been created

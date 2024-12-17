@@ -125,15 +125,6 @@ def extract_coordinates_with_doppler(frames_data):
     return coordinates_dict
 
 
-# Main script
-if __name__ == "__main__":
-    # Set up the file path
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_3_log_2024-12-16.csv")
-    file_path = os.path.normpath(os.path.join(script_dir, relative_path))
-
-    print(f"Processing file: {file_path}")
-
 
 # Main script
 if __name__ == "__main__":
