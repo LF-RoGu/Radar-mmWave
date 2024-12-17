@@ -73,7 +73,7 @@ def process_log_file(file_path):
             frame_header = parse_frame_header(raw_data_list)
             num_tlvs = frame_header["Num TLVs"]
             frame_number = frame_header["Frame Number"]
-            print(f"Parsing Frame {frame_number}: {frame_header}")
+            #print(f"Parsing Frame {frame_number}: {frame_header}")
 
             # Initialize the frame entry
             frames_dict[frame_number] = {
@@ -100,6 +100,40 @@ def process_log_file(file_path):
 
     return frames_dict
 
+# Create a new dictionary with frame numbers and coordinates + Doppler speed
+def extract_coordinates_with_doppler(frames_data):
+    coordinates_dict = {}
+    
+    for frame_num, frame_content in frames_data.items():
+        # Extract detected points for the current frame
+        points = frame_content["Detected Points"]
+        
+        # Create a list of dictionaries with required fields
+        coordinates = [
+            {
+                "X [m]": point["X [m]"],
+                "Y [m]": point["Y [m]"],
+                "Z [m]": point["Z [m]"],
+                "Doppler [m/s]": point["Doppler [m/s]"]
+            }
+            for point in points
+        ]
+        
+        # Add the coordinates list to the new dictionary under the frame number
+        coordinates_dict[frame_num] = coordinates
+    
+    return coordinates_dict
+
+
+# Main script
+if __name__ == "__main__":
+    # Set up the file path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_3_log_2024-12-16.csv")
+    file_path = os.path.normpath(os.path.join(script_dir, relative_path))
+
+    print(f"Processing file: {file_path}")
+
 
 # Main script
 if __name__ == "__main__":
@@ -113,15 +147,13 @@ if __name__ == "__main__":
 
     # Print summary
     print(f"\nParsed {len(frames_data)} frames successfully.")
-    for i, (frame_num, frame_content) in enumerate(list(frames_data.items())[:5]):  # Print first 5 frames
-        print(f"\nFrame {frame_num}:")
-        print("Frame Header:")
-        for key, value in frame_content["Frame Header"].items():
-            print(f"  {key}: {value}")
-        
-        print("\nDetected Points (example):")
-        for point in frame_content["Detected Points"][:3]:  # Print first 3 points
-            print(f"  X: {point['X [m]']:.3f}, Y: {point['Y [m]']:.3f}, Z: {point['Z [m]']:.3f}, Doppler: {point['Doppler [m/s]']:.3f}")
-        
-        print()  # Add a blank line after each frame
 
+    # Extract new dictionary with frame numbers and coordinates + Doppler
+    coordinates_dict = extract_coordinates_with_doppler(frames_data)
+
+    # Print the first 3 frames as a preview
+    print("\nCoordinates with Doppler speed for the first 3 frames:")
+    for frame_num, points in list(coordinates_dict.items())[:50]:  # Show first 3 frames
+        print(f"\nFrame {frame_num}:")
+        for point in points[:5]:  # Show first 5 points
+            print(f"  X: {point['X [m]']:.3f}, Y: {point['Y [m]']:.3f}, Z: {point['Z [m]']:.3f}, Doppler: {point['Doppler [m/s]']:.3f}")
