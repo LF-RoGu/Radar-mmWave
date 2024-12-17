@@ -374,7 +374,7 @@ def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, ep
     ax2_1 = fig.add_subplot(gs[0:2, 1], projection='3d')  # Spanning first two rows in column 1
     ax2_2 = fig.add_subplot(gs[2:4, 1], projection='3d')  # Spanning last two rows in column 1
 
-    elev = 0
+    elev = 90
     azim = 90
     # Set the initial 3D view orientation
     ax1_1.view_init(elev=elev, azim=azim)
