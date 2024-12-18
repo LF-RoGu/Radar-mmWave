@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import struct
+import math
 
 # Parse Frame Header
 def parse_frame_header(raw_data_list):
@@ -30,6 +31,7 @@ def parse_tlv_header(raw_data_list):
 
 # Parse Type 1: Detected Points
 def parse_type_1_data(tlv_header, raw_data_list):
+    """Parses Type 1 TLV payload (Detected Points)."""
     payload_length = tlv_header["TLV Length"]
     point_size = 16  # Each point has 16 bytes: X, Y, Z, Doppler
     num_points = payload_length // point_size
@@ -37,13 +39,39 @@ def parse_type_1_data(tlv_header, raw_data_list):
     detected_points = []
     for _ in range(num_points):
         if len(raw_data_list) < point_size:
-            #print("Warning: Insufficient data for Type 1 point.")
+            print("Warning: Insufficient data for Type 1 point.")
             break
         point_bytes = bytes([raw_data_list.pop(0) for _ in range(point_size)])
         x, y, z, doppler = struct.unpack('<ffff', point_bytes)
-        detected_points.append({"X [m]": x, "Y [m]": y, "Z [m]": z, "Doppler [m/s]": doppler})
+
+        # Calculate range profile from x, y, z
+        comp_detected_range = math.sqrt((x * x) + (y * y) + (z * z))
+
+        # Calculate azimuth from x, y
+        if y == 0:
+            detected_azimuth = 90 if x >= 0 else -90
+        else:
+            detected_azimuth = math.atan(x / y) * (180 / math.pi)
+
+        # Calculate elevation angle from x, y, z
+        if x == 0 and y == 0:
+            detected_elev_angle = 90 if z >= 0 else -90
+        else:
+            detected_elev_angle = math.atan(z / math.sqrt((x * x) + (y * y))) * (180 / math.pi)
+
+        # Append to detected points with additional info
+        detected_points.append({
+            "X [m]": x,
+            "Y [m]": y,
+            "Z [m]": z,
+            "Doppler [m/s]": doppler,
+            "Range [m]": comp_detected_range,
+            "Azimuth [deg]": detected_azimuth,
+            "Elevation Angle [deg]": detected_elev_angle
+        })
 
     return {"Type 1 Data": detected_points}
+
 
 # Parse Type 2: Placeholder for additional payloads
 def parse_type_2_data(tlv_header, raw_data_list):
