@@ -233,32 +233,31 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
 
 def dbscan_clustering(data, eps=1.0, min_samples=3):
     """
-    Perform DBSCAN clustering on the X and Y coordinates from the data.
+    Perform DBSCAN clustering on the X, Y, and Z coordinates.
 
     Args:
-    - data (list or DataFrame): Data containing X and Y coordinates.
+    - data (list or DataFrame): Data containing X, Y, and Z coordinates.
     - eps (float): The maximum distance between two samples for one to be considered in the neighborhood.
     - min_samples (int): The number of samples in a neighborhood for a point to be considered a core point.
 
     Returns:
     - labels (array): Cluster labels for each point. Noise points are labeled as -1.
     """
-    # If data is a list, convert it to a numpy array
+    # Convert input data to numpy array if it's a list
     if isinstance(data, list):
         if not data:  # Handle empty list
             print("DBSCAN: No data points provided.")
             return np.array([])  # Return empty labels
         data = np.array(data)
 
-    # Ensure data is in 2D format
-    if data.shape[0] == 0:
-        print("DBSCAN: No valid points for clustering.")
+    # Ensure the data contains valid 3D points
+    if data.shape[0] == 0 or data.shape[1] != 3:
+        print("DBSCAN: Data must contain 3D points (X, Y, Z).")
         return np.array([])
 
-    # Perform DBSCAN
+    # Perform DBSCAN clustering
     db = DBSCAN(eps=eps, min_samples=min_samples).fit(data)
     return db.labels_
-
 
 # Plotting function
 def create_interactive_plots(frames_data, x_limits, y_limits, grid_spacing=1, eps1=0.5, min_samples1=5, eps2=0.5, min_samples2=5, history_frames=5):
@@ -667,7 +666,7 @@ relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMoni
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 1.0  # Disregard points with Y < num
-z_threshold = (-0.3, 3.0)
+z_threshold = (-0.3, 2.0)
 doppler_threshold = 0.1 # Disregard points with doppler < num
 
 print(f"Processing file: {file_path}")
@@ -680,4 +679,4 @@ frames_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_thres
 Having a legen of Cluster -1, means no cluster has been created
 Same as having Grey Clusters
 """
-create_interactive_plots(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps1=0.5, min_samples1=2, eps2=0.3, min_samples2=4, history_frames = 10)
+create_interactive_plots(frames_data, x_limits=(-8, 8), y_limits=(0, 15), eps1=1.0, min_samples1=2, eps2=0.3, min_samples2=5, history_frames = 10)
