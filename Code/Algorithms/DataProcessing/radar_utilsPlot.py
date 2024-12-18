@@ -50,8 +50,8 @@ def animate_3d_plot(frames_data, grouped_frames):
         ax.set_ylabel("Y [m]")
         ax.set_zlabel("Z [m]")
         ax.set_xlim([-10, 10])
-        ax.set_ylim([-50, 50])
-        ax.set_zlim([-10, 10])
+        ax.set_ylim([-15, 15])
+        ax.set_zlim([0, 10])
 
         # Extract objects for the current group
         current_group = grouped_frames[frame_index]
@@ -64,7 +64,7 @@ def animate_3d_plot(frames_data, grouped_frames):
         ax.scatter(xs, ys, zs, c="blue", marker="o", label="Detected Objects")
 
         # Plot the vehicle as a red circle at Z = 0
-        ax.scatter(0, -(frame_index * VEHICLE_SPEED), 0, c="red", s=100, marker="o", label="Vehicle (Z=0)")
+        ax.scatter(0, (frame_index * VEHICLE_SPEED) - 15, 0, c="red", s=100, marker="o", label="Vehicle (Z=0)")
 
         # Add legend
         ax.legend()
