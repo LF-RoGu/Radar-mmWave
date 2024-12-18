@@ -22,10 +22,15 @@ def parse_frame_header(raw_data):
     }
 
 # Parse TLV Header
-def parse_tlv_header(raw_data):
-    if len(raw_data) < 8:
+def parse_tlv_header(raw_data_list):
+    """Parses the TLV Header (Type and Length)."""
+    if len(raw_data_list) < 8:
         raise ValueError("Insufficient data for TLV Header")
-    raw_bytes = bytes([raw_data.pop(0) for _ in range(8)])
+
+    # Extract 8 bytes: 4 for Type, 4 for Length
+    raw_bytes = bytes(raw_data_list[:8])
+    raw_data_list[:8] = []  # Remove parsed header bytes
+
     tlv_type, tlv_length = struct.unpack('<II', raw_bytes)
     return {"TLV Type": tlv_type, "TLV Length": tlv_length}
 
@@ -85,11 +90,16 @@ def process_log_file(file_path):
 
             # Parse TLVs
             for _ in range(num_tlvs):
-                if len(raw_data_list) < 8:
-                    print(f"Skipping incomplete TLV data in Frame {frame_number}")
-                    break
 
                 tlv_header = parse_tlv_header(raw_data_list)
+                tlv_type = tlv_header["TLV Type"]
+                tlv_length = tlv_header["TLV Length"]
+
+                # Validate TLV payload length
+                if len(raw_data_list) < tlv_length:
+                    print(f"Warning: Insufficient data for TLV Type {tlv_type} in Frame {frame_number}. Skipping.")
+                    raw_data_list[:tlv_length] = []  # Consume the payload
+                    continue
 
                 if tlv_header["TLV Type"] == 1:
                     # Detected Points
@@ -113,6 +123,8 @@ def process_log_file(file_path):
                     num_detected_obj = frame_header["Num Detected Obj"]  # Get number of detected objects
                     tlv_payload = parse_type_7_data(tlv_header, raw_data_list, num_detected_obj, frame_number)
                     frames_dict[frame_number]["Type 7 Data"].append(tlv_payload)
+                else:
+                    raw_data_list[:tlv_length] = []  # Consume unsupported TLV payloads
 
 
         except (ValueError, IndexError) as e:
@@ -258,13 +270,15 @@ if __name__ == "__main__":
     print(f"Processing file: {file_path}")
     frames_data = process_log_file(file_path)
 
+    # Count total rows in the file (excluding header)
+    total_rows = sum(1 for _ in open(file_path)) - 1
     # Print summary
-    print(f"\nParsed {len(frames_data)} frames successfully.\n")
+    print(f"\nParsed {len(frames_data)} frames successfully out of {total_rows} total rows.")
 
     # Visualize Type 1 TLV data (coordinates and Doppler) with SNR and Noise for the first 5 frames
     print("Type 1 TLV Data (Coordinates, Doppler, SNR, and Noise) for the first 5 frames:")
     coordinates_dict = extract_coordinates_with_doppler_and_side_info(frames_data)
-    for frame_num, points in list(coordinates_dict.items())[:5]:  # Show first 5 frames
+    for frame_num, points in list(coordinates_dict.items())[:200]:  # Show first 5 frames
         print(f"\nFrame {frame_num}:")
         for point in points:
             print(f"  X: {point['X [m]']:.3f}, Y: {point['Y [m]']:.3f}, Z: {point['Z [m]']:.3f}, Doppler: {point['Doppler [m/s]']:.3f}")
