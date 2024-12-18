@@ -72,7 +72,7 @@ def parse_type_7_data(tlv_header, raw_data_list, num_detected_obj):
     side_info = []
     for _ in range(num_detected_obj):
         if len(raw_data_list) < 4:
-            print("Warning: Insufficient data for Type 7 point.")
+            #print("Warning: Insufficient data for Type 7 point.")
             break
         point_bytes = bytes([raw_data_list.pop(0) for _ in range(4)])
         snr, noise = struct.unpack('<HH', point_bytes)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # Print summary
     print(f"\nParsed {len(frames_data)} frames successfully out of {total_rows} total rows.")
 
-    # Print sample data (first 5 frames) with better formatting
+    # Print sample data (first 5 frames) with limited decimal points
     for frame_num, frame_content in list(frames_data.items())[:5]:
         print(f"\nFrame {frame_num}:")
         for tlv in frame_content["TLVs"]:
@@ -140,7 +140,12 @@ if __name__ == "__main__":
                 if isinstance(value, list):  # For lists, print each item on a new line
                     print(f"  {key}:")
                     for item in value:
-                        print(f"    {item}")
+                        if isinstance(item, dict):  # If the item is a dictionary, limit decimals
+                            formatted_item = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in item.items()}
+                            print(f"    {formatted_item}")
+                        else:
+                            print(f"    {item}")
                 else:  # For single key-value pairs, print inline
-                    print(f"  {key}: {value}")
+                    print(f"  {key}: {round(value, 3) if isinstance(value, float) else value}")
+
 
