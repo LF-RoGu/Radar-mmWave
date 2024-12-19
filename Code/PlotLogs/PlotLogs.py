@@ -3,6 +3,10 @@ import pandas as pd
 import struct
 import matplotlib.pyplot as plt
 from datetime import datetime
+from sklearn.cluster import DBSCAN
+import numpy as np
+import threading
+
 
 # Global variable to specify which TLVs to process
 interested_tlv_types = [1]  # Example: Interested in Detected Points (1) and Temperature Statistics (9)
@@ -309,7 +313,332 @@ def plot_all_data(data, doppler_threshold=0.1, axis_limit=3):
     plt.tight_layout()
     plt.show()
 
-def live_visualization(data, doppler_threshold=0.1, axis_limit=3, delay=0.5):
+def plot_all_data_with_kalman(data, doppler_threshold=0.1, axis_limit=3):
+    """
+    Plot all stationary and moving objects in a single frame with Kalman filter tracking.
+    
+    Args:
+        data (DataFrame): The radar data.
+        doppler_threshold (float): Threshold to separate stationary and moving objects.
+        axis_limit (float): Limit for the 3D axis (in meters).
+    """
+    from pykalman import KalmanFilter
+    import numpy as np
+
+    stationary_coords = []  # Stationary points: (X, Y, Z)
+    moving_coords = []      # Moving points: (X, Y, Z)
+    kalman_filters = []     # List of Kalman Filters for each detected object
+
+    for row_idx in range(len(data)):
+        try:
+            # Check if the row is valid (non-null)
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Skipping row {row_idx + 1}: Null data encountered.")
+                continue
+
+            # Convert timestamp to UNIX format
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            # Get raw data from the current row
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+
+            # Parse the frame header
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            # Parse TLVs
+            detected_coords = []
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            detected_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            if not detected_coords:
+                continue
+
+            detected_coords = np.array(detected_coords)
+
+            # Initialize Kalman Filters for newly detected objects
+            if not kalman_filters:
+                for coord in detected_coords:
+                    kf = KalmanFilter(
+                        transition_matrices=np.eye(3),         # Constant position model
+                        observation_matrices=np.eye(3),       # Observing position directly
+                        transition_covariance=np.eye(3) * 0.05,  # System dynamics noise
+                        observation_covariance=np.eye(3) * 0.02, # Measurement noise
+                        initial_state_mean=coord,             # Initial position
+                        initial_state_covariance=np.eye(3) * 0.1 # Initial uncertainty
+                    )
+                    kalman_filters.append(kf)
+
+            # Update Kalman Filters with detected positions
+            kalman_predictions = []
+            for kf, coord in zip(kalman_filters, detected_coords):
+                next_state = kf.filter_update(kf.initial_state_mean, kf.initial_state_covariance, coord)
+                kalman_predictions.append(next_state[0])
+
+            # Separate stationary and moving objects
+            for prediction in kalman_predictions:
+                x, y, z = prediction
+                doppler = np.linalg.norm(prediction)  # Approximate Doppler from velocity magnitude
+                if doppler <= doppler_threshold:
+                    stationary_coords.append((x, y, z))
+                else:
+                    moving_coords.append((x, y, z))
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    # Plot stationary and moving objects
+    fig = plt.figure(figsize=(12, 6))
+    ax_stationary = fig.add_subplot(121, projection='3d', title="Stationary Objects")
+    ax_moving = fig.add_subplot(122, projection='3d', title="Moving Objects")
+
+    # Plot stationary objects
+    if stationary_coords:
+        x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+        ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+    ax_stationary.set_xlabel('X Coordinate (m)')
+    ax_stationary.set_ylabel('Y Coordinate (m)')
+    ax_stationary.set_zlabel('Z Coordinate (m)')
+    ax_stationary.set_xlim([-axis_limit, axis_limit])
+    ax_stationary.set_ylim([-axis_limit, axis_limit])
+    ax_stationary.set_zlim([-axis_limit, axis_limit])
+
+    # Plot moving objects
+    if moving_coords:
+        x_moving, y_moving, z_moving = zip(*moving_coords)
+        ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+    ax_moving.set_xlabel('X Coordinate (m)')
+    ax_moving.set_ylabel('Y Coordinate (m)')
+    ax_moving.set_zlabel('Z Coordinate (m)')
+    ax_moving.set_xlim([-axis_limit, axis_limit])
+    ax_moving.set_ylim([-axis_limit, axis_limit])
+    ax_moving.set_zlim([-axis_limit, axis_limit])
+
+    plt.tight_layout()
+    plt.show()
+
+def live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, eps=0.5, min_samples=5):
+    """
+    Live visualization with DBSCAN clustering in a separate plot window.
+    """
+    import matplotlib.pyplot as plt
+    from sklearn.cluster import DBSCAN
+    import numpy as np
+
+    fig_live = plt.figure(figsize=(12, 6))
+    ax_stationary = fig_live.add_subplot(121, projection='3d')
+    ax_moving = fig_live.add_subplot(122, projection='3d')
+
+    fig_dbscan = plt.figure(figsize=(6, 6))
+    ax_dbscan = fig_dbscan.add_subplot(111, projection='3d')
+
+    for row_idx in range(len(data)):
+        try:
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Stopping processing at row {row_idx + 1}: Null data encountered.")
+                break
+
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            stationary_coords = []  # Stationary points: (X, Y, Z)
+            moving_coords = []      # Moving points: (X, Y, Z)
+
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            if abs(point["Doppler [m/s]"]) <= doppler_threshold:
+                                stationary_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+                            else:
+                                moving_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            ax_stationary.cla()
+            ax_moving.cla()
+            ax_dbscan.cla()
+
+            # Plot stationary and moving objects
+            if stationary_coords:
+                x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+                ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+            if moving_coords:
+                x_moving, y_moving, z_moving = zip(*moving_coords)
+                ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+
+            ax_stationary.set_xlim([-axis_limit, axis_limit])
+            ax_stationary.set_ylim([-axis_limit, axis_limit])
+            ax_stationary.set_zlim([-axis_limit, axis_limit])
+            ax_stationary.set_title("Stationary Objects")
+            ax_stationary.set_xlabel("X Coordinate (m)")
+            ax_stationary.set_ylabel("Y Coordinate (m)")
+            ax_stationary.set_zlabel("Z Coordinate (m)")
+
+            ax_moving.set_xlim([-axis_limit, axis_limit])
+            ax_moving.set_ylim([-axis_limit, axis_limit])
+            ax_moving.set_zlim([-axis_limit, axis_limit])
+            ax_moving.set_title("Moving Objects")
+            ax_moving.set_xlabel("X Coordinate (m)")
+            ax_moving.set_ylabel("Y Coordinate (m)")
+            ax_moving.set_zlabel("Z Coordinate (m)")
+
+            # DBSCAN Clustering
+            all_coords = stationary_coords + moving_coords
+            if all_coords:
+                all_coords = np.array(all_coords)
+                dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+                labels = dbscan.fit_predict(all_coords)
+
+                unique_labels = set(labels)
+                colors = plt.cm.jet(np.linspace(0, 1, len(unique_labels)))
+                for label, color in zip(unique_labels, colors):
+                    if label == -1:
+                        color = "black"
+                    mask = labels == label
+                    ax_dbscan.scatter(
+                        all_coords[mask, 0], all_coords[mask, 1], all_coords[mask, 2],
+                        c=[color], label=f"Cluster {label}"
+                    )
+
+                ax_dbscan.set_xlim([-axis_limit, axis_limit])
+                ax_dbscan.set_ylim([-axis_limit, axis_limit])
+                ax_dbscan.set_zlim([-axis_limit, axis_limit])
+                ax_dbscan.set_title("DBSCAN Clustering")
+                ax_dbscan.set_xlabel("X Coordinate (m)")
+                ax_dbscan.set_ylabel("Y Coordinate (m)")
+                ax_dbscan.set_zlabel("Z Coordinate (m)")
+                ax_dbscan.legend()
+
+            plt.pause(delay)
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    plt.show()
+
+def live_visualization_with_kalman(
+    data, doppler_threshold=0.1, axis_limit=12, delay=0.1,
+    transition_matrix=None, observation_matrix=None,
+    transition_covariance=None, observation_covariance=None,
+    initial_state_mean=None, initial_state_covariance=None
+):
+    """
+    Live visualization with Kalman filter for tracking with tunable parameters.
+
+    Args:
+        data (DataFrame): Input radar data.
+        doppler_threshold (float): Doppler threshold to filter moving vs stationary objects.
+        axis_limit (int): Limit for the 3D axis in meters.
+        delay (float): Delay between frames in seconds.
+        transition_matrix (numpy.ndarray): State transition matrix (default: constant velocity).
+        observation_matrix (numpy.ndarray): Observation matrix (default: observes position only).
+        transition_covariance (numpy.ndarray): Process noise covariance matrix.
+        observation_covariance (numpy.ndarray): Measurement noise covariance matrix.
+        initial_state_mean (list): Initial state mean (position and velocity).
+        initial_state_covariance (numpy.ndarray): Initial state covariance matrix.
+    """
+    from pykalman import KalmanFilter
+    import numpy as np
+
+    fig_kalman = plt.figure(figsize=(6, 6))
+    ax_kalman = fig_kalman.add_subplot(111, projection='3d')
+
+    kalman_filters = []
+
+    # Set default Kalman parameters if not provided
+    transition_matrix = transition_matrix or np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    observation_matrix = observation_matrix or np.eye(3)
+    transition_covariance = transition_covariance or np.eye(3) * 0.01
+    observation_covariance = observation_covariance or np.eye(3) * 0.1
+    initial_state_mean = initial_state_mean or [0, 0, 0]
+    initial_state_covariance = initial_state_covariance or np.eye(3)
+
+    for row_idx in range(len(data)):
+        try:
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Stopping processing at row {row_idx + 1}: Null data encountered.")
+                break
+
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            detected_coords = []
+
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            detected_coords.append([point["X [m]"], point["Y [m]"], point["Z [m]"]])
+
+            if not detected_coords:
+                continue
+
+            detected_coords = np.array(detected_coords)
+
+            # Update Kalman Filters
+            if not kalman_filters:
+                for coord in detected_coords:
+                    kf = KalmanFilter(
+                        transition_matrices=transition_matrix,
+                        observation_matrices=observation_matrix,
+                        transition_covariance=transition_covariance,
+                        observation_covariance=observation_covariance,
+                        initial_state_mean=coord,
+                        initial_state_covariance=initial_state_covariance,
+                    )
+                    kalman_filters.append(kf)
+
+            kalman_predictions = []
+            for kf, coord in zip(kalman_filters, detected_coords):
+                next_state = kf.filter_update(kf.initial_state_mean, kf.initial_state_covariance, coord)
+                kalman_predictions.append(next_state[0])
+
+            kalman_predictions = np.array(kalman_predictions)
+
+            # Plot Kalman predictions
+            ax_kalman.cla()
+            ax_kalman.scatter(kalman_predictions[:, 0], kalman_predictions[:, 1], kalman_predictions[:, 2],
+                              c='blue', label="Kalman Predictions")
+            ax_kalman.set_xlim([-axis_limit, axis_limit])
+            ax_kalman.set_ylim([-axis_limit, axis_limit])
+            ax_kalman.set_zlim([-axis_limit, axis_limit])
+            ax_kalman.set_title("Kalman Filter Tracking")
+            ax_kalman.set_xlabel("X Coordinate (m)")
+            ax_kalman.set_ylabel("Y Coordinate (m)")
+            ax_kalman.set_zlabel("Z Coordinate (m)")
+            ax_kalman.legend()
+
+            plt.pause(delay)
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    plt.show()
+
+def live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.5):
     """
     Live visualization of stationary and moving objects with updates based on timestamp.
     """
@@ -390,6 +719,197 @@ def live_visualization(data, doppler_threshold=0.1, axis_limit=3, delay=0.5):
 
     plt.show()
 
+def region_growing_segmentation(coords, distance_threshold):
+    """
+    Perform Region Growing Segmentation on a set of 3D coordinates.
+
+    Args:
+        coords (numpy.ndarray): Array of shape (N, 3) representing the 3D points.
+        distance_threshold (float): Distance threshold for growing regions.
+
+    Returns:
+        list of numpy.ndarray: List of clusters, where each cluster is a subset of the input coordinates.
+    """
+    from sklearn.neighbors import NearestNeighbors
+
+    # Fit Nearest Neighbors for adjacency search
+    neighbors = NearestNeighbors(radius=distance_threshold).fit(coords)
+    adjacency_matrix = neighbors.radius_neighbors_graph(coords).toarray()
+
+    # Perform region growing
+    visited = np.zeros(len(coords), dtype=bool)
+    clusters = []
+
+    for i in range(len(coords)):
+        if not visited[i]:
+            cluster = []
+            to_visit = [i]
+            while to_visit:
+                idx = to_visit.pop()
+                if not visited[idx]:
+                    visited[idx] = True
+                    cluster.append(idx)
+                    neighbors = np.where(adjacency_matrix[idx] > 0)[0]
+                    to_visit.extend(neighbors)
+            clusters.append(coords[cluster])
+
+    return clusters
+
+def live_visualization_with_region_growing(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, distance_threshold=0.5):
+    """
+    Live visualization with Region Growing Segmentation for clustering.
+    """
+    fig_live = plt.figure(figsize=(12, 6))
+    ax_stationary = fig_live.add_subplot(121, projection='3d')
+    ax_moving = fig_live.add_subplot(122, projection='3d')
+
+    fig_segmentation = plt.figure(figsize=(6, 6))
+    ax_segmentation = fig_segmentation.add_subplot(111, projection='3d')
+
+    for row_idx in range(len(data)):
+        try:
+            if pd.isnull(data.iloc[row_idx]['Timestamp']) or pd.isnull(data.iloc[row_idx]['RawData']):
+                print(f"Stopping processing at row {row_idx + 1}: Null data encountered.")
+                break
+
+            timestamp = convert_timestamp_to_unix(data.iloc[row_idx]['Timestamp'])
+            if timestamp is None:
+                print(f"Skipping row {row_idx + 1} due to invalid timestamp.")
+                continue
+
+            raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
+            frame_header = parse_frame_header(raw_data_list)
+            num_tlvs = frame_header["Num TLVs"]
+
+            stationary_coords = []
+            moving_coords = []
+
+            for _ in range(num_tlvs):
+                tlv_header = parse_tlv_header(raw_data_list)
+                if tlv_header["TLV Type"] == 1:
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "Detected Points" in tlv_payload:
+                        for point in tlv_payload["Detected Points"]:
+                            if abs(point["Doppler [m/s]"]) <= doppler_threshold:
+                                stationary_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+                            else:
+                                moving_coords.append((point["X [m]"], point["Y [m]"], point["Z [m]"]))
+
+            ax_stationary.cla()
+            ax_moving.cla()
+            ax_segmentation.cla()
+
+            if stationary_coords:
+                x_stationary, y_stationary, z_stationary = zip(*stationary_coords)
+                ax_stationary.scatter(x_stationary, y_stationary, z_stationary, c='green', marker='o')
+            if moving_coords:
+                x_moving, y_moving, z_moving = zip(*moving_coords)
+                ax_moving.scatter(x_moving, y_moving, z_moving, c='red', marker='o')
+
+            ax_stationary.set_xlim([-axis_limit, axis_limit])
+            ax_stationary.set_ylim([-axis_limit, axis_limit])
+            ax_stationary.set_zlim([-axis_limit, axis_limit])
+            ax_stationary.set_title("Stationary Objects")
+            ax_stationary.set_xlabel("X Coordinate (m)")
+            ax_stationary.set_ylabel("Y Coordinate (m)")
+            ax_stationary.set_zlabel("Z Coordinate (m)")
+
+            ax_moving.set_xlim([-axis_limit, axis_limit])
+            ax_moving.set_ylim([-axis_limit, axis_limit])
+            ax_moving.set_zlim([-axis_limit, axis_limit])
+            ax_moving.set_title("Moving Objects")
+            ax_moving.set_xlabel("X Coordinate (m)")
+            ax_moving.set_ylabel("Y Coordinate (m)")
+            ax_moving.set_zlabel("Z Coordinate (m)")
+
+            # Perform Region Growing Segmentation
+            all_coords = np.array(stationary_coords + moving_coords)
+            if len(all_coords) > 0:
+                clusters = region_growing_segmentation(all_coords, distance_threshold)
+
+                # Plot segmentation results
+                for cluster_id, cluster_coords in enumerate(clusters):
+                    cluster_coords = np.array(cluster_coords)
+                    ax_segmentation.scatter(cluster_coords[:, 0], cluster_coords[:, 1], cluster_coords[:, 2],
+                                            label=f"Cluster {cluster_id}")
+
+            ax_segmentation.set_xlim([-axis_limit, axis_limit])
+            ax_segmentation.set_ylim([-axis_limit, axis_limit])
+            ax_segmentation.set_zlim([-axis_limit, axis_limit])
+            ax_segmentation.set_title("Region Growing Segmentation")
+            ax_segmentation.set_xlabel("X Coordinate (m)")
+            ax_segmentation.set_ylabel("Y Coordinate (m)")
+            ax_segmentation.set_zlabel("Z Coordinate (m)")
+            ax_segmentation.legend()
+
+            plt.pause(delay)
+
+        except Exception as e:
+            print(f"Error processing row {row_idx + 1}: {e}")
+
+    plt.show()
+
+
+def run_live_visualization(data):
+    """
+    Wrapper to run the normal live visualization in a separate thread.
+    """
+    live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
+
+def run_live_visualization_with_dbscan(data):
+    """
+    Wrapper to run the live visualization with DBSCAN in a separate thread.
+    """
+    live_visualization_with_dbscan(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, eps=0.5, min_samples=5)
+
+def run_live_visualization_with_kalman(data):
+    """
+    Wrapper to run the live visualization with KALMAN in a separate thread.
+    """
+    # Custom Kalman filter parameters
+    transition_matrix = np.eye(3)  # Constant position model
+    observation_matrix = np.eye(3)  # Direct observation of position
+    transition_covariance = np.eye(3) * 0.05  # More uncertainty in system dynamics
+    observation_covariance = np.eye(3) * 0.02  # Less measurement noise
+    initial_state_mean = [1, 2, 3]  # Initial guess for position
+    initial_state_covariance = np.eye(3) * 0.1  # Initial uncertainty
+    
+    live_visualization_with_kalman(
+    data,
+    doppler_threshold=0.1,
+    axis_limit=12,
+    delay=0.1,
+    transition_matrix=transition_matrix,
+    observation_matrix=observation_matrix,
+    transition_covariance=transition_covariance,
+    observation_covariance=observation_covariance,
+    initial_state_mean=initial_state_mean,
+    initial_state_covariance=initial_state_covariance,
+    )
+
+def run_live_visualization_with_region_growing(data):
+    """
+    Wrapper to run the live visualization with region_growing in a separate thread.
+    """
+    live_visualization_with_region_growing(data, doppler_threshold=0.1, axis_limit=12, delay=0.1, distance_threshold=0.5)
+
+def run_all_data_with_kalman(data):
+    """
+    Wrapper to run the plot_all_data_with_kalman function with customizable Kalman filter parameters.
+    """
+    # Custom Kalman filter parameters
+    transition_matrix = np.eye(3)  # Constant position model
+    observation_matrix = np.eye(3)  # Direct observation of position
+    transition_covariance = np.eye(3) * 0.05  # More uncertainty in system dynamics
+    observation_covariance = np.eye(3) * 0.02  # Less measurement noise
+    initial_state_mean = [0, 0, 0]  # Initial guess for position
+    initial_state_covariance = np.eye(3) * 0.1  # Initial uncertainty
+
+    # Call the Kalman visualization function
+    plot_all_data_with_kalman(data, doppler_threshold=0.1, axis_limit=12)
+
+
+
 if __name__ == "__main__":
     # Define the relative path to your log file
     script_dir = os.path.dirname(os.path.abspath(__file__))  # Current script directory
@@ -399,14 +919,39 @@ if __name__ == "__main__":
     # Load the CSV file
     data = pd.read_csv(log_file)
 
+    # Create threads for both visualization methods
+    thread_normal = threading.Thread(target=run_live_visualization, args=(data,))
+    thread_dbscan = threading.Thread(target=run_live_visualization_with_dbscan, args=(data,))
+
     # Choose mode of visualization
     mode = input("Enter 'live' (1) for live visualization or 'all' (2) to plot all data: ").strip().lower()
 
     if mode in ['live', '1']:
+        modeCluster = input("Choose visualization: 'custom' (0) or 'normal' (1) or 'dbscan' (2) or 'kalman' (3) or 'region_growing' (4)': ").strip().lower()
         # Run live visualization
-        live_visualization(data, doppler_threshold=0.1, axis_limit=12, delay=0.1)
+        if mode in ['custom', '0']:
+            # Start both threads
+            thread_normal.start()
+            thread_dbscan.start()
+
+            thread_normal.run()
+            thread_dbscan.run()
+
+            thread_normal.join()
+            thread_dbscan.join()
+        elif mode in ['normal', '1']:
+            run_live_visualization(data)
+        elif mode in ['dbscan', '2']:
+            run_live_visualization_with_dbscan(data)
+        elif mode in ['kalman', '3']:
+            run_live_visualization_with_kalman(data)
+        elif mode in ['region_growing', '4']:
+            run_live_visualization_with_region_growing(data)
     elif mode in ['all', '2']:
-        # Plot all data
-        plot_all_data(data, doppler_threshold=0.1, axis_limit=12)
+        modeCluster = input("Choose visualization: 'normal' (1) or 'kalman' (2): ").strip().lower()
+        if mode in ['normal', '1']:
+            plot_all_data(data, doppler_threshold=0.1, axis_limit=12)
+        elif mode in ['kalman', '2']:
+            run_all_data_with_kalman(data)
     else:
         print("Invalid mode. Please enter 'live' or 'all'.")
