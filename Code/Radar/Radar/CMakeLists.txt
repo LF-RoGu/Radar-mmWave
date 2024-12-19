@@ -1,16 +1,29 @@
-﻿# CMakeList.txt: CMake-Projekt für "Radar". Schließen Sie die Quelle ein, und definieren Sie
-# projektspezifische Logik hier.
-#
+# CMakeLists.txt for "Radar" project
 
-# Fügen Sie der ausführbaren Datei dieses Projekts eine Quelle hinzu.
-add_executable (Radar "Radar.cpp" "Radar.h")
+# Define the minimum CMake version and project name
+cmake_minimum_required(VERSION 3.12)
+project(Radar)
 
+# Set C++ standard to C++20 if CMake version is greater than 3.12
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Radar PROPERTY CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
-# TODO: Fügen Sie bei Bedarf Tests hinzu, und installieren Sie Ziele.
-target_link_libraries(Radar PUBLIC IWR6843)
-target_include_directories(Radar PUBLIC
-                           "${PROJECT_BINARY_DIR}"
-                           "${PROJECT_SOURCE_DIR}/modules/radar_sensor")
+# Include directories for headers
+include_directories(${CMAKE_SOURCE_DIR})
+include_directories(include radar_sensor/sensor_data/lib radar_sensor)
+
+# Add individual source files and headers
+set(SOURCES
+    "Radar.cpp" "Radar.h"
+    "radar_sensor/IWR6843.cpp" "radar_sensor/IWR6843.h"
+    "radar_sensor/SensorData.cpp" "radar_sensor/SensorData.h"
+    "radar_sensor/sensor_data/UARTFrame.cpp" "radar_sensor/sensor_data/UARTFrame.h"
+    "radar_sensor/sensor_data/lib/EndianUtils.cpp" "radar_sensor/sensor_data/lib/EndianUtils.h"
+)
+
+# Add the executable for the project
+add_executable(Radar ${SOURCES})
+
+# Add any required libraries here if needed
+# target_link_libraries(Radar <library_name>)

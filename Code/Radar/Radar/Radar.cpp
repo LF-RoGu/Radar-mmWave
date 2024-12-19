@@ -1,170 +1,189 @@
-﻿// Radar.cpp: Definiert den Einstiegspunkt für die Anwendung.
+// Radar.cpp: Definiert den Einstiegspunkt für die Anwendung.
 //
 
 #include "Radar.h"
 
-using namespace std;
+IWR6843 sensor;
 
+const int NUM_THREADS = 3;
+pthread_t threads[NUM_THREADS];
 
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h> // File control definitions
-#include <termios.h> // POSIX terminal control definitions
-#include <unistd.h> // UNIX standard function definitions
-#include <errno.h> // Error number definitions
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <stdint.h>
-
-
-#include "modules/radar_sensor/IWR6843.h"
-
-// Constants
-const int numBytes = 100 * 40;
-std::vector<uint8_t> values;
-
-// Functions for serial configuration and handling
-int openSerialPort(const char* portName, int baudRate);
-void configurePort(int fd, int baudRate);
-void readConfigFileAndSend(int configPortFd, const std::string& filePath);
-std::vector<size_t> findPatternIndexes(const std::vector<uint8_t>& values, const std::vector<uint8_t>& pattern);
-std::vector<std::vector<uint8_t>> splitByPatternIndexes(const std::vector<uint8_t>& values, const std::vector<size_t>& indexes);
-void readData(int dataPortFd);
+const int NUM_FRAMES = 200;
+vector<SensorData> totalFrames;
 
 int main() {
-    // Open and configure config port
-    int configPortFd = openSerialPort("/dev/ttyUSB0", B115200);
-    if (configPortFd < 0) return -1;
+    
+    cout << "Input filename prefix: " << endl;
+    string prefix;
+    cin >> prefix;
 
-    // Open and configure data port
-    int dataPortFd = openSerialPort("/dev/ttyUSB1", B921600);
-    if (dataPortFd < 0) {
-        close(configPortFd);
-        return -1;
-    }
-
-    // Load and send configuration file
-    readConfigFileAndSend(configPortFd, "../configs/xwr68xx_AOP_profile_2024_10_31T16_15_25_003.cfg");
-
-    // Read data from data port until we have enough samples
-    while (values.size() < numBytes) {
-        readData(dataPortFd);
-    }
-
-    // Close ports
-    close(dataPortFd);
-    close(configPortFd);
-
-    // Pattern search and sublist creation
-    std::vector<uint8_t> pattern = { 0x02, 0x01, 0x04, 0x03, 0x06, 0x05, 0x08, 0x07 };
-    auto patternIndexes = findPatternIndexes(values, pattern);
-    auto sublists = splitByPatternIndexes(values, patternIndexes);
-
-    return 0;
-}
-
-int openSerialPort(const char* portName, int baudRate) {
-    int fd = open(portName, O_RDWR | O_NOCTTY | O_SYNC);
-    if (fd < 0) {
-        std::cerr << "Error opening " << portName << ": " << strerror(errno) << std::endl;
-        return -1;
-    }
-    configurePort(fd, baudRate);
-    return fd;
-}
-
-void configurePort(int fd, int baudRate) {
-    struct termios tty;
-    memset(&tty, 0, sizeof tty);
-
-    if (tcgetattr(fd, &tty) != 0) {
-        std::cerr << "Error getting tty attributes: " << strerror(errno) << std::endl;
-        return;
-    }
-
-    cfsetospeed(&tty, baudRate);
-    cfsetispeed(&tty, baudRate);
-
-    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-    tty.c_iflag &= ~IGNBRK;                          // disable break processing
-    tty.c_lflag = 0;                                 // no signaling chars, no echo
-    tty.c_oflag = 0;                                 // no remapping, no delays
-    tty.c_cc[VMIN] = 1;                             // read blocks until at least 1 char is available
-    tty.c_cc[VTIME] = 5;                             // timeout in deciseconds for non-canonical read
-
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY);          // turn off s/w flow control
-    tty.c_cflag |= (CLOCAL | CREAD);                 // ignore modem controls, enable reading
-    tty.c_cflag &= ~(PARENB | PARODD);               // shut off parity
-    tty.c_cflag &= ~CSTOPB;                          // 1 stop bit
-    tty.c_cflag &= ~CRTSCTS;                         // no hardware flow control
-
-    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
-        std::cerr << "Error setting tty attributes: " << strerror(errno) << std::endl;
-    }
-}
-
-void readConfigFileAndSend(int configPortFd, const std::string& filePath) {
-    std::ifstream configFile(filePath);
-    if (!configFile) {
-        std::cerr << "Error opening config file: " << filePath << std::endl;
-        return;
-    }
-
-    std::string line;
-    while (std::getline(configFile, line)) {
-        if (line.empty() || line[0] == '%') continue;
-
-        line += "\r\n";  // Add newline character
-        write(configPortFd, line.c_str(), line.size());
-
-        // Read the response until "Done" is found
-        std::string response;
-        char c;
-        while (read(configPortFd, &c, 1) > 0) {
-            if (c == '\n' || c == '\r') {
-                if (response.find("Done") != std::string::npos) {
-                    std::cout << response << std::endl;
-                    break;
-                }
-                if (!response.empty()) {
-                    std::cout << response << std::endl;
-                }
-                response.clear();
-            }
-            else {
-                response += c;
-            }
+    //Initializing the sensor
+    sensor = IWR6843();
+    sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_azim60_elev30_optimized.cfg");
+    //sensor.init("/dev/ttyUSB0", "/dev/ttyUSB1", "../configs/profile_2024_11_28T11_50_49_422_azim60_elev30.cfg");
+    
+    //Creating an array holding the function pointers for the threads
+    void* (*thread_functions[NUM_THREADS])(void*) =
+    {
+        sensor_thread,
+        controller_thread,
+        actuator_thread
+    };
+    
+    //Creating the threads
+    for (int i = 0; i < NUM_THREADS; i++)
+    {
+        if (pthread_create(&threads[i], nullptr, thread_functions[i], nullptr) != 0)
+        {
+            cout << "Error creating thread with ID " << i + 1 << endl;
+            return -1;
         }
     }
+
+    //Joining the threads
+    for (int i = 0; i < NUM_THREADS; i++)
+    {
+        if (pthread_join(threads[i], nullptr) != 0)
+        {
+            cout << "Error joining thread with ID " << i + 1 << endl;
+            return -1;
+        }
+    }
+
+    //Returning a 1 after joining all threads (may not be reached but for the sake of completeness)
+    cout << "Successfully joined all threads" << endl;
+
+    chrono::time_point<std::chrono::system_clock> timestamp = chrono::system_clock::now();
+
+    string filename = prefix + "_log_" + formatTimestamp(timestamp) + ".csv";
+
+    //Storing the data
+    writeToCSV(filename, totalFrames);
+
+    cout << "Log " << filename << " successfully stored" << endl;
+
+    return 1;
 }
 
-void readData(int dataPortFd) {
-    uint8_t buffer[40];
-    ssize_t bytesRead = read(dataPortFd, buffer, sizeof(buffer));
-    if (bytesRead > 0) {
-        values.insert(values.end(), buffer, buffer + bytesRead);
+/// <summary>
+/// Function of the sensor thread
+/// </summary>
+/// <param name="arg"></param>
+/// <returns></returns>
+void* sensor_thread(void* arg)
+{
+    //Obtaining the thread's ID
+    int thread_id = pthread_self();
+
+    while (true)
+    {
+        //Polling the sensor and getting the amount of recently received frames
+        int numOfNewFrames = sensor.poll();
+
+        //Continuing if no new frames are available
+        if (numOfNewFrames < 1)
+        {
+            continue;
+        }
+
+        //Processing if any new frames were received
+        //Getting and deleting the new frames from the buffer of decoded frames
+        vector<SensorData> newFrames;
+        sensor.copyDecodedFramesFromTop(newFrames, numOfNewFrames, true, 100);
+
+        //Inserting it into the vector for logging and exiting if limit was reached
+        totalFrames.insert(totalFrames.end(), newFrames.begin(), newFrames.end());
+        if (totalFrames.size() >= NUM_FRAMES)
+        {
+            break;
+        }
     }
+
+    //Exiting the thread
+    pthread_exit(nullptr);
 }
 
-std::vector<size_t> findPatternIndexes(const std::vector<uint8_t>& values, const std::vector<uint8_t>& pattern) {
-    std::vector<size_t> indexes;
-    auto it = values.begin();
-    while ((it = std::search(it, values.end(), pattern.begin(), pattern.end())) != values.end()) {
-        indexes.push_back(std::distance(values.begin(), it));
-        ++it;
-    }
-    return indexes;
+/// <summary>
+/// Function of the controller thread
+/// </summary>
+/// <param name="arg"></param>
+/// <returns></returns>
+void* controller_thread(void* arg)
+{
+    //Obtaining the thread's ID
+    int thread_id = pthread_self();
+
+    //Simulating work
+    cout << "Hello from thread " << thread_id << endl;
+    sleep(10);
+    
+    //Exiting the thread
+    pthread_exit(nullptr);
 }
 
-std::vector<std::vector<uint8_t>> splitByPatternIndexes(const std::vector<uint8_t>& values, const std::vector<size_t>& indexes) {
-    std::vector<std::vector<uint8_t>> sublists;
-    for (size_t j = 0; j < indexes.size(); ++j) {
-        size_t start = indexes[j];
-        size_t end = (j < indexes.size() - 1) ? indexes[j + 1] : values.size();
-        sublists.emplace_back(values.begin() + start, values.begin() + end);
+/// <summary>
+/// Function of the actuator thread
+/// </summary>
+/// <param name="arg"></param>
+/// <returns></returns>
+void* actuator_thread(void* arg)
+{
+    //Obtaining the thread's ID
+    int thread_id = pthread_self();
+    
+    //Simulating work
+    cout << "Hello from thread " << thread_id << endl;
+    sleep(10);
+
+    
+    //Exiting the thread
+    pthread_exit(nullptr);
+}
+
+
+std::string formatTimestamp(const std::chrono::time_point<std::chrono::system_clock>& timePoint) {
+    auto duration = timePoint.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration) -
+        std::chrono::duration_cast<std::chrono::nanoseconds>(seconds);
+
+    std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
+    std::ostringstream oss;
+    oss << std::put_time(std::localtime(&time), "%Y-%m-%d");
+    oss << "." << std::setw(9) << std::setfill('0') << nanoseconds.count();
+    return oss.str();
+}
+
+// Convert vector<uint8_t> to a comma-separated string
+std::string formatRawData(const std::vector<uint8_t>& data) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < data.size(); ++i) {
+        oss << static_cast<int>(data[i]);
+        if (i < data.size() - 1) {
+            oss << ",";
+        }
     }
-    return sublists;
+    return oss.str();
+}
+
+
+
+void writeToCSV(const std::string& filename, const std::vector<SensorData>& objects) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    // Write header
+    file << "Timestamp,RawData\n";
+
+    // Write each object
+    for (const auto& obj : objects) {
+        file << formatTimestamp(obj.timestamp) << ",";
+        file << "\"" << formatRawData(obj.storedRawData) << "\"\n";  // Enclose RawData in quotes
+    }
+
+    file.close();
+    std::cout << "Data written to " << filename << std::endl;
 }
