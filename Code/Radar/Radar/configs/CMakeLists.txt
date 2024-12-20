@@ -1,1 +1,1 @@
-file(COPY *.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)
+file(COPY profile_azim60_elev30_optimized.cfg DESTINATION ${CMAKE_BINARY_DIR}/configs)
