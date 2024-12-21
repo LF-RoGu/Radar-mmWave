@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import dataDecoder
 import os
+
+import dataDecoder
+import pointFilter
 
 class KalmanFilter:
     def __init__(self, process_variance, measurement_variance):
@@ -32,20 +34,25 @@ kf_self_speed = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
 
 
 #Method 1: Fitting a curve into different angles and radial speeds
-def estimating_self_speed(point_cloud):
-    if len(point_cloud) < 1:
+def estimating_self_speed(pointCloud):
+    #Filtering the input points
+    filteredPointCloud = pointFilter.filterCartesianZ(pointCloud, 0, 3) #Filtering everything below 0 and above 3m
+    filteredPointCloud = pointFilter.filterSphericalPhi(point_cloud, -80, 80)
+
+    #Returning zero if there are no points to process
+    if len(filteredPointCloud) < 1:
         return 0
-    
+
     #Preparing an array to contain angle to target and radial speed
     phi_radspeed = []
 
     #Iterating over all points
-    for i in range(len(point_cloud)):
+    for i in range(len(filteredPointCloud)):
         #Calculating the angle to target
-        phi = np.rad2deg(np.arctan(point_cloud[i]["x"]/point_cloud[i]["y"]))
+        phi = np.rad2deg(np.arctan(filteredPointCloud[i]["x"]/filteredPointCloud[i]["y"]))
 
         #Appending the angle and the radial speed 
-        phi_radspeed.append([phi, point_cloud[i]["doppler"]])
+        phi_radspeed.append([phi, filteredPointCloud[i]["doppler"]])
 
     #Converting array of tuples to NumPy array
     phi_radspeed = np.array(phi_radspeed, dtype=float)
@@ -106,7 +113,7 @@ def update_point_plot(point_cloud):
 
 #Getting the data
 script_dir = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.join(script_dir, '3_Targets_MoveAround_attempt4_log_2024-12-09.csv')
+log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/30fps_straight_3x3_log_2024-12-16.csv"))
 frames = dataDecoder.decodeData(log_file)
 
 #Processing frame by frame
