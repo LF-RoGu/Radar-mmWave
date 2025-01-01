@@ -116,10 +116,26 @@ def plot_clusters_3d(clusters, ax):
         ]
         ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='purple'))
 
+    # Draw fixed rectangle (vehicle) at origin
+    vertices = [[-0.5, -0.9, 0], [0.5, -0.9, 0], [0.5, 0.9, 0], [-0.5, 0.9, 0],
+                [-0.5, -0.9, 0.5], [0.5, -0.9, 0.5], [0.5, 0.9, 0.5], [-0.5, 0.9, 0.5]]
+    edges = [
+        [vertices[i] for i in [0, 1, 2, 3]],
+        [vertices[i] for i in [4, 5, 6, 7]],
+        [vertices[i] for i in [0, 1, 5, 4]],
+        [vertices[i] for i in [2, 3, 7, 6]],
+        [vertices[i] for i in [1, 2, 6, 5]],
+        [vertices[i] for i in [4, 7, 3, 0]]
+    ]
+    ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='cyan'))
+
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection='3d')
+
+    # Set initial view angle (top-down)
+    ax.view_init(elev=90, azim=-90)
 
     # Slider for frame selection
     ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
