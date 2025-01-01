@@ -42,11 +42,11 @@ This repository contains materials and projects for the Radar and SiCo2 classes.
 - [ ] Create algorithm to detect Objects. [Object detection for automotive radar point clouds – a comparison](https://aiperspectives.springeropen.com/articles/10.1186/s42467-021-00012-z)
   - [x] Apply physical filters.
   - [ ] Apply PointNet++.
-  - [ ] Apply Clustering.
-    - [ ] Apply Stage one Clustering.
-    - [ ] Apply Stage two Clustering.
+  - [x] Apply Clustering.
+    - [x] Apply Stage one Clustering.
+    - [x] Apply Stage two Clustering.
   - [x] Apply Grid mapping.
-- [ ] Create algorithm to estimate vehicle velocity.
+- [x] Create algorithm to estimate vehicle velocity.
 
 ## Authors
 
@@ -54,6 +54,6 @@ This repository contains materials and projects for the Radar and SiCo2 classes.
 - Name: Luis Fernando Rodriguez Gutierrez.
 - Matriculation Number: 7219085.
 
-- [@LF-RoGu](https://github.com/lhckmn)
+- [@lhckmn](https://github.com/lhckmn)
 - Name: Leander Hackmann.
 - Matriculation Number: 7217912.
