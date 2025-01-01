@@ -106,9 +106,8 @@ def parse_type_7_data(tlv_header, raw_data_list, num_detected_obj):
 
     return {"Side Info": side_info}
 
-# Process the log file
-# Process the log file with SNR filtering
-def process_log_file(file_path, snr_threshold=15):
+# Process the log file with optional SNR and Z[m] filtering
+def process_log_file(file_path, snr_threshold=None, z_min=None, z_max=None, doppler_threshold=None):
     frames_dict = {}
     data = pd.read_csv(file_path, names=["Timestamp", "RawData"], skiprows=1)
 
@@ -121,8 +120,6 @@ def process_log_file(file_path, snr_threshold=15):
             raw_data_list = [int(x) for x in data.iloc[row_idx]['RawData'].split(',')]
             frame_header = parse_frame_header(raw_data_list)
             frame_number = frame_header["Frame Number"]
-
-            frames_dict[frame_number] = {"Frame Header": frame_header, "TLVs": []}
 
             detected_points = []
             side_info = []
@@ -140,29 +137,36 @@ def process_log_file(file_path, snr_threshold=15):
                     side_info = parse_type_7_data(tlv_header, raw_data_list, num_detected_obj)["Side Info"]
                 # Placeholder for other types
                 elif tlv_type in [2, 3]:
-                    frames_dict[frame_number]["TLVs"].append(parse_type_2_data(tlv_header, raw_data_list))
+                    parse_type_2_data(tlv_header, raw_data_list)
                 else:
                     print(f"Unknown TLV Type {tlv_type} in Frame {frame_number}. Skipping.")
                     raw_data_list[:tlv_header["TLV Length"]] = []
 
-            # Apply SNR Filter
+            # Apply Filtering (SNR, Z[m], Doppler)
             if detected_points and side_info:
                 filtered_points = []
                 filtered_info = []
 
-                # Keep points only above threshold
                 for i in range(len(detected_points)):
-                    if side_info[i]["SNR [dB]"] >= snr_threshold:
+                    snr = side_info[i]["SNR [dB]"]
+                    z_val = detected_points[i]["Z [m]"]
+                    doppler = detected_points[i]["Doppler [m/s]"]
+
+                    # Filter conditions (only if thresholds are provided)
+                    snr_valid = snr_threshold is None or snr >= snr_threshold
+                    z_valid = ((z_min is None or z_val >= z_min) and
+                               (z_max is None or z_val <= z_max))
+                    doppler_valid = doppler_threshold is None or abs(doppler) >= doppler_threshold
+
+                    if snr_valid and z_valid and doppler_valid:
                         filtered_points.append(detected_points[i])
                         filtered_info.append(side_info[i])
 
-                # Save filtered data
-                frames_dict[frame_number]["TLVs"].append({"Type 1 Data": filtered_points})
-                frames_dict[frame_number]["TLVs"].append({"Side Info": filtered_info})
-            else:
-                # Save raw data if filtering is not applied
-                frames_dict[frame_number]["TLVs"].append({"Type 1 Data": detected_points})
-                frames_dict[frame_number]["TLVs"].append({"Side Info": side_info})
+                # Save filtered data only if non-empty
+                if filtered_points:
+                    frames_dict[frame_number] = {"Frame Header": frame_header, "TLVs": []}
+                    frames_dict[frame_number]["TLVs"].append({"Type 1 Data": filtered_points})
+                    frames_dict[frame_number]["TLVs"].append({"Side Info": filtered_info})
 
         except (ValueError, IndexError) as e:
             print(f"Error parsing row {row_idx + 1}: {e}")
