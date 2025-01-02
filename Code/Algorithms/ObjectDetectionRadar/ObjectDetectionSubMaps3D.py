@@ -10,6 +10,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from DataProcessing.radar_utilsProcessing import *
 from DataProcessing.radar_utilsPlot import *
 
+SAFETY_BOX_CENTER = [0, 5, 0]  # Center position (X, Y, Z)
+SAFETY_BOX_SIZE = [2, 2, 2]   # Width, Height, Depth
+
 # Create a new dictionary with frame numbers and coordinates + Doppler speed
 def extract_coordinates_with_doppler(frames_data, y_threshold=None, z_threshold=None, doppler_threshold=None):
     coordinates_dict = {}
@@ -63,9 +66,9 @@ def aggregate_submap(frames_data, start_frame, num_frames=10):
 # -------------------------------
 # FUNCTION: Cluster Points
 # -------------------------------
-def cluster_points(points):
+def cluster_points(points, eps=1.0, min_samples=2):
     """ Perform DBSCAN clustering and filter clusters based on priorities. """
-    dbscan = DBSCAN(eps=1.5, min_samples=2).fit(points[:, :3])  # Use X, Y, Z for clustering
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(points[:, :3])  # Use X, Y, Z for clustering
     labels = dbscan.labels_
 
     clusters = {}
@@ -81,7 +84,14 @@ def cluster_points(points):
 
         # Store centroid and priority
         centroid = np.mean(cluster_points, axis=0)
-        priority = 1 if size >= 7 else 2  # Priority 1 for 7+, Priority 2 for 3-6
+        if size >= 10:
+            priority = 1
+        elif size < 10 and size >= 5:
+            priority = 2
+        elif size < 5:
+            priority = 3
+        else:
+            priority = 4
         clusters[cluster_id] = {'centroid': centroid, 'priority': priority, 'points': cluster_points}
 
     return clusters
@@ -93,6 +103,7 @@ def plot_clusters_3d(clusters, ax):
     """ Plot clusters and visualize bounding boxes and priorities in 3D. """
     for cid, cluster in clusters.items():
         centroid = cluster['centroid']
+        priority = cluster['priority']
         ax.scatter(cluster['points'][:, 0], cluster['points'][:, 1], cluster['points'][:, 2], label=f"Cluster {cid}")
         ax.scatter(centroid[0], centroid[1], centroid[2], c='black', marker='x')  # Centroid marker
 
@@ -114,7 +125,14 @@ def plot_clusters_3d(clusters, ax):
             [vertices[i] for i in [1, 2, 6, 5]],
             [vertices[i] for i in [4, 7, 3, 0]]
         ]
-        ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='purple'))
+        if(priority == 1):
+            ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='red'))
+        elif (priority == 2):
+            ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='yellow'))
+        elif (priority == 3):
+            ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='green'))
+        else:
+            ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='gray'))
 
     # Draw fixed rectangle (vehicle) at origin
     vertices = [[-0.5, -0.9, 0], [0.5, -0.9, 0], [0.5, 0.9, 0], [-0.5, 0.9, 0],
@@ -155,9 +173,9 @@ def plot_with_slider(frames_data, num_frames=10):
         ax.set_zlabel('Z [m]')
         ax.set_xlim(-10, 10)
         ax.set_ylim(0, 15)
-        ax.set_zlim(-0.30, 10)
+        #ax.set_zlim(-0.30, 10)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
-        ax.legend()
+        #ax.legend()
         plt.draw()
 
     slider.on_changed(update)
@@ -166,15 +184,15 @@ def plot_with_slider(frames_data, num_frames=10):
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_log_2024-12-16.csv")
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3targets_2_log_2024-12-16.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0
-z_threshold = (0, 3.0)
+z_threshold = (-0.30, 2.0)
 doppler_threshold = 0.0
 
 print(f"Processing file: {file_path}")
-frames_data = process_log_file(file_path, snr_threshold=15, z_min=-0.30, z_max=2.0, doppler_threshold=0.1)
+frames_data = process_log_file(file_path, snr_threshold=12, z_min=-2.0, z_max=2.0, doppler_threshold=0.1)
 
 frames_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_threshold, doppler_threshold)
 
