@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from DataProcessing.radar_utilsProcessing import *
 from DataProcessing.radar_utilsPlot import *
 
-SAFETY_BOX_CENTER = [0, 5, 0]  # Center position (X, Y, Z)
-SAFETY_BOX_SIZE = [2, 2, 2]   # Width, Height, Depth
+SAFETY_BOX_CENTER = [0, 2, 0]  # Center position (X, Y, Z)
+SAFETY_BOX_SIZE = [2, 9, 2]   # Width, Height, Depth
 
 # Create a new dictionary with frame numbers and coordinates + Doppler speed
 def extract_coordinates_with_doppler(frames_data, y_threshold=None, z_threshold=None, doppler_threshold=None):
@@ -134,6 +134,9 @@ def plot_clusters_3d(clusters, ax):
         else:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='gray'))
 
+        monitor_safety_box(clusters, ax, SAFETY_BOX_CENTER, SAFETY_BOX_SIZE)
+
+
     # Draw fixed rectangle (vehicle) at origin
     vertices = [[-0.5, -0.9, 0], [0.5, -0.9, 0], [0.5, 0.9, 0], [-0.5, 0.9, 0],
                 [-0.5, -0.9, 0.5], [0.5, -0.9, 0.5], [0.5, 0.9, 0.5], [-0.5, 0.9, 0.5]]
@@ -146,6 +149,41 @@ def plot_clusters_3d(clusters, ax):
         [vertices[i] for i in [4, 7, 3, 0]]
     ]
     ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='cyan'))
+# -------------------------------
+# FUNCTION: Safety Box
+# -------------------------------
+def monitor_safety_box(clusters, ax, box_center, box_size):
+    """ Monitor clusters for collisions with a static safety box and trigger warnings. """
+    # Calculate box boundaries
+    box_min = np.array(box_center) - np.array(box_size) / 2
+    box_max = np.array(box_center) + np.array(box_size) / 2
+
+    # Draw the safety box in blue
+    vertices = [
+        [box_min[0], box_min[1], box_min[2]], [box_max[0], box_min[1], box_min[2]],
+        [box_max[0], box_max[1], box_min[2]], [box_min[0], box_max[1], box_min[2]],
+        [box_min[0], box_min[1], box_max[2]], [box_max[0], box_min[1], box_max[2]],
+        [box_max[0], box_max[1], box_max[2]], [box_min[0], box_max[1], box_max[2]]
+    ]
+    edges = [
+        [vertices[i] for i in [0, 1, 2, 3]],
+        [vertices[i] for i in [4, 5, 6, 7]],
+        [vertices[i] for i in [0, 1, 5, 4]],
+        [vertices[i] for i in [2, 3, 7, 6]],
+        [vertices[i] for i in [1, 2, 6, 5]],
+        [vertices[i] for i in [4, 7, 3, 0]]
+    ]
+    ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='blue'))
+
+    # Check if any point in the cluster lies within the safety box (ignoring Doppler values)
+    for cid, cluster in clusters.items():
+        points_xyz = cluster['points'][:, :3]  # Only X, Y, Z coordinates
+        priority = cluster['priority']
+        inside_box = np.all((points_xyz >= box_min) & (points_xyz <= box_max), axis=1)
+        if np.any(inside_box):
+            print(f"[!] WARNING: Cluster {cid} in safety zone!")
+            print(f"[!] WARNING: Cluster with priority: {priority} in safety zone!")
+
 
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
@@ -173,7 +211,7 @@ def plot_with_slider(frames_data, num_frames=10):
         ax.set_zlabel('Z [m]')
         ax.set_xlim(-10, 10)
         ax.set_ylim(0, 15)
-        #ax.set_zlim(-0.30, 10)
+        ax.set_zlim(-0.30, 10)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
         #ax.legend()
         plt.draw()
