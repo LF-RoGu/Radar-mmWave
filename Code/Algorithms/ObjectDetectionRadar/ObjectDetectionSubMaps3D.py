@@ -100,16 +100,23 @@ def cluster_points(points, eps=1.0, min_samples=2):
 # FUNCTION: Plot Clusters
 # -------------------------------
 def plot_clusters_3d(clusters, ax):
-    """ Plot clusters and visualize bounding boxes and priorities in 3D. """
+    """ Plot clusters, visualize bounding boxes and priorities in 3D, and display average Doppler speed. """
     for cid, cluster in clusters.items():
         centroid = cluster['centroid']
         priority = cluster['priority']
-        ax.scatter(cluster['points'][:, 0], cluster['points'][:, 1], cluster['points'][:, 2], label=f"Cluster {cid}")
+        points = cluster['points']
+        doppler_avg = np.mean(points[:, 3])  # Calculate average Doppler speed
+
+        # Scatter points and centroid
+        ax.scatter(points[:, 0], points[:, 1], points[:, 2], label=f"Cluster {cid}")
         ax.scatter(centroid[0], centroid[1], centroid[2], c='black', marker='x')  # Centroid marker
 
+        # Display the average Doppler speed
+        ax.text(centroid[0], centroid[1], centroid[2], f"{doppler_avg:.2f} m/s", color='purple')
+
         # Draw bounding box (cube)
-        min_vals = np.min(cluster['points'], axis=0)
-        max_vals = np.max(cluster['points'], axis=0)
+        min_vals = np.min(points, axis=0)
+        max_vals = np.max(points, axis=0)
         r = [[min_vals[0], max_vals[0]], [min_vals[1], max_vals[1]], [min_vals[2], max_vals[2]]]
         vertices = [
             [r[0][0], r[1][0], r[2][0]], [r[0][1], r[1][0], r[2][0]],
@@ -125,17 +132,17 @@ def plot_clusters_3d(clusters, ax):
             [vertices[i] for i in [1, 2, 6, 5]],
             [vertices[i] for i in [4, 7, 3, 0]]
         ]
-        if(priority == 1):
+        if priority == 1:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='red'))
-        elif (priority == 2):
+        elif priority == 2:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='yellow'))
-        elif (priority == 3):
+        elif priority == 3:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='green'))
         else:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='gray'))
 
-        monitor_safety_box(clusters, ax, SAFETY_BOX_CENTER, SAFETY_BOX_SIZE)
-
+    # Monitor safety box
+    monitor_safety_box(clusters, ax, SAFETY_BOX_CENTER, SAFETY_BOX_SIZE)
 
     # Draw fixed rectangle (vehicle) at origin
     vertices = [[-0.5, -0.9, 0], [0.5, -0.9, 0], [0.5, 0.9, 0], [-0.5, 0.9, 0],
@@ -149,6 +156,7 @@ def plot_clusters_3d(clusters, ax):
         [vertices[i] for i in [4, 7, 3, 0]]
     ]
     ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='cyan'))
+
 # -------------------------------
 # FUNCTION: Safety Box
 # -------------------------------
@@ -244,9 +252,9 @@ z_threshold = (-0.30, 2.0)
 doppler_threshold = 0.0
 
 print(f"Processing file: {file_path}")
-frames_data = process_log_file(file_path, snr_threshold=12, z_min=-2.0, z_max=2.0, doppler_threshold=0.1)
+frames_data = process_log_file(file_path, snr_threshold=12, z_min=z_threshold[0], z_max=z_threshold[1], doppler_threshold=doppler_threshold)
 
-frames_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_threshold, doppler_threshold)
+coordinates_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_threshold, doppler_threshold)
 
 # Plot with slider and clustering
-plot_with_slider(frames_data, num_frames=10)
+plot_with_slider(coordinates_data, num_frames=10)
