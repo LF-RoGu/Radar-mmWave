@@ -85,11 +85,11 @@ def cluster_points(points, eps=1.0, min_samples=2):
         # Store centroid and priority
         centroid = np.mean(cluster_points, axis=0)
         if size >= 10:
-            priority = 1
+            priority = 3
         elif size < 10 and size >= 5:
             priority = 2
         elif size < 5:
-            priority = 3
+            priority = 1
         else:
             priority = 4
         clusters[cluster_id] = {'centroid': centroid, 'priority': priority, 'points': cluster_points}
