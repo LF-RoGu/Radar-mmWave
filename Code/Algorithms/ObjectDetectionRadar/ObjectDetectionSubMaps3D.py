@@ -200,11 +200,15 @@ def monitor_safety_box(clusters, ax, box_center, box_size):
     # Check if any point in the cluster lies within the safety box (ignoring Doppler values)
     for cid, cluster in clusters.items():
         points_xyz = cluster['points'][:, :3]  # Only X, Y, Z coordinates
+        doppler_speeds = cluster['points'][:, 3]  # Doppler values
         priority = cluster['priority']
         inside_box = np.all((points_xyz >= box_min) & (points_xyz <= box_max), axis=1)
+
         if np.any(inside_box):
+            avg_doppler = np.mean(doppler_speeds)  # Calculate average Doppler speed
             print(f"[!] WARNING: Cluster {cid} in safety zone!")
             print(f"[!] WARNING: Cluster with priority: {priority} in safety zone!")
+            print(f"[!] WARNING: Average Doppler speed: {avg_doppler:.2f} m/s")
 
 
 # Interactive slider-based visualization
@@ -244,7 +248,7 @@ def plot_with_slider(frames_data, num_frames=10):
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3targets_2_log_2024-12-16.csv")
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_3_log_2024-12-16.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0
