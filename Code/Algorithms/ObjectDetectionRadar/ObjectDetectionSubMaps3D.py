@@ -105,15 +105,16 @@ def plot_clusters_3d(clusters, ax):
         centroid = cluster['centroid']
         priority = cluster['priority']
         points = cluster['points']
-        doppler_avg = np.mean(points[:, 3])  # Calculate average Doppler speed
+        doppler_avg = np.mean(points[:, 2])  # Calculate average Doppler speed
 
         # Scatter points and centroid
         ax.scatter(points[:, 0], points[:, 1], points[:, 2], label=f"Cluster {cid}")
         ax.scatter(centroid[0], centroid[1], centroid[2], c='black', marker='x')  # Centroid marker
 
         # Display the average Doppler speed
-        ax.text(centroid[0], centroid[1], centroid[2], f"{doppler_avg:.2f} m/s", color='purple')
-
+        ax.text(centroid[0] + 0.2, centroid[1] + 0.2, centroid[2] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
+        # Add priority labels
+        ax.text(centroid[0] - 0.2, centroid[1] - 0.2, centroid[2] - 0.2, f"P{cluster['priority']}", color='red')
         # Draw bounding box (cube)
         min_vals = np.min(points, axis=0)
         max_vals = np.max(points, axis=0)

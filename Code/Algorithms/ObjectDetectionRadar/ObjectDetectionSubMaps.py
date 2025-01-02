@@ -65,7 +65,7 @@ def aggregate_submap(frames_data, start_frame, num_frames=10):
 # -------------------------------
 def cluster_points(points):
     """ Perform DBSCAN clustering and filter clusters based on priorities. """
-    dbscan = DBSCAN(eps=1.5, min_samples=2).fit(points[:, :2])  # Use only X and Y for clustering
+    dbscan = DBSCAN(eps=1.0, min_samples=2).fit(points[:, :2])  # Use only X and Y for clustering
     labels = dbscan.labels_
 
     clusters = {}
@@ -93,8 +93,15 @@ def plot_clusters(clusters, ax):
     """ Plot clusters and visualize bounding boxes and priorities. """
     for cid, cluster in clusters.items():
         centroid = cluster['centroid']
+        priority = cluster['priority']
+        points = cluster['points']
+        doppler_avg = np.mean(points[:, 3])  # Calculate average Doppler speed
+
         ax.scatter(cluster['points'][:, 0], cluster['points'][:, 1], label=f"Cluster {cid}")
         ax.scatter(centroid[0], centroid[1], c='black', marker='x')  # Centroid marker
+
+        # Display the average Doppler speed
+        ax.text(centroid[0], centroid[1] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
 
         # Draw bounding box
         width = np.max(cluster['points'][:, 0]) - np.min(cluster['points'][:, 0])
@@ -105,7 +112,9 @@ def plot_clusters(clusters, ax):
         ))
 
         # Add priority labels
-        ax.text(centroid[0], centroid[1], f"P{cluster['priority']}", color='red')
+        ax.text(centroid[0], centroid[1] - 0.2, f"P{cluster['priority']}", color='red')
+
+        draw_vehicle_2d(ax, position=(0, 0), size=(1.0, 1.8), color='cyan')
 
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
@@ -137,6 +146,35 @@ def plot_with_slider(frames_data, num_frames=10):
     slider.on_changed(update)
     update(1)  # Initial plot
     plt.show()
+
+def draw_vehicle_2d(ax, position=(0, 0), size=(1.0, 1.8), color='cyan'):
+    """Draw a 2D representation of the vehicle on the XY plane."""
+    # Extract position and size
+    x, y = position  # Vehicle center position (X, Y)
+    width, height = size  # Dimensions of the vehicle
+
+    # Calculate vertices relative to the center position
+    vertices = [
+        [x - width / 2, y - height / 2],  # Bottom-left
+        [x + width / 2, y - height / 2],  # Bottom-right
+        [x + width / 2, y + height / 2],  # Top-right
+        [x - width / 2, y + height / 2]   # Top-left
+    ]
+
+    # Create a polygon patch
+    from matplotlib.patches import Polygon
+    vehicle_patch = Polygon(vertices, closed=True, edgecolor='black', facecolor=color, alpha=0.3)
+
+    # Add the patch to the 2D axis
+    ax.add_patch(vehicle_patch)
+
+    # Set axis limits and labels
+    ax.set_xlim(-10, 10)  # Adjust as needed
+    ax.set_ylim(-10, 10)  # Adjust as needed
+    ax.set_xlabel('X [m]')
+    ax.set_ylabel('Y [m]')
+    ax.grid(True)
+
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
