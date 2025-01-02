@@ -154,6 +154,20 @@ def plot_clusters_3d(clusters, ax):
 # -------------------------------
 def monitor_safety_box(clusters, ax, box_center, box_size):
     """ Monitor clusters for collisions with a static safety box and trigger warnings. """
+
+    # Remove previous safety box by identifying blue Poly3DCollection and removing them
+    collections_to_remove = []
+    for collection in ax.collections:
+        # Check if the collection is a Poly3DCollection with blue color
+        if isinstance(collection, Poly3DCollection):
+            facecolor = collection.get_facecolor()[0][:3]  # Get RGB values
+            if np.allclose(facecolor, [0.0, 0.0, 1.0]):  # Check if it's blue
+                collections_to_remove.append(collection)
+
+    # Remove identified collections
+    for collection in collections_to_remove:
+        collection.remove()
+
     # Calculate box boundaries
     box_min = np.array(box_center) - np.array(box_size) / 2
     box_max = np.array(box_center) + np.array(box_size) / 2
