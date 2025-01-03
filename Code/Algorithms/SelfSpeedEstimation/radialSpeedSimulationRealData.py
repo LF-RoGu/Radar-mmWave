@@ -21,6 +21,10 @@ class KalmanFilter:
         self.estimated_error = (1 - kalman_gain) * self.estimated_error + self.process_variance
         return self.estimated_value
 
+#Defining the number of how many frames from the past should be used in estimation
+# 0 = only current frame
+# n = current frame + n previous frames
+NUM_PAST_FRAMES = 2
 
 #Initializing a figure for visualization
 plt.ion()
@@ -118,8 +122,11 @@ frames = dataDecoder.decodeData(log_file)
 
 #Processing frame by frame
 for frm in range(len(frames)):
-    #Getting the point cloud of the frame
+    #Getting the point cloud of the current frame
     point_cloud = frames[frm][1]
+    #Appending the number of past frames to the point cloud
+    for past_frm in range(max(0, frm - NUM_PAST_FRAMES), frm, 1):
+        point_cloud = point_cloud + frames[past_frm][1]
     
     #Calculating the self speed
     self_speed = estimating_self_speed(point_cloud)
