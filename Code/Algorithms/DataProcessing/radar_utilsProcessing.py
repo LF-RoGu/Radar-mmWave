@@ -107,7 +107,7 @@ def parse_type_7_data(tlv_header, raw_data_list, num_detected_obj):
     return {"Side Info": side_info}
 
 # Process the log file with optional SNR and Z[m] filtering
-def process_log_file(file_path, snr_threshold=None, z_min=None, z_max=None, doppler_threshold=None):
+def process_log_file(file_path, snr_threshold=None):
     frames_dict = {}
     data = pd.read_csv(file_path, names=["Timestamp", "RawData"], skiprows=1)
 
@@ -149,16 +149,11 @@ def process_log_file(file_path, snr_threshold=None, z_min=None, z_max=None, dopp
 
                 for i in range(len(detected_points)):
                     snr = side_info[i]["SNR [dB]"]
-                    z_val = detected_points[i]["Z [m]"]
-                    doppler = detected_points[i]["Doppler [m/s]"]
 
                     # Filter conditions (only if thresholds are provided)
                     snr_valid = snr_threshold is None or snr >= snr_threshold
-                    z_valid = ((z_min is None or z_val >= z_min) and
-                               (z_max is None or z_val <= z_max))
-                    doppler_valid = doppler_threshold is None or abs(doppler) >= doppler_threshold
 
-                    if snr_valid and z_valid and doppler_valid:
+                    if snr_valid:
                         filtered_points.append(detected_points[i])
                         filtered_info.append(side_info[i])
 

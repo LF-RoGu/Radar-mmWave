@@ -1,20 +1,20 @@
 import os
-import pandas as pd
 import numpy as np
-import struct
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from sklearn.cluster import DBSCAN
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.gridspec import GridSpec
 
 from DataProcessing.radar_utilsProcessing import *
 from DataProcessing.radar_utilsPlot import *
+from OccupancyGrid.OccupancyGrid import *
 
 SAFETY_BOX_CENTER = [0, 2, 0]  # Center position (X, Y, Z)
 SAFETY_BOX_SIZE = [2, 9, 2]   # Width, Height, Depth
 
 # Create a new dictionary with frame numbers and coordinates + Doppler speed
-def extract_coordinates_with_doppler(frames_data, y_threshold=None, z_threshold=None, doppler_threshold=None):
+def extract_coordinates_with_doppler(frames_data, z_threshold=None):
     coordinates_dict = {}
 
     for frame_num, frame_content in frames_data.items():
@@ -32,14 +32,8 @@ def extract_coordinates_with_doppler(frames_data, y_threshold=None, z_threshold=
         coordinates = []
         for point in points:
             # Apply threshold filters
-            if y_threshold is not None and point["Y [m]"] < y_threshold:
-                continue  # Skip if Y is below the threshold
-
             if z_threshold is not None and not (z_threshold[0] <= point["Z [m]"] <= z_threshold[1]):
                 continue  # Skip if Z is outside the range
-
-            if doppler_threshold is not None and abs(point["Doppler [m/s]"]) <= doppler_threshold:
-                continue  # Skip if Doppler speed is below the threshold
 
             # Add the point to the list if it passes all filters
             coordinates.append([
@@ -215,7 +209,10 @@ def monitor_safety_box(clusters, ax, box_center, box_size):
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
     fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    # Define a 1x2 grid layout with custom width ratios
+    gs = GridSpec(1, 2, figure=fig)
+    ax = fig.add_subplot(gs[0, 0], projection='3d')
+    ay = fig.add_subplot(gs[0, 1])
 
     # Set initial view angle (top-down)
     ax.view_init(elev=90, azim=-90)
@@ -225,23 +222,39 @@ def plot_with_slider(frames_data, num_frames=10):
     slider = Slider(ax_slider, 'Frame', 1, len(frames_data) - num_frames + 1, valinit=1, valstep=1)
 
     def update(val):
+        x_limits=(-8, 8)
+        y_limits=(0, 15)
+        grid_spacing=1
         start_frame = int(slider.val)
         submap = aggregate_submap(frames_data, start_frame, num_frames)
+        occupancyGrid = calculate_occupancy_grid(submap[:, :2], x_limits, y_limits, grid_spacing)
 
         # Perform clustering
         clusters = cluster_points(submap)
 
         ax.clear()
+        ay.clear()
         plot_clusters_3d(clusters, ax)
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
+        ay.set_xlabel('X [m]')
+        ay.set_ylabel('Y [m]')
         ax.set_xlim(-10, 10)
         ax.set_ylim(0, 15)
         ax.set_zlim(-0.30, 10)
+        ay.set_xlim(-10, 10)
+        ay.set_ylim(0, 15)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
+        ay.set_title(f"Grid Mapping (Frames {start_frame} to {start_frame + num_frames - 1})")
         #ax.legend()
         plt.draw()
+
+        # Get the custom colormap and normalizer
+        cmap, norm = create_custom_colormap()
+
+        ay.imshow(occupancyGrid.T, extent=(x_limits[0], x_limits[1], y_limits[0], y_limits[1]), origin='lower', cmap=cmap, aspect='auto')
+
 
     slider.on_changed(update)
     update(1)  # Initial plot
@@ -257,9 +270,9 @@ z_threshold = (-0.30, 2.0)
 doppler_threshold = 0.0
 
 print(f"Processing file: {file_path}")
-frames_data = process_log_file(file_path, snr_threshold=12, z_min=z_threshold[0], z_max=z_threshold[1], doppler_threshold=doppler_threshold)
+frames_data = process_log_file(file_path, snr_threshold=12)
 
-coordinates_data = extract_coordinates_with_doppler(frames_data, y_threshold, z_threshold, doppler_threshold)
+coordinates_data = extract_coordinates_with_doppler(frames_data, z_threshold)
 
 # Plot with slider and clustering
 plot_with_slider(coordinates_data, num_frames=10)
