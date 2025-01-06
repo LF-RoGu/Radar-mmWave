@@ -1,10 +1,10 @@
 # Detecting objects in front of the car.
-This section of the project focuses on detecting objects using a radar mmWave sensor and visualizing the data. \
-The code processes radar data to cluster detected points, analyze their velocities, and highlight potential hazards in real-time. \
+This section of the project focuses on detecting objects using a radar mmWave sensor and visualizing the data. 
+The code processes radar data to cluster detected points, analyze their velocities, and highlight potential hazards in real-time. 
 
 ## ObjectDetectionSubMaps3D.py
-This script processes radar data to detect and cluster objects in a 3D space. \
-It visualizes the clustered points, calculates average Doppler speeds, and monitors a safety box around the vehicle to warn about potential collisions. \
+This script processes radar data to detect and cluster objects in a 3D space. 
+It visualizes the clustered points, calculates average Doppler speeds, and monitors a safety box around the vehicle to warn about potential collisions. 
 
 ### Coordinate Extraction with Doppler Information:
 - Filters radar data based on thresholds for Y, Z coordinates, and Doppler velocity.
