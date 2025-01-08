@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.gridspec import GridSpec
+from functools import partial
 
 import dataDecoderBrokenTimestamp
 from frameAggregator import FrameAggregator
@@ -21,7 +22,7 @@ FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 # -------------------------------
 # FUNCTION: Updating the simulation when the value of the slider has changed
 # -------------------------------
-def update_sim(new_num_frame):
+def update_sim(new_num_frame, curr_num_frame):
     #Checking if new frame is earlier than the current processed frame (--> simulation needs to be rebuild until this particular frame)
     if new_num_frame < curr_num_frame:
             ##Clearing the pipeline
@@ -80,12 +81,13 @@ ay = fig.add_subplot(gs[1, 0])
 #Setting the initial view angle of the 3D-plot to top-down
 ax.view_init(elev=90, azim=-90)
 
+curr_num_frame = -1
+
 #Creating a slider for frame selection and attaching a handler to the on_changed event
 ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
 slider = Slider(ax_slider, 'Frame', 0, len(frames) - 1, valinit=0, valstep=1)
-slider.on_changed(update_sim)
+slider.on_changed(partial(update_sim, additional_parameter=curr_num_frame))
 
 #Starting the simulation with the first frame and showing the plot
-curr_num_frame = 0
-update_sim(curr_num_frame)
+update_sim(0, -1)
 plt.show()

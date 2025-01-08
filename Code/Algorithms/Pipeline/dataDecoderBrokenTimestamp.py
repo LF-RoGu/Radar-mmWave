@@ -103,8 +103,8 @@ def parse_tlv_payload(tlv_header, raw_data):
         point_size = 4  # Each point has 4 bytes of side info
         for i in range(payload_length // point_size):
             snr, noise = struct.unpack('<HH', bytes(payload[i * point_size:(i + 1) * point_size]))
-            side_info.append({"SNR": snr, "Noise": noise})
-        return {"Side Info for Detected Points": side_info}
+            side_info.append({"snr": snr, "noise": noise})
+        return {"SNRandNoise": side_info}
 
     elif tlv_type == 9:  # Temperature Statistics
         # Type 9 payload structure:
@@ -186,13 +186,28 @@ def dataToFrames(data):
             frame_header = parse_frame_header(raw_data_list)
             num_tlvs = frame_header["Num TLVs"]
 
+            decodedFrame = None
+            decodedSNRandNoise = None
+
             # Parse TLVs
             for _ in range(num_tlvs):
                 tlv_header = parse_tlv_header(raw_data_list)
                 if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
                     tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
                     if tlv_payload and "detectedPoints" in tlv_payload:
-                        decodedFrames.append([timestamp, tlv_payload["detectedPoints"]])
+                        decodedFrame = {"timestamp":timestamp, "detectedPoints":tlv_payload["detectedPoints"]}
+                elif tlv_header["TLV Type"] == 7: # Interested in Side Info of Detected Points
+                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                    if tlv_payload and "SNRandNoise" in tlv_payload:
+                        decodedSNRandNoise = tlv_payload["SNRandNoise"]
+            
+            #Adding SNR and noise info to the decoded frames
+            for point in range(len(decodedFrame["detectedPoints"])):
+                decodedFrame["detectedPoints"][point]["snr"] = decodedSNRandNoise[point]["snr"]
+                decodedFrame["detectedPoints"][point]["noise"] = decodedSNRandNoise[point]["noise"]
+
+            #Adding the decoded frame to the list of decoded frames
+            decodedFrames.append(decodedFrame)
 
         except Exception as e:
             print(f"Error processing row {i + 1}: {e}")
