@@ -60,7 +60,7 @@ def aggregate_submap(frames_data, start_frame, num_frames=10):
 # -------------------------------
 # FUNCTION: Cluster Points
 # -------------------------------
-def cluster_points(points, eps=1.0, min_samples=2):
+def cluster_points(points, eps=1.0, min_samples=6):
     """ Perform DBSCAN clustering and filter clusters based on priorities. """
     dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(points[:, :3])  # Use X, Y, Z for clustering
     labels = dbscan.labels_
@@ -201,13 +201,15 @@ def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
     """
     # Initialize grid
     polar_grid = np.zeros((range_bins, angle_bins))
+    offset = 270
 
     # Fill the occupancy grid with cluster data
     for cluster_id, cluster in clusters.items():
         centroid = cluster['centroid']
         priority = cluster['priority']
         r = np.sqrt(centroid[0]**2 + centroid[1]**2)
-        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + 90) % 360
+        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360
+
 
         # Map to bins
         if r < range_max:
@@ -229,9 +231,8 @@ def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
 
     # Configure polar plot settings
     ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
+    ax.set_theta_direction(1)
     ax.set_title("Polar Occupancy Grid with Clusters")
-    ax.legend(loc='upper right')
 
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
@@ -251,7 +252,7 @@ def plot_with_slider(frames_data, num_frames=10):
     def update(val):
         # Grid Settings
         range_max = 10
-        grid_spacing = 2  # Match Cartesian grid spacing
+        grid_spacing = 1  # Match Cartesian grid spacing
         range_bins = int(range_max / grid_spacing)
         angle_bins = 360  # Full 360° view with 1° bins
 
@@ -262,10 +263,10 @@ def plot_with_slider(frames_data, num_frames=10):
         ay.clear()
 
         # Plot clusters
-        clusters, cluster_range_azimuth = cluster_points(submap)
-        # Calculate Polar Occupancy Grid
-        polar_grid = calculate_polar_occupancy_grid(submap[:, :2], range_max, range_bins, angle_bins)
+        clusters, cluster_range_azimuth = cluster_points(submap, eps=1.0, min_samples=6)
         plot_clusters_3d(clusters, ax)
+        plot_clusters_polar(clusters, ay, range_max, range_bins, angle_bins)
+
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
@@ -274,22 +275,7 @@ def plot_with_slider(frames_data, num_frames=10):
         ax.set_zlim(-0.30, 10)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
 
-        # Plot Polar Occupancy Grid
-        r = np.linspace(0, range_max, range_bins)
-        theta = np.radians(np.linspace(0, 360, angle_bins, endpoint=False))
-        R, Theta = np.meshgrid(r, theta)
-        Z = polar_grid.T
-
-        # Apply the colormap
-        cmap, norm = create_custom_colormap()
-        ay.pcolormesh(Theta, R, Z, cmap=cmap, norm=norm)
-        ay.set_theta_zero_location('N')  # 0 degrees at the top
-        ay.set_theta_offset(np.radians(270))  # No offset if 0° points forward
-        ay.set_theta_direction(1)       # Clockwise rotation
-        ay.set_title(f"Polar Grid Mapping (Frames {start_frame} to {start_frame + num_frames - 1})")
-
         plt.draw()
-
 
     slider.on_changed(update)
     update(1)  # Initial plot
@@ -297,7 +283,7 @@ def plot_with_slider(frames_data, num_frames=10):
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3targets_log_2024-12-16.csv")
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "Test_30fps_dist15mts_vehicleLog_5mps_3x3Wall_drivearound_att6_log.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0
