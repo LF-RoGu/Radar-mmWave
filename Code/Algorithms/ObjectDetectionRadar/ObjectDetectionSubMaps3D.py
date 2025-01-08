@@ -234,8 +234,37 @@ def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
     ax.set_theta_direction(1)
     ax.set_title("Polar Occupancy Grid with Clusters")
 
+# -------------------------------
+# FUNCTION: Monitor Cluster Motion for Collision Risk
+# -------------------------------
+def monitor_cluster_motion(cluster_history, range_threshold, azimuth_range):
+    """
+    Monitor clusters over multiple frames and warn if their motion indicates potential collision.
+
+    Parameters:
+        cluster_history (list): List of cluster dictionaries from previous frames.
+        range_threshold (float): Maximum range to monitor.
+        azimuth_range (tuple): Azimuth range to monitor (min, max) in degrees.
+    """
+    for i in range(1, len(cluster_history)):
+        for cluster_id, cluster in cluster_history[i].items():
+            centroid = cluster['centroid']
+            r = np.sqrt(centroid[0]**2 + centroid[1]**2)
+            theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + 270) % 360
+
+            prev_centroid = cluster_history[i - 1].get(cluster_id, {}).get('centroid', None)
+            if prev_centroid is not None:
+                prev_r = np.sqrt(prev_centroid[0]**2 + prev_centroid[1]**2)
+                if r < prev_r:  # Moving closer
+                    in_range = r <= range_threshold
+                    in_azimuth = azimuth_range[0] <= theta <= azimuth_range[1]
+                    if in_range and in_azimuth:
+                        print(f"COLLISION WARNING! Cluster {cluster_id} is approaching: Range = {r:.2f}m, Azimuth = {theta:.2f}°")
+
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
+    # List to store the history of clusters
+    cluster_history = []
     fig = plt.figure(figsize=(8, 8))
     # Define a 1x2 grid layout with custom width ratios
     gs = GridSpec(1, 2, figure=fig)
@@ -264,6 +293,14 @@ def plot_with_slider(frames_data, num_frames=10):
 
         # Plot clusters
         clusters, cluster_range_azimuth = cluster_points(submap, eps=1.0, min_samples=6)
+
+        # Maintain a history of the last 3 frames
+        if len(cluster_history) >= 3:
+            monitor_cluster_motion(cluster_history, range_threshold=7, azimuth_range=(-30, 30))
+            cluster_history.pop(0)  # Remove the oldest frame
+        else:
+            cluster_history.append(clusters)  # Add the latest frame data
+
         plot_clusters_3d(clusters, ax)
         plot_clusters_polar(clusters, ay, range_max, range_bins, angle_bins)
 
@@ -283,7 +320,7 @@ def plot_with_slider(frames_data, num_frames=10):
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "Test_30fps_dist15mts_vehicleLog_5mps_3x3Wall_drivearound_att6_log.csv")
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_2_log_2024-12-16.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0
