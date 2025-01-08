@@ -719,7 +719,7 @@ file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 1.0  # Disregard points with Y < num
 z_threshold = (-0.3, 3.0)
-doppler_threshold = 0.0 # Disregard points with doppler < num
+doppler_threshold = 0.2 # Disregard points with doppler < num
 
 print(f"Processing file: {file_path}")
 frames_data = process_log_file(file_path)

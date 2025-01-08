@@ -1,6 +1,9 @@
 import numpy as np
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+# -------------------------------
+# FUNCTION: Cartesian Occupancy Grid
+# -------------------------------
 def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
     """
     Calculate an occupancy grid for the given points.
@@ -36,6 +39,47 @@ def calculate_occupancy_grid(points, x_limits, y_limits, grid_spacing):
             occupancy_grid[x_idx, y_idx] += 1
 
     return occupancy_grid
+
+# -------------------------------
+# FUNCTION: Polar Occupancy Grid
+# -------------------------------
+def calculate_polar_occupancy_grid(points, range_max, range_bins, angle_bins):
+    """
+    Calculate an occupancy grid in polar coordinates.
+
+    Parameters:
+        points (list of tuples): List of (x, y) or (x, y, z) coordinates.
+        range_max (float): Maximum range for the grid.
+        range_bins (int): Number of bins for range.
+        angle_bins (int): Number of bins for angles.
+
+    Returns:
+        np.ndarray: 2D polar occupancy grid.
+    """
+    # Initialize the grid
+    polar_grid = np.zeros((range_bins, angle_bins))
+
+    # Iterate through points and fill the polar grid
+    for point in points:
+        if len(point) == 3:
+            x, y, _ = point  # Unpack x, y, z
+        elif len(point) == 2:
+            x, y = point  # Unpack x, y only
+        else:
+            raise ValueError(f"Point format not supported: {point}")
+
+        # Compute polar coordinates
+        offset = 90  # Rotate 90 degrees clockwise (adjust as needed)
+        r = np.sqrt(x**2 + y**2)
+        theta = (np.degrees(np.arctan2(y, x)) + offset) % 360  # Normalize to [0, 360)
+
+        # Map to bins
+        if r < range_max:
+            r_bin = int(r / (range_max / range_bins))
+            theta_bin = int(theta / (360 / angle_bins))
+            polar_grid[r_bin, theta_bin] += 1
+
+    return polar_grid
 
 def create_custom_colormap():
         """

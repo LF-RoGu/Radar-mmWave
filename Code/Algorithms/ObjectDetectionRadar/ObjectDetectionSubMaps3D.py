@@ -66,6 +66,7 @@ def cluster_points(points, eps=1.0, min_samples=2):
     labels = dbscan.labels_
 
     clusters = {}
+    cluster_range_azimuth = []  # Calculate range and azimuth.
     for cluster_id in np.unique(labels):
         if cluster_id == -1:  # Ignore noise
             continue
@@ -75,6 +76,14 @@ def cluster_points(points, eps=1.0, min_samples=2):
         # Ignore clusters with <3 points (Priority 3)
         if size < 3:
             continue
+
+        # Store centroid and priority
+        centroid = np.mean(cluster_points, axis=0)
+        range_to_origin = np.linalg.norm(centroid[:2])  # Range from centroid to origin (X, Y)
+        azimuth_to_origin = np.degrees(np.arctan2(centroid[1], centroid[0]))  # Azimuth angle
+
+        # Save range and azimuth
+        cluster_range_azimuth.append((cluster_id, range_to_origin, azimuth_to_origin, cluster_points))
 
         # Store centroid and priority
         centroid = np.mean(cluster_points, axis=0)
@@ -88,7 +97,34 @@ def cluster_points(points, eps=1.0, min_samples=2):
             priority = 4
         clusters[cluster_id] = {'centroid': centroid, 'priority': priority, 'points': cluster_points}
 
-    return clusters
+    return clusters, cluster_range_azimuth
+
+# -------------------------------
+# FUNCTION: Safety Boundary
+# -------------------------------
+def safety_boundary(cluster_range_azimuth, range_threshold, azimuth_range, adjacent_range):
+    """ Evaluate clusters based on range and azimuth thresholds. """
+    for cluster_id, cluster_range, cluster_azimuth, cluster_points in cluster_range_azimuth:
+        
+        relative_openness = abs(np.degrees(np.arctan2(cluster_points[0][0], cluster_points[0][1])))
+        relative_adjacent = abs(cluster_range*(np.cos(relative_openness)))
+        in_openness = relative_openness <= azimuth_range
+        in_range = cluster_range <= range_threshold
+
+        # Find the closest point to the origin in the cluster
+        distances = np.linalg.norm(cluster_points[:, :2], axis=1)
+        closest_point_index = np.argmin(distances)
+        closest_point = cluster_points[closest_point_index]
+
+        if(in_openness and in_range):
+            # Final check for range and azimuth
+            print("----------------------------------------")
+            print(f"Cluster ID: {cluster_id}, Range: {cluster_range:.2f}, Azimuth: {cluster_azimuth:.2f}")
+            print(f"Openess: {relative_openness}")
+            print(f"Adjacent: {relative_adjacent}")
+            print(f"Closest Point to Origin: X: {closest_point[0]:.2f}, Y: {closest_point[1]:.2f}, Z: {closest_point[2]:.2f}")
+
+
 
 # -------------------------------
 # FUNCTION: Plot Clusters
@@ -136,9 +172,6 @@ def plot_clusters_3d(clusters, ax):
         else:
             ax.add_collection3d(Poly3DCollection(edges, alpha=0.2, facecolor='gray'))
 
-    # Monitor safety box
-    monitor_safety_box(clusters, ax, SAFETY_BOX_CENTER, SAFETY_BOX_SIZE)
-
     # Draw fixed rectangle (vehicle) at origin
     vertices = [[-0.5, -0.9, 0], [0.5, -0.9, 0], [0.5, 0.9, 0], [-0.5, 0.9, 0],
                 [-0.5, -0.9, 0.5], [0.5, -0.9, 0.5], [0.5, 0.9, 0.5], [-0.5, 0.9, 0.5]]
@@ -153,58 +186,52 @@ def plot_clusters_3d(clusters, ax):
     ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='cyan'))
 
 # -------------------------------
-# FUNCTION: Safety Box
+# FUNCTION: Plot Clusters in Polar Occupancy Grid
 # -------------------------------
-def monitor_safety_box(clusters, ax, box_center, box_size):
-    """ Monitor clusters for collisions with a static safety box and trigger warnings. """
+def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
+    """
+    Plot clusters in a polar occupancy grid.
 
-    # Remove previous safety box by identifying blue Poly3DCollection and removing them
-    collections_to_remove = []
-    for collection in ax.collections:
-        # Check if the collection is a Poly3DCollection with blue color
-        if isinstance(collection, Poly3DCollection):
-            facecolor = collection.get_facecolor()[0][:3]  # Get RGB values
-            if np.allclose(facecolor, [0.0, 0.0, 1.0]):  # Check if it's blue
-                collections_to_remove.append(collection)
+    Parameters:
+        clusters (dict): Clusters with centroid, priority, and points.
+        ax (PolarAxes): Matplotlib polar axis.
+        range_max (float): Maximum range for the grid.
+        range_bins (int): Number of bins for range.
+        angle_bins (int): Number of bins for angles.
+    """
+    # Initialize grid
+    polar_grid = np.zeros((range_bins, angle_bins))
 
-    # Remove identified collections
-    for collection in collections_to_remove:
-        collection.remove()
-
-    # Calculate box boundaries
-    box_min = np.array(box_center) - np.array(box_size) / 2
-    box_max = np.array(box_center) + np.array(box_size) / 2
-
-    # Draw the safety box in blue
-    vertices = [
-        [box_min[0], box_min[1], box_min[2]], [box_max[0], box_min[1], box_min[2]],
-        [box_max[0], box_max[1], box_min[2]], [box_min[0], box_max[1], box_min[2]],
-        [box_min[0], box_min[1], box_max[2]], [box_max[0], box_min[1], box_max[2]],
-        [box_max[0], box_max[1], box_max[2]], [box_min[0], box_max[1], box_max[2]]
-    ]
-    edges = [
-        [vertices[i] for i in [0, 1, 2, 3]],
-        [vertices[i] for i in [4, 5, 6, 7]],
-        [vertices[i] for i in [0, 1, 5, 4]],
-        [vertices[i] for i in [2, 3, 7, 6]],
-        [vertices[i] for i in [1, 2, 6, 5]],
-        [vertices[i] for i in [4, 7, 3, 0]]
-    ]
-    ax.add_collection3d(Poly3DCollection(edges, alpha=0.3, facecolor='blue'))
-
-    # Check if any point in the cluster lies within the safety box (ignoring Doppler values)
-    for cid, cluster in clusters.items():
-        points_xyz = cluster['points'][:, :3]  # Only X, Y, Z coordinates
-        doppler_speeds = cluster['points'][:, 3]  # Doppler values
+    # Fill the occupancy grid with cluster data
+    for cluster_id, cluster in clusters.items():
+        centroid = cluster['centroid']
         priority = cluster['priority']
-        inside_box = np.all((points_xyz >= box_min) & (points_xyz <= box_max), axis=1)
+        r = np.sqrt(centroid[0]**2 + centroid[1]**2)
+        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + 90) % 360
 
-        if np.any(inside_box):
-            avg_doppler = np.mean(doppler_speeds)  # Calculate average Doppler speed
-            print(f"[!] WARNING: Cluster {cid} in safety zone!")
-            print(f"[!] WARNING: Cluster with priority: {priority} in safety zone!")
-            print(f"[!] WARNING: Average Doppler speed: {avg_doppler:.2f} m/s")
+        # Map to bins
+        if r < range_max:
+            r_bin = int(r / (range_max / range_bins))
+            theta_bin = int(theta / (360 / angle_bins))
+            polar_grid[r_bin, theta_bin] += 1
 
+            # Plot centroid with color-coded priority
+            color = 'green' if priority == 3 else 'yellow' if priority == 2 else 'red'
+            ax.scatter(np.radians(theta), r, color=color, s=70, label=f'Cluster {cluster_id}')
+
+    # Plot polar occupancy grid
+    r = np.linspace(0, range_max, range_bins)
+    theta = np.radians(np.linspace(0, 360, angle_bins, endpoint=False))
+    R, Theta = np.meshgrid(r, theta)
+    Z = polar_grid.T
+    cmap, norm = create_custom_colormap()
+    ax.pcolormesh(Theta, R, Z, cmap=cmap)
+
+    # Configure polar plot settings
+    ax.set_theta_zero_location('N')
+    ax.set_theta_direction(-1)
+    ax.set_title("Polar Occupancy Grid with Clusters")
+    ax.legend(loc='upper right')
 
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
@@ -212,7 +239,7 @@ def plot_with_slider(frames_data, num_frames=10):
     # Define a 1x2 grid layout with custom width ratios
     gs = GridSpec(1, 2, figure=fig)
     ax = fig.add_subplot(gs[0, 0], projection='3d')
-    ay = fig.add_subplot(gs[0, 1])
+    ay = fig.add_subplot(gs[0, 1], polar=True)
 
     # Set initial view angle (top-down)
     ax.view_init(elev=90, azim=-90)
@@ -222,38 +249,46 @@ def plot_with_slider(frames_data, num_frames=10):
     slider = Slider(ax_slider, 'Frame', 1, len(frames_data) - num_frames + 1, valinit=1, valstep=1)
 
     def update(val):
-        x_limits=(-8, 8)
-        y_limits=(0, 15)
-        grid_spacing=1
+        # Grid Settings
+        range_max = 10
+        grid_spacing = 2  # Match Cartesian grid spacing
+        range_bins = int(range_max / grid_spacing)
+        angle_bins = 360  # Full 360° view with 1° bins
+
         start_frame = int(slider.val)
         submap = aggregate_submap(frames_data, start_frame, num_frames)
-        occupancyGrid = calculate_occupancy_grid(submap[:, :2], x_limits, y_limits, grid_spacing)
-
-        # Perform clustering
-        clusters = cluster_points(submap)
 
         ax.clear()
         ay.clear()
+
+        # Plot clusters
+        clusters, cluster_range_azimuth = cluster_points(submap)
+        # Calculate Polar Occupancy Grid
+        polar_grid = calculate_polar_occupancy_grid(submap[:, :2], range_max, range_bins, angle_bins)
         plot_clusters_3d(clusters, ax)
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
-        ay.set_xlabel('X [m]')
-        ay.set_ylabel('Y [m]')
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(0, 15)
+        ax.set_xlim(-15, 15)
+        ax.set_ylim(-15, 15)
         ax.set_zlim(-0.30, 10)
-        ay.set_xlim(-10, 10)
-        ay.set_ylim(0, 15)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
-        ay.set_title(f"Grid Mapping (Frames {start_frame} to {start_frame + num_frames - 1})")
-        #ax.legend()
-        plt.draw()
 
-        # Get the custom colormap and normalizer
+        # Plot Polar Occupancy Grid
+        r = np.linspace(0, range_max, range_bins)
+        theta = np.radians(np.linspace(0, 360, angle_bins, endpoint=False))
+        R, Theta = np.meshgrid(r, theta)
+        Z = polar_grid.T
+
+        # Apply the colormap
         cmap, norm = create_custom_colormap()
+        ay.pcolormesh(Theta, R, Z, cmap=cmap, norm=norm)
+        ay.set_theta_zero_location('N')  # 0 degrees at the top
+        ay.set_theta_offset(np.radians(270))  # No offset if 0° points forward
+        ay.set_theta_direction(1)       # Clockwise rotation
+        ay.set_title(f"Polar Grid Mapping (Frames {start_frame} to {start_frame + num_frames - 1})")
 
-        ay.imshow(occupancyGrid.T, extent=(x_limits[0], x_limits[1], y_limits[0], y_limits[1]), origin='lower', cmap=cmap, aspect='auto')
+        plt.draw()
 
 
     slider.on_changed(update)
@@ -262,7 +297,7 @@ def plot_with_slider(frames_data, num_frames=10):
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3x3_3_log_2024-12-16.csv")
+relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3targets_log_2024-12-16.csv")
 file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
 y_threshold = 0.0
@@ -276,3 +311,11 @@ coordinates_data = extract_coordinates_with_doppler(frames_data, z_threshold)
 
 # Plot with slider and clustering
 plot_with_slider(coordinates_data, num_frames=10)
+
+# Count total rows in the file (excluding header)
+total_rows = sum(1 for _ in open(file_path)) - 1
+
+# Print summary
+print(f"\nParsed {len(frames_data)} frames successfully out of {total_rows} total rows.")
+
+

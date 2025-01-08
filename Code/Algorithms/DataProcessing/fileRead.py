@@ -8,11 +8,11 @@ from radar_utilsProcessing import *
 # Main script
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "StaticMonitoring", "Test_30fps_dist15mts_vehicleLog_5mps_d3x3wall_att1_log.csv")
+    relative_path = os.path.join("..", "..", "..", "Logs", "LogsPart3", "DynamicMonitoring", "30fps_straight_3targets_log_2024-12-16.csv")
     file_path = os.path.normpath(os.path.join(script_dir, relative_path))
 
     print(f"Processing file: {file_path}")
-    frames_data = process_log_file(file_path, snr_threshold=15, z_min=-0.50, z_max=2, doppler_threshold=0.1)
+    frames_data = process_log_file(file_path, snr_threshold=15)
     # Count total rows in the file (excluding header)
     total_rows = sum(1 for _ in open(file_path)) - 1
     
