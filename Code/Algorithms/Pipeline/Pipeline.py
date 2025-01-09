@@ -32,6 +32,10 @@ FILTER_Z_MAX = 100
 FILTER_PHI_MIN = -85
 FILTER_PHI_MAX = 85
 
+#Defining the self-speed's Kalman filter process variance and measurement variance
+KALMAN_FILTER_PROCESS_VARIANCE = 0.01
+KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+
 
 # -------------------------------
 # FUNCTION: Updating the simulation when the value of the slider has changed
@@ -100,7 +104,7 @@ frames = dataDecoderBrokenTimestamp.decodeData(log_file)
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 
 #Creating the Kalman filter for the self-speed esimation
-self_speed_kf = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
+self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
 
 ##Setting up the visualization and starting the simulation
 #Creating a figure of size 10x10
