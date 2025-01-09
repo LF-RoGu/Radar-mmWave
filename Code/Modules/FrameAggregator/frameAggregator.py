@@ -29,7 +29,7 @@ class FrameAggregator:
         #Preparing a list and adding the points of all frames that are in the buffer
         points = []
         for frm in range(len(self.frames)):
-            points = points + self.frames[frm][1]
+            points = points + self.frames[frm]["detectedPoints"]
         
         #Returning the list
         return points

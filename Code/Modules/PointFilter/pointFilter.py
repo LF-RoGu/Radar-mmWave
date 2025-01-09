@@ -1,6 +1,18 @@
 import numpy as np
 
-__all__ = ['filterCartesianX', 'filterCartesianY', 'filterCartesianZ', 'filterSphericalR', 'filterSphericalTheta', 'filterSphericalPhi']
+__all__ = ['filterSNR', 'filterCartesianX', 'filterCartesianY', 'filterCartesianZ', 'filterSphericalR', 'filterSphericalTheta', 'filterSphericalPhi']
+
+def filterSNRmin(inputPoints, snr_min):
+    filteredPoints = []
+    try:
+        for i in range(len(inputPoints)):
+            point_x = inputPoints[i]["snr"]
+            if point_x >= snr_min:
+                filteredPoints.append(inputPoints[i])
+    except (ValueError, IndexError) as e:
+        print(f"Error filtering points: {e}")
+        return None
+    return filteredPoints
 
 def filterCartesianX(inputPoints, x_min, x_max):
     filteredPoints = []
