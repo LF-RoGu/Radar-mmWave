@@ -106,6 +106,7 @@ frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 #Creating the Kalman filter for the self-speed esimation
 self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
 
+
 ##Setting up the visualization and starting the simulation
 #Creating a figure of size 10x10
 fig = plt.figure(figsize=(10, 10))
@@ -118,6 +119,7 @@ ay = fig.add_subplot(gs[1, 0])
 #Setting the initial view angle of the 3D-plot to top-down
 ax.view_init(elev=90, azim=-90)
 
+#Variable to hold the number of the latest frame that was processed successfully
 curr_num_frame = -1
 
 #Creating a slider for frame selection and attaching a handler to the on_changed event
@@ -125,6 +127,7 @@ ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
 slider = Slider(ax_slider, 'Frame', 0, len(frames) - 1, valinit=0, valstep=1)
 slider.on_changed(partial(update_sim, additional_parameter=curr_num_frame))
 
-#Starting the simulation with the first frame and showing the plot
+
+##Starting the simulation with the first frame and showing the plot
 update_sim(0, -1)
 plt.show()
