@@ -10,6 +10,7 @@ import dataDecoderBrokenTimestamp
 from frameAggregator import FrameAggregator
 import pointFilter
 import selfSpeedEstimator
+from kalmanFilter import KalmanFilter
 
 
 # -------------------------------
@@ -42,6 +43,8 @@ def update_sim(new_num_frame, curr_num_frame):
             #Clearing the frame aggregator
             frame_aggregator.clearBuffer()
 
+            #Resetting the Kalman filter
+            self_speed_kf.clear()
             
             #Setting the current frame to -1 to start feeding at index 0
             curr_num_frame = -1
@@ -70,6 +73,11 @@ def update_sim(new_num_frame, curr_num_frame):
         #Estimating the self-speed
         self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
 
+        #Kalman filtering the self-speed
+        self_speed_filtered = self_speed_kf.update(self_speed_raw)
+
+
+
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
 
@@ -91,6 +99,8 @@ frames = dataDecoderBrokenTimestamp.decodeData(log_file)
 #Creating the frame aggregator
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 
+#Creating the Kalman filter for the self-speed esimation
+self_speed_kf = KalmanFilter(process_variance=0.01, measurement_variance=0.1)
 
 ##Setting up the visualization and starting the simulation
 #Creating a figure of size 10x10

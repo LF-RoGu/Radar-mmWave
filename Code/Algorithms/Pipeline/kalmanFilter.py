@@ -5,6 +5,10 @@ class KalmanFilter:
         self.estimated_value = 0.0
         self.estimated_error = 1.0
 
+    def clear(self):
+        self.estimated_value = 0.0
+        self.estimated_error = 1.0
+
     def update(self, measurement):
         # Kalman Gain
         kalman_gain = self.estimated_error / (self.estimated_error + self.measurement_variance)
