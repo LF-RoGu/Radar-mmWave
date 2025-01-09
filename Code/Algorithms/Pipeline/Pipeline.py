@@ -8,7 +8,7 @@ from functools import partial
 
 import dataDecoderBrokenTimestamp
 from frameAggregator import FrameAggregator
-
+import pointFilter
 
 
 # -------------------------------
@@ -18,6 +18,18 @@ from frameAggregator import FrameAggregator
 # 0 = only current frame
 # n = current frame + n previous frames
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
+
+#Defining a minimum SNR for the filter stage
+FILTER_SNR_MIN = 0
+
+#Defining minimum and maximum z for the filter stage
+FILTER_Z_MIN = 0.3
+FILTER_Z_MAX = 100
+
+#Defining minimum and maximum phi for the filter stage
+FILTER_PHI_MIN = -85
+FILTER_PHI_MAX = 85
+
 
 # -------------------------------
 # FUNCTION: Updating the simulation when the value of the slider has changed
@@ -45,7 +57,14 @@ def update_sim(new_num_frame, curr_num_frame):
         #Getting the current point cloud frum the frame aggregator
         point_cloud = frame_aggregator.getPoints()
 
-    
+        #Filtering by SNR
+        point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
+
+        #Filtering by z
+        point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
+
+        #Filtering by phi
+        point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
