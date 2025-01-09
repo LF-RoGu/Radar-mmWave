@@ -9,6 +9,7 @@ from functools import partial
 import dataDecoderBrokenTimestamp
 from frameAggregator import FrameAggregator
 import pointFilter
+import selfSpeedEstimator
 
 
 # -------------------------------
@@ -65,6 +66,9 @@ def update_sim(new_num_frame, curr_num_frame):
 
         #Filtering by phi
         point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
+
+        #Estimating the self-speed
+        self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
