@@ -261,35 +261,122 @@ def monitor_cluster_motion(cluster_history, range_threshold, azimuth_range):
                     if in_range and in_azimuth:
                         print(f"COLLISION WARNING! Cluster {cluster_id} is approaching: Range = {r:.2f}m, Azimuth = {theta:.2f}°")
 
+def initialize_hitmarker(range_bins, angle_bins):
+    """
+    Initialize a hitmarker grid with zeros.
+
+    Parameters:
+        range_bins (int): Number of bins for range.
+        angle_bins (int): Number of bins for angles.
+
+    Returns:
+        np.ndarray: Initialized hitmarker grid.
+    """
+    return np.zeros((range_bins, angle_bins), dtype=int)
+
+# -------------------------------
+# FUNCTION: Update Hitmarker Grid
+# -------------------------------
+def update_hitmarker(hitmarker_grid, clusters, range_max, range_bins, angle_bins):
+    """
+    Update the hitmarker grid based on detected clusters.
+
+    Parameters:
+        hitmarker_grid (np.ndarray): Grid to store hit counts.
+        clusters (dict): Detected clusters.
+        range_max (float): Maximum range for bins.
+        range_bins (int): Number of bins for range.
+        angle_bins (int): Number of bins for angles.
+
+    """
+    for cluster_id, cluster in clusters.items():
+        centroid = cluster['centroid']
+        r = np.sqrt(centroid[0]**2 + centroid[1]**2)
+        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + 270) % 360
+
+        # Map cluster to bins
+        if r < range_max:
+            r_bin = int(r / (range_max / range_bins))
+            theta_bin = int(theta / (360 / angle_bins))
+            hitmarker_grid[r_bin, theta_bin] += 1
+
+# -------------------------------
+# FUNCTION: Validate Hitmarker Grid
+# -------------------------------
+def validate_hitmarker(hitmarker_grid, valid_mark):
+    """
+    Validate hitmarkers based on a threshold.
+
+    Parameters:
+        hitmarker_grid (np.ndarray): Hitmarker grid.
+        valid_mark (int): Threshold for valid hit count.
+
+    Returns:
+        np.ndarray: Binary grid indicating valid regions.
+    """
+    return (hitmarker_grid >= valid_mark).astype(int)
+
+# -------------------------------
+# FUNCTION: Plot Hitmarker Grid
+# -------------------------------
+def plot_hitmarker_polar(hitmarker_grid, ax, range_max, range_bins, angle_bins):
+    """
+    Plot the hitmarker grid in polar coordinates.
+
+    Parameters:
+        hitmarker_grid (np.ndarray): Grid with hit counts.
+        ax (PolarAxes): Matplotlib polar axis.
+        range_max (float): Maximum range.
+        range_bins (int): Number of range bins.
+        angle_bins (int): Number of angle bins.
+    """
+    r = np.linspace(0, range_max, range_bins)
+    theta = np.radians(np.linspace(0, 360, angle_bins, endpoint=False))
+    R, Theta = np.meshgrid(r, theta)
+    Z = hitmarker_grid.T
+
+    cmap, norm = create_custom_colormap()
+
+    ax.pcolormesh(Theta, R, Z, cmap=cmap)
+    ax.set_theta_zero_location('N')
+    ax.set_theta_direction(1)
+    ax.set_title("Hitmarker Grid (Polar Coordinates)")
+
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
     # List to store the history of clusters
     cluster_history = []
-    fig = plt.figure(figsize=(8, 8))
-    # Define a 1x2 grid layout with custom width ratios
-    gs = GridSpec(1, 2, figure=fig)
-    ax = fig.add_subplot(gs[0, 0], projection='3d')
-    ay = fig.add_subplot(gs[0, 1], polar=True)
+    fig = plt.figure(figsize=(15, 8))  # Adjust figure size for 3 plots
+    gs = GridSpec(1, 3, figure=fig)    # 1 row, 3 columns
 
-    # Set initial view angle (top-down)
+    ax = fig.add_subplot(gs[0, 0], projection='3d')      # 3D Cluster Plot
+    ay = fig.add_subplot(gs[0, 1], polar=True)          # Polar Cluster Plot
+    az = fig.add_subplot(gs[0, 2], polar=True)          # Polar Hitmarker Plot
+
+    # Set initial view angle (top-down) for 3D
     ax.view_init(elev=90, azim=-90)
 
     # Slider for frame selection
     ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
     slider = Slider(ax_slider, 'Frame', 1, len(frames_data) - num_frames + 1, valinit=1, valstep=1)
 
+    # Initialize hitmarker grid
+    range_max = 10
+    grid_spacing = 1
+    range_bins = int(range_max / grid_spacing)
+    angle_bins = 360
+    hitmarker_grid = initialize_hitmarker(range_bins, angle_bins)
+    valid_mark = 3  # Threshold for valid hit counts
+
     def update(val):
-        # Grid Settings
-        range_max = 10
-        grid_spacing = 1  # Match Cartesian grid spacing
-        range_bins = int(range_max / grid_spacing)
-        angle_bins = 360  # Full 360° view with 1° bins
+        nonlocal hitmarker_grid  # Access the hitmarker grid in each update
 
         start_frame = int(slider.val)
         submap = aggregate_submap(frames_data, start_frame, num_frames)
 
         ax.clear()
         ay.clear()
+        az.clear()
 
         # Plot clusters
         clusters, cluster_range_azimuth = cluster_points(submap, eps=1.0, min_samples=6)
@@ -298,12 +385,18 @@ def plot_with_slider(frames_data, num_frames=10):
         if len(cluster_history) >= 3:
             monitor_cluster_motion(cluster_history, range_threshold=7, azimuth_range=(-30, 30))
             cluster_history.pop(0)  # Remove the oldest frame
-        else:
-            cluster_history.append(clusters)  # Add the latest frame data
+        cluster_history.append(clusters)  # Add the latest frame data
 
+        # Plot Clusters
         plot_clusters_3d(clusters, ax)
         plot_clusters_polar(clusters, ay, range_max, range_bins, angle_bins)
 
+        # Update and plot Hitmarker Grid
+        update_hitmarker(hitmarker_grid, clusters, range_max, range_bins, angle_bins)
+        validated_hitmarker = validate_hitmarker(hitmarker_grid, valid_mark)
+        plot_hitmarker_polar(validated_hitmarker, az, range_max, range_bins, angle_bins)
+
+        # Configure Plot Settings
         ax.set_xlabel('X [m]')
         ax.set_ylabel('Y [m]')
         ax.set_zlabel('Z [m]')
@@ -312,11 +405,15 @@ def plot_with_slider(frames_data, num_frames=10):
         ax.set_zlim(-0.30, 10)
         ax.set_title(f"Clusters (Frames {start_frame} to {start_frame + num_frames - 1})")
 
+        ay.set_title("Polar Cluster View")
+        az.set_title("Hitmarker Grid View")
+
         plt.draw()
 
     slider.on_changed(update)
     update(1)  # Initial plot
     plt.show()
+
 
 # Example Usage
 script_dir = os.path.dirname(os.path.abspath(__file__))
