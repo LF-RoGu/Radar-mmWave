@@ -10,6 +10,7 @@ from matplotlib.gridspec import GridSpec
 from DataProcessing.radar_utilsProcessing import *
 from DataProcessing.radar_utilsPlot import *
 from OccupancyGrid.OccupancyGrid import *
+from Clustering.dbClustering import *
 
 SAFETY_BOX_CENTER = [0, 2, 0]  # Center position (X, Y, Z)
 SAFETY_BOX_SIZE = [2, 9, 2]   # Width, Height, Depth
@@ -59,48 +60,6 @@ def aggregate_submap(frames_data, start_frame, num_frames=10):
     return np.array(aggregated_points)
 
 # -------------------------------
-# FUNCTION: Cluster Points
-# -------------------------------
-def cluster_points(points, eps=1.0, min_samples=6):
-    """ Perform DBSCAN clustering and filter clusters based on priorities. """
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(points[:, :3])  # Use X, Y, Z for clustering
-    labels = dbscan.labels_
-
-    clusters = {}
-    cluster_range_azimuth = []  # Calculate range and azimuth.
-    for cluster_id in np.unique(labels):
-        if cluster_id == -1:  # Ignore noise
-            continue
-        cluster_points = points[labels == cluster_id]
-        size = len(cluster_points)
-
-        # Ignore clusters with <3 points (Priority 3)
-        if size < 3:
-            continue
-
-        # Store centroid and priority
-        centroid = np.mean(cluster_points, axis=0)
-        range_to_origin = np.linalg.norm(centroid[:2])  # Range from centroid to origin (X, Y)
-        azimuth_to_origin = np.degrees(np.arctan2(centroid[1], centroid[0]))  # Azimuth angle
-
-        # Save range and azimuth
-        cluster_range_azimuth.append((cluster_id, range_to_origin, azimuth_to_origin, cluster_points))
-
-        # Store centroid and priority
-        centroid = np.mean(cluster_points, axis=0)
-        if size >= 10:
-            priority = 3
-        elif size < 10 and size >= 5:
-            priority = 2
-        elif size < 5:
-            priority = 1
-        else:
-            priority = 4
-        clusters[cluster_id] = {'centroid': centroid, 'priority': priority, 'points': cluster_points}
-
-    return clusters, cluster_range_azimuth
-
-# -------------------------------
 # FUNCTION: Plot Clusters
 # -------------------------------
 
@@ -144,12 +103,13 @@ def plot_clusters_cartesian(clusters, ax):
 
 # --- Plot Clusters in Polar Coordinates ---
 def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
+    offset = 270
     polar_grid = np.zeros((range_bins, angle_bins))
     for cluster_id, cluster in clusters.items():
         centroid = cluster['centroid']
         priority = cluster['priority']
         r = np.linalg.norm(centroid[:2])
-        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + 360) % 360
+        theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360
         if r < range_max:
             r_bin = int(r / (range_max / range_bins))
             theta_bin = int(theta / (360 / angle_bins))
@@ -162,7 +122,7 @@ def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
     cmap, _ = create_custom_colormap()
     ax.pcolormesh(Theta, R, polar_grid.T, cmap=cmap)
     ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
+    ax.set_theta_direction(1)
     ax.set_title("Polar Occupancy Grid with Clusters")
 
 # --- Plot Occupancy Grid in Cartesian Coordinates ---
@@ -198,12 +158,22 @@ def plot_with_slider(frames_data, num_frames=10):
         ax_polar.clear()
         ax_occupancy.clear()
 
-        clusters, _ = cluster_points(submap, eps=1.0, min_samples=6)
-        occupancy_grid = calculate_occupancy_grid(submap[:, :2], x_limits, y_limits, grid_spacing)
+        # First Clustering Stage
+        clustersStage1, _ = cluster_points(submap, eps=2.0, min_samples=2)
+        points_stage1 = np.concatenate([cluster['points'] for cluster in clustersStage1.values()])
 
-        plot_clusters_cartesian(clusters, ax_cartesian)
-        plot_clusters_polar(clusters, ax_polar, range_max, range_bins, angle_bins)
+        # Second Clustering Stage
+        clustersStage2, _ = cluster_points(points_stage1, eps=0.5, min_samples=6)
+        points_stage2 = np.concatenate([cluster['points'] for cluster in clustersStage2.values()])
+
+        # Calculate Occupancy Grid using the final clustered points
+        occupancy_grid = calculate_occupancy_grid(points_stage2[:, :2], x_limits, y_limits, grid_spacing)
+
+        # Plot using the second stage clusters
+        plot_clusters_cartesian(clustersStage2, ax_cartesian)
+        plot_clusters_polar(clustersStage2, ax_polar, range_max, range_bins, angle_bins)
         plot_occupancy_grid_cartesian(occupancy_grid, ax_occupancy, x_limits, y_limits, grid_spacing)
+
 
         ax_cartesian.set_xlim(-10, 10)
         ax_cartesian.set_ylim(0, 15)

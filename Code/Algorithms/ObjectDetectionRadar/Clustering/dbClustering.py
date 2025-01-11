@@ -6,12 +6,13 @@ from matplotlib.patches import Rectangle, Ellipse
 # -------------------------------
 # FUNCTION: Cluster Points
 # -------------------------------
-def cluster_points(points):
+def cluster_points(points, eps=1.0, min_samples=6):
     """ Perform DBSCAN clustering and filter clusters based on priorities. """
-    dbscan = DBSCAN(eps=1.5, min_samples=2).fit(points[:, :2])  # Use only X and Y for clustering
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(points[:, :3])  # Use X, Y, Z for clustering
     labels = dbscan.labels_
 
     clusters = {}
+    cluster_range_azimuth = []  # Calculate range and azimuth.
     for cluster_id in np.unique(labels):
         if cluster_id == -1:  # Ignore noise
             continue
@@ -24,10 +25,25 @@ def cluster_points(points):
 
         # Store centroid and priority
         centroid = np.mean(cluster_points, axis=0)
-        priority = 1 if size >= 7 else 2  # Priority 1 for 7+, Priority 2 for 3-6
+        range_to_origin = np.linalg.norm(centroid[:2])  # Range from centroid to origin (X, Y)
+        azimuth_to_origin = np.degrees(np.arctan2(centroid[1], centroid[0]))  # Azimuth angle
+
+        # Save range and azimuth
+        cluster_range_azimuth.append((cluster_id, range_to_origin, azimuth_to_origin, cluster_points))
+
+        # Store centroid and priority
+        centroid = np.mean(cluster_points, axis=0)
+        if size >= 10:
+            priority = 3
+        elif size < 10 and size >= 5:
+            priority = 2
+        elif size < 5:
+            priority = 1
+        else:
+            priority = 4
         clusters[cluster_id] = {'centroid': centroid, 'priority': priority, 'points': cluster_points}
 
-    return clusters
+    return clusters, cluster_range_azimuth
 
 # -------------------------------
 # FUNCTION: Plot Clusters
