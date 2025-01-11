@@ -163,8 +163,16 @@ def plot_with_slider(frames_data, num_frames=10):
         points_stage1 = np.concatenate([cluster['points'] for cluster in clustersStage1.values()])
 
         # Second Clustering Stage
-        clustersStage2, _ = cluster_points(points_stage1, eps=0.5, min_samples=6)
+        clustersStage2, _ = cluster_points(points_stage1, eps=1.0, min_samples=6)
         points_stage2 = np.concatenate([cluster['points'] for cluster in clustersStage2.values()])
+
+        # Print cluster coordinates and Doppler speed after second clustering
+        for cid, cluster in clustersStage2.items():
+            print(f"Cluster {cid}:")
+            for point in cluster['points']:
+                x, y, z, doppler = point
+                print(f"  X: {x:.2f} m, Y: {y:.2f} m, Z: {z:.2f} m, Doppler: {doppler:.2f} m/s")
+            print("-" * 40)
 
         # Calculate Occupancy Grid using the final clustered points
         occupancy_grid = calculate_occupancy_grid(points_stage2[:, :2], x_limits, y_limits, grid_spacing)
