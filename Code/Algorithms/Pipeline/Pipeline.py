@@ -2,9 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.gridspec import GridSpec
-from functools import partial
 
 import dataDecoderBrokenTimestamp
 from frameAggregator import FrameAggregator
@@ -22,7 +20,7 @@ from kalmanFilter import KalmanFilter
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 
 #Defining a minimum SNR for the filter stage
-FILTER_SNR_MIN = 0
+FILTER_SNR_MIN = 12
 
 #Defining minimum and maximum z for the filter stage
 FILTER_Z_MIN = 0.3
@@ -37,10 +35,17 @@ KALMAN_FILTER_PROCESS_VARIANCE = 0.01
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 
 
+
 # -------------------------------
 # FUNCTION: Updating the simulation when the value of the slider has changed
 # -------------------------------
-def update_sim(new_num_frame, curr_num_frame):
+self_speed_raw_history = []
+self_speed_filtered_history = []
+def update_sim(new_num_frame):
+    global curr_num_frame
+    global self_speed_raw_history
+    global self_speed_filtered_history
+    
     #Checking if new frame is earlier than the current processed frame (--> simulation needs to be rebuild until this particular frame)
     if new_num_frame < curr_num_frame:
             ##Clearing the pipeline
@@ -50,6 +55,11 @@ def update_sim(new_num_frame, curr_num_frame):
             #Resetting the Kalman filter
             self_speed_kf.clear()
             
+
+            ##Clearing the history variables
+            self_speed_raw_history.clear()
+            self_speed_filtered_history.clear()
+
             #Setting the current frame to -1 to start feeding at index 0
             curr_num_frame = -1
     
@@ -80,10 +90,47 @@ def update_sim(new_num_frame, curr_num_frame):
         #Kalman filtering the self-speed
         self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
+        #Feeding the histories for the self speed
+        self_speed_raw_history.append(self_speed_raw)
+        self_speed_filtered_history.append(self_speed_filtered)
 
+    #Updating the graphs
+    update_graphs(point_cloud_filtered, self_speed_raw_history, self_speed_filtered_history)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
+
+
+
+# -------------------------------
+# FUNCTION: Updating the simulation's graphs
+# -------------------------------
+def update_graphs(points, self_speed_raw_history, self_speed_filtered_history):
+    global frames
+    
+    ##Plotting the points in the 3D plot
+    #Creating arrays of the x,y,z coordinates
+    points_x = np.array([point["x"] for point in points])
+    points_y = np.array([point["y"] for point in points])
+    points_z = np.array([point["z"] for point in points])
+
+    #Clearing the plot and plotting the points in the 3D plot
+    plot1.clear()
+    plot1.set_xlabel('X [m]')
+    plot1.set_ylabel('Y [m]')
+    plot1.set_zlabel('Z [m]')
+    plot1.set_xlim(-10, 10)
+    plot1.set_ylim(0, 15)
+    plot1.set_zlim(-0.30, 10)
+    plot1.scatter(points_x, points_y, points_z)
+
+    #Plotting the raw and filtered self-speed
+    plot2.clear()
+    plot2.set_xlim(0, len(frames))
+    plot2.set_ylim(-3, 0)
+    plot2.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
+    plot2.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
+
 
 
 # -------------------------------
@@ -113,11 +160,11 @@ fig = plt.figure(figsize=(10, 10))
 
 #Defining a 2x1 grid layout
 gs = GridSpec(2, 1, figure=fig)
-ax = fig.add_subplot(gs[0, 0], projection='3d')
-ay = fig.add_subplot(gs[1, 0])
+plot1 = fig.add_subplot(gs[0, 0], projection='3d')
+plot2 = fig.add_subplot(gs[1, 0])
 
 #Setting the initial view angle of the 3D-plot to top-down
-ax.view_init(elev=90, azim=-90)
+plot1.view_init(elev=90, azim=-90)
 
 #Variable to hold the number of the latest frame that was processed successfully
 curr_num_frame = -1
@@ -125,9 +172,9 @@ curr_num_frame = -1
 #Creating a slider for frame selection and attaching a handler to the on_changed event
 ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
 slider = Slider(ax_slider, 'Frame', 0, len(frames) - 1, valinit=0, valstep=1)
-slider.on_changed(partial(update_sim, additional_parameter=curr_num_frame))
+slider.on_changed(update_sim)
 
 
 ##Starting the simulation with the first frame and showing the plot
-update_sim(0, -1)
+update_sim(0)
 plt.show()
