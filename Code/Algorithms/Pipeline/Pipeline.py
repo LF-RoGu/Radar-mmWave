@@ -9,6 +9,7 @@ from frameAggregator import FrameAggregator
 import pointFilter
 import selfSpeedEstimator
 from kalmanFilter import KalmanFilter
+import veSpeedFilter
 
 
 # -------------------------------
@@ -90,12 +91,18 @@ def update_sim(new_num_frame):
         #Kalman filtering the self-speed
         self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
-        #Feeding the histories for the self speed
+        #Calculating ve for all points (used for filtering afterwards)
+        point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
+
+        #Filtering points by ve
+        point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered)
+
+        ##Feeding the histories for the self speed
         self_speed_raw_history.append(self_speed_raw)
         self_speed_filtered_history.append(self_speed_filtered)
 
     #Updating the graphs
-    update_graphs(point_cloud_filtered, self_speed_raw_history, self_speed_filtered_history)
+    update_graphs(point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
