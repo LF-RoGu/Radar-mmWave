@@ -20,7 +20,7 @@ class FrameAggregator:
     # FUNCTION: Clearing the buffer
     # -------------------------------
     def clearBuffer(self):
-        self.frames.clear
+        self.frames.clear()
 
     # -------------------------------
     # FUNCTION: Returning a list containing all points of the frames that are currently in the buffer
