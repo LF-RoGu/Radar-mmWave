@@ -27,7 +27,7 @@ FILTER_SNR_MIN = 12
 
 #Defining minimum and maximum z for the filter stage
 FILTER_Z_MIN = -0.3
-FILTER_Z_MAX = 100
+FILTER_Z_MAX = 2
 
 #Defining minimum and maximum phi for the filter stage
 FILTER_PHI_MIN = -85
@@ -163,6 +163,7 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
     plot2.set_ylim(-3, 0)
     plot2.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
     plot2.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
+    plot2.text(0.0, 0.0, f"Current Speed: {self_speed_filtered_history[-1]} m/s", color='purple')
 
     # -------------------------------
     # PLOT 3: Clustered Point Cloud (Top-Right)
@@ -219,7 +220,7 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
 ##Getting the data
 #Creating an absolute path to the raw data from a relative path
 script_dir = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/30fps_straight_3x3_log_2024-12-16.csv"))
+log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/30fps_straight_3x3_2_log_2024-12-16.csv"))
 
 #Reading in the frames
 frames = dataDecoderBrokenTimestamp.decodeData(log_file)
