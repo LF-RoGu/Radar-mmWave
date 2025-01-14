@@ -138,7 +138,7 @@ def extract_points(data):
     if isinstance(data, list):
         if isinstance(data[0], dict):
             # Look for 'x', 'y', 'z' keys in any dictionary
-            return np.array([[item.get("x", 0), item.get("y", 0), item.get("z", 0)] for item in data])
+            return np.array([[item.get("x", 0), item.get("y", 0), item.get("z", 0), item.get("doppler", 0)] for item in data])
         else:
             return np.array(data)
     elif isinstance(data, dict):

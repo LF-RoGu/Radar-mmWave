@@ -58,7 +58,7 @@ class ClusterProcessor:
         # STEP 1: Ensure points are in proper format
         if len(points) == 0:
             return {}, []
-
+        
         # STEP 2: Apply DBSCAN clustering algorithm
         dbscan = DBSCAN(eps=self.eps, min_samples=self.min_samples).fit(points[:, :3])
         labels = dbscan.labels_
@@ -82,13 +82,15 @@ class ClusterProcessor:
             # STEP 6: Compute cluster properties
             centroid = self.compute_centroid(cluster_points)
             priority = self.calculate_priority(cluster_size)
+            doppler_avg = np.mean(cluster_points[:, 3])  # Average Doppler velocity
             range_to_origin, azimuth_to_origin = self.compute_range_and_azimuth(centroid)
 
             # STEP 7: Store cluster information
             clusters[cluster_id] = {
                 'centroid': centroid,
                 'priority': priority,
-                'points': cluster_points
+                'points': cluster_points,
+                'doppler_avg': doppler_avg     # Average Doppler velocity
             }
 
             # STEP 8: Save range and azimuth for further processing

@@ -112,14 +112,14 @@ def update_sim(new_num_frame):
         # -------------------------------
         # STEP 1: First Clustering Stage
         # -------------------------------
-        #point_cloud_clustering_stage1 = dbCluster.prepare_points(point_cloud_ve_filtered)
         point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
         clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
         point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
         clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
 
         # Final cluster step
-        point_cloud_clustered = pointFilter.extract_points(clusters_stage2)
+        #point_cloud_clustered = pointFilter.extract_points(clusters_stage2)
+        point_cloud_clustered = clusters_stage2
 
         ##Feeding the histories for the self speed
         self_speed_raw_history.append(self_speed_raw)
@@ -139,6 +139,7 @@ def update_sim(new_num_frame):
 # -------------------------------
 def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, cluster_points):
     global frames
+    point_cloud_clustered = pointFilter.extract_points(cluster_points)
     
     ##Plotting the points in the 3D plot
     #Creating arrays of the x,y,z coordinates
@@ -166,10 +167,7 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
     # -------------------------------
     # PLOT 3: Clustered Point Cloud (Top-Right)
     # -------------------------------
-    if cluster_points.size > 0:
-        cluster_x, cluster_y, cluster_z = cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2]
-    else:
-        cluster_x, cluster_y, cluster_z = [], [], []
+    priority_colors = {1: 'red', 2: 'orange', 3: 'green'}
 
     plot3.clear()
     plot3.set_title('Clustered Point Cloud')
@@ -179,15 +177,29 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
     plot3.set_xlim(-10, 10)
     plot3.set_ylim(0, 15)
     plot3.set_zlim(-0.30, 10)
-    plot3.scatter(cluster_x, cluster_y, cluster_z, c='orange', s=8, alpha=0.7, label='Clustered Points')
-    plot3.legend()
+    if cluster_points:
+        for _, cluster_data in cluster_points.items():
+            centroid = cluster_data['centroid']
+            priority = cluster_data['priority']
+            points = cluster_data['points']
+            doppler_avg = cluster_data['doppler_avg']  # Access average Doppler
+            
+            color = priority_colors.get(priority, 'gray')  # Default to gray if priority not in the dictionary
+
+            # Plot the cluster points
+            plot3.scatter(points[:, 0], points[:, 1], points[:, 2], c=color, s=8, alpha=0.7, label=f'Priority {priority}')
+
+            # Add Doppler and Priority labels at the centroid
+            plot3.text(centroid[0] + 0.2, centroid[1] + 0.2, centroid[2] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
+    else:
+        plot3.text(0, 0, 0, 'No Clusters Detected', fontsize=12, color='red')
 
     # -------------------------------
     # PLOT 4: Occupancy Grid (Bottom-Right)
     # -------------------------------
-    if cluster_points.size > 0:
+    if point_cloud_clustered.size > 0:
         # Assuming grid_processor is initialized globally
-        occupancy_grid = grid_processor.calculate_cartesian_grid(cluster_points[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
+        occupancy_grid = grid_processor.calculate_cartesian_grid(point_cloud_clustered[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
 
         plot4.clear()
         plot4.set_title('Occupancy Grid')
