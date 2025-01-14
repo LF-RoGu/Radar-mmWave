@@ -10,6 +10,8 @@ import pointFilter
 import selfSpeedEstimator
 from kalmanFilter import KalmanFilter
 import veSpeedFilter
+import dbCluster
+import occupancyGrid
 
 
 # -------------------------------
@@ -24,7 +26,7 @@ FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 FILTER_SNR_MIN = 12
 
 #Defining minimum and maximum z for the filter stage
-FILTER_Z_MIN = 0.3
+FILTER_Z_MIN = -0.3
 FILTER_Z_MAX = 100
 
 #Defining minimum and maximum phi for the filter stage
@@ -34,6 +36,13 @@ FILTER_PHI_MAX = 85
 #Defining the self-speed's Kalman filter process variance and measurement variance
 KALMAN_FILTER_PROCESS_VARIANCE = 0.01
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+
+#Defining dbClustering stages
+cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
+cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=3)
+
+#Define grid
+grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=1.0)
 
 
 
@@ -95,14 +104,30 @@ def update_sim(new_num_frame):
         point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
 
         #Filtering points by ve
-        point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered)
+        #point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered)
+
+        #Filtering point cloud by Ve
+        point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 0.2)
+
+        # -------------------------------
+        # STEP 1: First Clustering Stage
+        # -------------------------------
+        #point_cloud_clustering_stage1 = dbCluster.prepare_points(point_cloud_ve_filtered)
+        point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
+        clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
+        point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
+        clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
+
+        # Final cluster step
+        point_cloud_clustered = pointFilter.extract_points(clusters_stage2)
 
         ##Feeding the histories for the self speed
         self_speed_raw_history.append(self_speed_raw)
         self_speed_filtered_history.append(self_speed_filtered)
+        
 
     #Updating the graphs
-    update_graphs(point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history)
+    update_graphs(point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history, point_cloud_clustered)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
@@ -112,7 +137,7 @@ def update_sim(new_num_frame):
 # -------------------------------
 # FUNCTION: Updating the simulation's graphs
 # -------------------------------
-def update_graphs(points, self_speed_raw_history, self_speed_filtered_history):
+def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, cluster_points):
     global frames
     
     ##Plotting the points in the 3D plot
@@ -137,6 +162,41 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history):
     plot2.set_ylim(-3, 0)
     plot2.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
     plot2.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
+
+    # -------------------------------
+    # PLOT 3: Clustered Point Cloud (Top-Right)
+    # -------------------------------
+    if cluster_points.size > 0:
+        cluster_x, cluster_y, cluster_z = cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2]
+    else:
+        cluster_x, cluster_y, cluster_z = [], [], []
+
+    plot3.clear()
+    plot3.set_title('Clustered Point Cloud')
+    plot3.set_xlabel('X [m]')
+    plot3.set_ylabel('Y [m]')
+    plot3.set_zlabel('Z [m]')
+    plot3.set_xlim(-10, 10)
+    plot3.set_ylim(0, 15)
+    plot3.set_zlim(-0.30, 10)
+    plot3.scatter(cluster_x, cluster_y, cluster_z, c='orange', s=8, alpha=0.7, label='Clustered Points')
+    plot3.legend()
+
+    # -------------------------------
+    # PLOT 4: Occupancy Grid (Bottom-Right)
+    # -------------------------------
+    if cluster_points.size > 0:
+        # Assuming grid_processor is initialized globally
+        occupancy_grid = grid_processor.calculate_cartesian_grid(cluster_points[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
+
+        plot4.clear()
+        plot4.set_title('Occupancy Grid')
+        plot4.set_xlabel('X [m]')
+        plot4.set_ylabel('Y [m]')
+        plot4.imshow(occupancy_grid.T, cmap=grid_processor.cmap, norm=grid_processor.norm, origin='lower', extent=(-10, 10, 0, 15))
+    else:
+        plot4.clear()
+        plot4.set_title('Occupancy Grid (No Data)')
 
 
 
@@ -165,13 +225,16 @@ self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, me
 #Creating a figure of size 10x10
 fig = plt.figure(figsize=(10, 10))
 
-#Defining a 2x1 grid layout
-gs = GridSpec(2, 1, figure=fig)
+#Defining a 2x2 grid layout
+gs = GridSpec(2, 2, figure=fig)
 plot1 = fig.add_subplot(gs[0, 0], projection='3d')
 plot2 = fig.add_subplot(gs[1, 0])
+plot3 = fig.add_subplot(gs[0, 1], projection='3d')
+plot4 = fig.add_subplot(gs[1, 1])
 
 #Setting the initial view angle of the 3D-plot to top-down
 plot1.view_init(elev=90, azim=-90)
+plot3.view_init(elev=90, azim=-90)
 
 #Variable to hold the number of the latest frame that was processed successfully
 curr_num_frame = -1

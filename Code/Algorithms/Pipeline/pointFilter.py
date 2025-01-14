@@ -1,6 +1,6 @@
 import numpy as np
 
-__all__ = ['filterSNR', 'filterCartesianX', 'filterCartesianY', 'filterCartesianZ', 'filterSphericalR', 'filterSphericalTheta', 'filterSphericalPhi']
+__all__ = ['filterSNR', 'filterCartesianX', 'filterCartesianY', 'filterCartesianZ', 'filterSphericalR', 'filterSphericalTheta', 'filterSphericalPhi', 'filter_by_speed']
 
 def filterSNRmin(inputPoints, snr_min):
     filteredPoints = []
@@ -99,3 +99,56 @@ def filterSphericalPhi(inputPoints, phi_min, phi_max):
                 print(f"Error filtering points: {e}")
                 return None
     return filteredPoints
+
+def filter_by_speed(inputPoints, self_speed, speed_threshold):
+    filteredPoints = []
+    try:
+        # STEP 1: Calculate allowable Doppler speed range
+        lower_bound = self_speed - speed_threshold
+        upper_bound = self_speed + speed_threshold
+
+        # STEP 2: Filter points within the Doppler speed threshold
+        for point in inputPoints:
+            doppler = point['doppler']
+            if lower_bound <= doppler <= upper_bound:
+                filteredPoints.append(point)
+
+    except (ValueError, IndexError, KeyError) as e:
+        print(f"Error filtering points by speed percentile: {e}")
+        return None
+
+    return filteredPoints
+
+# -------------------------------
+# FUNCTION: Extract points from any dictionary
+# -------------------------------
+def extract_points(data):
+    """
+    Extract points from various dictionary formats and convert to NumPy array.
+
+    Args:
+        data (list/dict or np.ndarray): Input data with points.
+
+    Returns:
+        np.ndarray: 2D array with [x, y, z] columns.
+    """
+    if not data or len(data) == 0:
+        return np.empty((0, 3))
+
+    if isinstance(data, list):
+        if isinstance(data[0], dict):
+            # Look for 'x', 'y', 'z' keys in any dictionary
+            return np.array([[item.get("x", 0), item.get("y", 0), item.get("z", 0)] for item in data])
+        else:
+            return np.array(data)
+    elif isinstance(data, dict):
+        # If data is a dictionary with 'detectedPoints'
+        if 'detectedPoints' in data:
+            return np.array([[point.get("x", 0), point.get("y", 0), point.get("z", 0)] for point in data['detectedPoints']])
+        # If data is clustered, extract 'points' from clusters
+        elif all(isinstance(value, dict) and 'points' in value for value in data.values()):
+            return np.vstack([value['points'] for value in data.values()])
+    elif isinstance(data, np.ndarray):
+        return data if data.ndim == 2 else data.reshape(-1, 3)
+
+    raise ValueError("Unsupported data format for clustering.")
