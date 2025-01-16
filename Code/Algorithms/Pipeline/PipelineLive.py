@@ -5,9 +5,9 @@ import queue
 from threading import Lock
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.animation import FuncAnimation
 
 import dataDecoder
-import Pipeline.dataDecoder as dataDecoder
 from frameAggregator import FrameAggregator
 import pointFilter
 import selfSpeedEstimator
@@ -154,54 +154,55 @@ def processing_thread():
 
         if frame:
             try:
-                # Decode the frame
-                decoded_frames = dataDecoder.dataToFrames(frame)
+                # Convert bytearray to list for decoding
+                frame_list = list(frame)
+
+                # Decode the frame correctly
+                decoded_frames = dataDecoder.dataToFrames(frame_list)
 
                 for decoded in decoded_frames:
-                    #Updating the frame aggregator
-                    frame_aggregator.updateBuffer(frame)
+                    # Updating the frame aggregator
+                    frame_aggregator.updateBuffer(decoded)
 
-                    #Getting the current point cloud frum the frame aggregator
+                    # Getting the current point cloud from the frame aggregator
                     point_cloud = frame_aggregator.getPoints()
 
-                    #Filtering by SNR
+                    # Filtering by SNR
                     point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
 
-                    #Filtering by z
+                    # Filtering by z
                     point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
 
-                    #Filtering by phi
+                    # Filtering by phi
                     point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
 
-                    #Estimating the self-speed
+                    # Estimating the self-speed
                     self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
 
-                    #Kalman filtering the self-speed
+                    # Kalman filtering the self-speed
                     self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
-                    #Calculating ve for all points (used for filtering afterwards)
-                    point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
-
-                    #Filtering point cloud by Ve
+                    # Filtering point cloud by Ve
                     point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
 
-                    # -------------------------------
-                    # STEP 1: First Clustering Stage
-                    # -------------------------------
+                    # First Clustering Stage
                     point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
                     clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
                     point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
                     clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
 
-                    # Final cluster step
-                    #point_cloud_clustered = pointFilter.extract_points(clusters_stage2)
                     point_cloud_clustered = clusters_stage2
 
-                    ##Feeding the histories for the self speed
-                    self_speed_raw_history.append(self_speed_raw)
-                    self_speed_filtered_history.append(self_speed_filtered)
+                    # Thread-safe data update for plotting
+                    with plot_data_lock:
+                        latest_point_cloud_filtered = point_cloud_ve_filtered
+                        latest_point_cloud_clustered = point_cloud_clustered
+                        latest_self_speed_raw.append(self_speed_raw)
+                        latest_self_speed_filtered.append(self_speed_filtered)
+
             except Exception as e:
                 print(f"Error decoding frame: {e}")
+
 
 # -------------------------------
 # Plotting Thread
@@ -218,7 +219,7 @@ def plotting_thread():
 
     while True:
         with plot_data_lock:
-            # Copy data safely for plotting
+            # Safely copy data for plotting
             point_cloud_filtered = latest_point_cloud_filtered.copy()
             point_cloud_clustered = latest_point_cloud_clustered.copy()
             self_speed_raw = latest_self_speed_raw.copy()
@@ -231,21 +232,27 @@ def plotting_thread():
 
         # Plot Filtered Point Cloud
         if point_cloud_filtered:
-            x = [p["x"] for p in point_cloud_filtered]
-            y = [p["y"] for p in point_cloud_filtered]
-            z = [p["z"] for p in point_cloud_filtered]
-            ax_filtered.scatter(x, y, z, c='blue', s=2)
-            ax_filtered.set_title("Filtered Point Cloud")
-            ax_filtered.set_xlim(-10, 10)
-            ax_filtered.set_ylim(0, 15)
-            ax_filtered.set_zlim(-0.3, 2)
+            try:
+                x = [p["x"] for p in point_cloud_filtered if isinstance(p, dict)]
+                y = [p["y"] for p in point_cloud_filtered if isinstance(p, dict)]
+                z = [p["z"] for p in point_cloud_filtered if isinstance(p, dict)]
+                ax_filtered.scatter(x, y, z, c='blue', s=2)
+                ax_filtered.set_title("Filtered Point Cloud")
+                ax_filtered.set_xlim(-10, 10)
+                ax_filtered.set_ylim(0, 15)
+                ax_filtered.set_zlim(-0.3, 2)
+            except Exception as e:
+                print(f"Error plotting filtered points: {e}")
 
         # Plot Clustered Points
         if point_cloud_clustered:
-            for cluster in point_cloud_clustered:
-                cluster_points = pointFilter.extract_points(cluster)
-                ax_clustered.scatter(cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2], s=5)
-            ax_clustered.set_title("Clustered Points")
+            try:
+                for cluster in point_cloud_clustered:
+                    cluster_points = pointFilter.extract_points(cluster)
+                    ax_clustered.scatter(cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2], s=5)
+                ax_clustered.set_title("Clustered Points")
+            except Exception as e:
+                print(f"Error plotting clustered points: {e}")
 
         # Plot Self-Speed (Raw vs Filtered)
         if self_speed_raw and self_speed_filtered:
@@ -255,7 +262,7 @@ def plotting_thread():
             ax_self_speed.set_title("Self-Speed Estimation")
             ax_self_speed.set_ylim(-3, 1)
 
-        plt.pause(0.05)  # Allow the plot to update
+        plt.pause(0.5)  # Update the plot
 
 # -------------------------------
 # Start Threads
