@@ -48,7 +48,7 @@ def parse_tlv_payload(tlv_header, raw_data):
     # Extract the payload as a list
     payload = [raw_data.pop(0) for _ in range(payload_length)]
 
-    # Only process TLVs we're interested in
+    # Process TLVs based on type
     if tlv_type == 1:  # Detected Points
         point_size = 16
         detected_points = []
@@ -56,9 +56,6 @@ def parse_tlv_payload(tlv_header, raw_data):
             point_bytes = bytes(payload[i * point_size:(i + 1) * point_size])
             x, y, z, doppler = struct.unpack('<ffff', point_bytes)
             detected_points.append({"x": x, "y": y, "z": z, "doppler": doppler})
-
-        #Insert logic here
-
         return {"detectedPoints": detected_points}
 
     elif tlv_type in (2, 3):  # Range Profile or Noise Profile
@@ -107,14 +104,9 @@ def parse_tlv_payload(tlv_header, raw_data):
         return {"SNRandNoise": side_info}
 
     elif tlv_type == 9:  # Temperature Statistics
-        # Type 9 payload structure:
-        # 4 bytes: TempReportValid (uint32_t)
-        # 4 bytes: Time (uint32_t)
-        # 2 bytes each: Remaining temperature values (uint16_t)
         if payload_length != 28:
             raise ValueError(f"Invalid payload length for Type 9: expected 28 bytes, got {payload_length} bytes")
 
-        # Parse the payload manually
         temp_report_valid = (payload[3] << 24) | (payload[2] << 16) | (payload[1] << 8) | payload[0]
         time_ms = (payload[7] << 24) | (payload[6] << 16) | (payload[5] << 8) | payload[4]
 
@@ -123,7 +115,6 @@ def parse_tlv_payload(tlv_header, raw_data):
             temp = (payload[i + 1] << 8) | payload[i]
             temperatures.append(temp)
 
-        # Map temperatures to sensor names
         sensor_names = [
             "TmpRx0Sens", "TmpRx1Sens", "TmpRx2Sens", "TmpRx3Sens",
             "TmpTx0Sens", "TmpTx1Sens", "TmpTx2Sens", "TmpPmSens",
@@ -139,73 +130,46 @@ def parse_tlv_payload(tlv_header, raw_data):
             }
         }
 
-    # If not interested, return None
-    return None
-
-def convert_timestamp_to_unix(timestamp_str):
-    """
-    Convert a timestamp string into UNIX format, handling nanoseconds by truncating them.
-    
-    Args:
-        timestamp_str (str): The input timestamp string with possible nanoseconds.
-        
-    Returns:
-        float: The corresponding UNIX timestamp, or None if parsing fails.
-    """
-    try:
-        # Split the timestamp to truncate nanoseconds to microseconds
-        truncated_timestamp = timestamp_str.split('.')[0] + '.' + timestamp_str.split('.')[1][:6]
-        # Parse the truncated timestamp
-        dt = datetime.strptime(truncated_timestamp, '%Y-%m-%d.%f')
-        # Convert to UNIX timestamp (seconds since epoch)
-        return dt.timestamp()
-    except (ValueError, IndexError) as e:
-        print(f"Error parsing timestamp '{timestamp_str}': {e}")
-        return None
+    # Default case for unknown TLV types
+    return {"Unknown TLV Type": tlv_type, "Payload": payload}
 
 
-def dataToFrames(data):
+def dataToFrames(raw_frame):
     #Preparing a return list containing all frames
     decodedFrames = []
+    raw_data_list = list(raw_frame)
     
-    for i in range(len(data)):
-        try:
-            #Checking if the row is valid (non-null)
-            if pd.isnull(data.iloc[i]['RawData']):
-                continue
+    try:
+        #Parsing the frame header
+        frame_header = parse_frame_header(raw_data_list)
+        num_tlvs = frame_header["Num TLVs"]
 
-            #Geting the raw data from the current row
-            raw_data_list = [int(x) for x in data.iloc[i]['RawData'].split(',')]
+        decodedFrame = {}
+        decodedSNRandNoise = None
 
-            #Parsing the frame header
-            frame_header = parse_frame_header(raw_data_list)
-            num_tlvs = frame_header["Num TLVs"]
+        # Parse TLVs
+        for _ in range(num_tlvs):
+            tlv_header = parse_tlv_header(raw_data_list)
+            if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
+                tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                if tlv_payload and "detectedPoints" in tlv_payload:
+                    decodedFrame = {"detectedPoints":tlv_payload["detectedPoints"]}
+            elif tlv_header["TLV Type"] == 7: # Interested in Side Info of Detected Points
+                tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
+                if tlv_payload and "SNRandNoise" in tlv_payload:
+                    decodedSNRandNoise = tlv_payload["SNRandNoise"]
+        
+        #Adding SNR and noise info to the decoded frames
+        if "detectedPoints" in decodedFrame and decodedSNRandNoise:
+            for i, point in enumerate(decodedFrame["detectedPoints"]):
+                point["snr"] = decodedSNRandNoise[i]["snr"]
+                point["noise"] = decodedSNRandNoise[i]["noise"]
 
-            decodedFrame = None
-            decodedSNRandNoise = None
+        #Adding the decoded frame to the list of decoded frames
+        decodedFrames.append(decodedFrame)
 
-            # Parse TLVs
-            for _ in range(num_tlvs):
-                tlv_header = parse_tlv_header(raw_data_list)
-                if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
-                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-                    if tlv_payload and "detectedPoints" in tlv_payload:
-                        decodedFrame = {"detectedPoints":tlv_payload["detectedPoints"]}
-                elif tlv_header["TLV Type"] == 7: # Interested in Side Info of Detected Points
-                    tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
-                    if tlv_payload and "SNRandNoise" in tlv_payload:
-                        decodedSNRandNoise = tlv_payload["SNRandNoise"]
-            
-            #Adding SNR and noise info to the decoded frames
-            for point in range(len(decodedFrame["detectedPoints"])):
-                decodedFrame["detectedPoints"][point]["snr"] = decodedSNRandNoise[point]["snr"]
-                decodedFrame["detectedPoints"][point]["noise"] = decodedSNRandNoise[point]["noise"]
-
-            #Adding the decoded frame to the list of decoded frames
-            decodedFrames.append(decodedFrame)
-
-        except Exception as e:
-            print(f"Error processing row {i + 1}: {e}")
+    except Exception as e:
+        print(f"Error decoding frame: {e}")
 
     return decodedFrames
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from matplotlib.gridspec import GridSpec
 
-import dataDecoderBrokenTimestamp
+import Pipeline.dataDecoder as dataDecoder
 from frameAggregator import FrameAggregator
 import pointFilter
 import selfSpeedEstimator
@@ -12,7 +12,6 @@ from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
 import occupancyGrid
-import plotProcessing
 
 
 # -------------------------------
@@ -241,7 +240,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/Test_30fps_dist15mts_vehicleLog_5mps_3x3Wall_pedestrian_log.csv"))
 
 #Reading in the frames
-frames = dataDecoderBrokenTimestamp.decodeData(log_file)
+frames = dataDecoder.decodeData(log_file)
 
 
 ##Creating the pipeline's objects
