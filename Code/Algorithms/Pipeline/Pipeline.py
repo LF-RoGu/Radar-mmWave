@@ -12,6 +12,7 @@ from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
 import occupancyGrid
+import plotProcessing
 
 
 # -------------------------------
@@ -39,10 +40,10 @@ KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 
 #Defining dbClustering stages
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
-cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=3)
+cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
 
 #Define grid
-grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=1.0)
+grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=0.5)
 
 
 
@@ -107,7 +108,7 @@ def update_sim(new_num_frame):
         #point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered)
 
         #Filtering point cloud by Ve
-        point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 0.2)
+        point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
 
         # -------------------------------
         # STEP 1: First Clustering Stage
@@ -127,7 +128,7 @@ def update_sim(new_num_frame):
         
 
     #Updating the graphs
-    update_graphs(point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history, point_cloud_clustered)
+    update_graphs(point_cloud_filtered, point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history, point_cloud_clustered)
 
     #Updating the current frame number to the new last processed frame
     curr_num_frame = new_num_frame
@@ -137,47 +138,64 @@ def update_sim(new_num_frame):
 # -------------------------------
 # FUNCTION: Updating the simulation's graphs
 # -------------------------------
-def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, cluster_points):
+def update_graphs(raw_points, filtered_points, self_speed_raw_history, self_speed_filtered_history, cluster_points):
     global frames
     point_cloud_clustered = pointFilter.extract_points(cluster_points)
     
     ##Plotting the points in the 3D plot
     #Creating arrays of the x,y,z coordinates
-    points_x = np.array([point["x"] for point in points])
-    points_y = np.array([point["y"] for point in points])
-    points_z = np.array([point["z"] for point in points])
+    points_x = np.array([point["x"] for point in raw_points])
+    points_y = np.array([point["y"] for point in raw_points])
+    points_z = np.array([point["z"] for point in raw_points])
+
+    plot_raw_data.clear()
+    plot_raw_data.set_title('Physical Filters')
+    plot_raw_data.set_xlabel('X [m]')
+    plot_raw_data.set_ylabel('Y [m]')
+    plot_raw_data.set_zlabel('Z [m]')
+    plot_raw_data.set_xlim(-10, 10)
+    plot_raw_data.set_ylim(0, 15)
+    plot_raw_data.set_zlim(-0.30, 10)
+    plot_raw_data.scatter(points_x, points_y, points_z)
+
+    #Creating arrays of the x,y,z coordinates
+    points_x = np.array([point["x"] for point in filtered_points])
+    points_y = np.array([point["y"] for point in filtered_points])
+    points_z = np.array([point["z"] for point in filtered_points])
 
     #Clearing the plot and plotting the points in the 3D plot
-    plot1.clear()
-    plot1.set_xlabel('X [m]')
-    plot1.set_ylabel('Y [m]')
-    plot1.set_zlabel('Z [m]')
-    plot1.set_xlim(-10, 10)
-    plot1.set_ylim(0, 15)
-    plot1.set_zlim(-0.30, 10)
-    plot1.scatter(points_x, points_y, points_z)
+    plot_filtered_data.clear()
+    plot_filtered_data.set_title('Ve Filters')
+    plot_filtered_data.set_xlabel('X [m]')
+    plot_filtered_data.set_ylabel('Y [m]')
+    plot_filtered_data.set_zlabel('Z [m]')
+    plot_filtered_data.set_xlim(-10, 10)
+    plot_filtered_data.set_ylim(0, 15)
+    plot_filtered_data.set_zlim(-0.30, 10)
+    plot_filtered_data.scatter(points_x, points_y, points_z)
 
     #Plotting the raw and filtered self-speed
-    plot2.clear()
-    plot2.set_xlim(0, len(frames))
-    plot2.set_ylim(-3, 0)
-    plot2.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
-    plot2.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
-    plot2.text(0.0, 0.0, f"Current Speed: {self_speed_filtered_history[-1]} m/s", color='purple')
+    plot_Ve.clear()
+    plot_Ve.set_title('Vehicle Ve')
+    plot_Ve.set_xlim(0, len(frames))
+    plot_Ve.set_ylim(-3, 0)
+    plot_Ve.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
+    plot_Ve.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
+    plot_Ve.text(0.0, 0.0, f"Current Speed: {self_speed_filtered_history[-1]} m/s", color='purple')
 
     # -------------------------------
     # PLOT 3: Clustered Point Cloud (Top-Right)
     # -------------------------------
     priority_colors = {1: 'red', 2: 'orange', 3: 'green'}
 
-    plot3.clear()
-    plot3.set_title('Clustered Point Cloud')
-    plot3.set_xlabel('X [m]')
-    plot3.set_ylabel('Y [m]')
-    plot3.set_zlabel('Z [m]')
-    plot3.set_xlim(-10, 10)
-    plot3.set_ylim(0, 15)
-    plot3.set_zlim(-0.30, 10)
+    plot_dbCluster.clear()
+    plot_dbCluster.set_title('Clustered Point Cloud')
+    plot_dbCluster.set_xlabel('X [m]')
+    plot_dbCluster.set_ylabel('Y [m]')
+    plot_dbCluster.set_zlabel('Z [m]')
+    plot_dbCluster.set_xlim(-10, 10)
+    plot_dbCluster.set_ylim(0, 15)
+    plot_dbCluster.set_zlim(-0.30, 10)
     if cluster_points:
         for _, cluster_data in cluster_points.items():
             centroid = cluster_data['centroid']
@@ -188,12 +206,12 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
             color = priority_colors.get(priority, 'gray')  # Default to gray if priority not in the dictionary
 
             # Plot the cluster points
-            plot3.scatter(points[:, 0], points[:, 1], points[:, 2], c=color, s=8, alpha=0.7, label=f'Priority {priority}')
+            plot_dbCluster.scatter(points[:, 0], points[:, 1], points[:, 2], c=color, s=8, alpha=0.7, label=f'Priority {priority}')
 
             # Add Doppler and Priority labels at the centroid
-            plot3.text(centroid[0] + 0.2, centroid[1] + 0.2, centroid[2] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
+            plot_dbCluster.text(centroid[0] + 0.2, centroid[1] + 0.2, centroid[2] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
     else:
-        plot3.text(0, 0, 0, 'No Clusters Detected', fontsize=12, color='red')
+        plot_dbCluster.text(0, 0, 0, 'No Clusters Detected', fontsize=12, color='red')
 
     # -------------------------------
     # PLOT 4: Occupancy Grid (Bottom-Right)
@@ -202,14 +220,14 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
         # Assuming grid_processor is initialized globally
         occupancy_grid = grid_processor.calculate_cartesian_grid(point_cloud_clustered[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
 
-        plot4.clear()
-        plot4.set_title('Occupancy Grid')
-        plot4.set_xlabel('X [m]')
-        plot4.set_ylabel('Y [m]')
-        plot4.imshow(occupancy_grid.T, cmap=grid_processor.cmap, norm=grid_processor.norm, origin='lower', extent=(-10, 10, 0, 15))
+        plot_occupancyGrid.clear()
+        plot_occupancyGrid.set_title('Occupancy Grid')
+        plot_occupancyGrid.set_xlabel('X [m]')
+        plot_occupancyGrid.set_ylabel('Y [m]')
+        plot_occupancyGrid.imshow(occupancy_grid.T, cmap=grid_processor.cmap, norm=grid_processor.norm, origin='lower', extent=(-10, 10, 0, 15))
     else:
-        plot4.clear()
-        plot4.set_title('Occupancy Grid (No Data)')
+        plot_occupancyGrid.clear()
+        plot_occupancyGrid.set_title('Occupancy Grid (No Data)')
 
 
 
@@ -220,7 +238,7 @@ def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, c
 ##Getting the data
 #Creating an absolute path to the raw data from a relative path
 script_dir = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/30fps_straight_3x3_2_log_2024-12-16.csv"))
+log_file = os.path.abspath(os.path.join(script_dir, "../../../Logs/LogsPart3/DynamicMonitoring/Test_30fps_dist15mts_vehicleLog_5mps_3x3Wall_pedestrian_log.csv"))
 
 #Reading in the frames
 frames = dataDecoderBrokenTimestamp.decodeData(log_file)
@@ -238,16 +256,20 @@ self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, me
 #Creating a figure of size 10x10
 fig = plt.figure(figsize=(10, 10))
 
-#Defining a 2x2 grid layout
-gs = GridSpec(2, 2, figure=fig)
-plot1 = fig.add_subplot(gs[0, 0], projection='3d')
-plot2 = fig.add_subplot(gs[1, 0])
-plot3 = fig.add_subplot(gs[0, 1], projection='3d')
-plot4 = fig.add_subplot(gs[1, 1])
+#Defining a 2x4 grid layout
+gs = GridSpec(2, 4, figure=fig)
+plot_raw_data =         fig.add_subplot(gs[0, 0], projection='3d')
+plot_filtered_data =    fig.add_subplot(gs[1, 0], projection='3d')
+plot_Ve =               fig.add_subplot(gs[1, 1])
+plot_dbCluster =        fig.add_subplot(gs[0, 2], projection='3d')
+plot_occupancyGrid =    fig.add_subplot(gs[1, 2])
+plot_dbClusteringCartesian =    fig.add_subplot(gs[0,3], polar=True)
+plot_occupancyGridCartesian =   fig.add_subplot(gs[0,3], polar=True)
 
 #Setting the initial view angle of the 3D-plot to top-down
-plot1.view_init(elev=90, azim=-90)
-plot3.view_init(elev=90, azim=-90)
+plot_raw_data.view_init(elev=90, azim=-90)
+plot_filtered_data.view_init(elev=90, azim=-90)
+plot_dbCluster.view_init(elev=90, azim=-90)
 
 #Variable to hold the number of the latest frame that was processed successfully
 curr_num_frame = -1

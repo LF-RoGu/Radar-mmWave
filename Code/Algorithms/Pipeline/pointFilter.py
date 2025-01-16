@@ -110,7 +110,7 @@ def filter_by_speed(inputPoints, self_speed, speed_threshold):
         # STEP 2: Filter points within the Doppler speed threshold
         for point in inputPoints:
             doppler = point['doppler']
-            if lower_bound <= doppler <= upper_bound:
+            if (lower_bound <= doppler <= upper_bound) and (doppler != 0):
                 filteredPoints.append(point)
 
     except (ValueError, IndexError, KeyError) as e:

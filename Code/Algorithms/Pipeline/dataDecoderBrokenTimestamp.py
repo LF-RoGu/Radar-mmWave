@@ -171,12 +171,7 @@ def dataToFrames(data):
     for i in range(len(data)):
         try:
             #Checking if the row is valid (non-null)
-            if pd.isnull(data.iloc[i]['Timestamp']) or pd.isnull(data.iloc[i]['RawData']):
-                continue
-
-            #Converting the timestamp to UNIX format
-            timestamp = convert_timestamp_to_unix(data.iloc[i]['Timestamp'])
-            if timestamp is None:
+            if pd.isnull(data.iloc[i]['RawData']):
                 continue
 
             #Geting the raw data from the current row
@@ -195,7 +190,7 @@ def dataToFrames(data):
                 if tlv_header["TLV Type"] == 1:  # Interested in Detected Points
                     tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
                     if tlv_payload and "detectedPoints" in tlv_payload:
-                        decodedFrame = {"timestamp":timestamp, "detectedPoints":tlv_payload["detectedPoints"]}
+                        decodedFrame = {"detectedPoints":tlv_payload["detectedPoints"]}
                 elif tlv_header["TLV Type"] == 7: # Interested in Side Info of Detected Points
                     tlv_payload = parse_tlv_payload(tlv_header, raw_data_list)
                     if tlv_payload and "SNRandNoise" in tlv_payload:
