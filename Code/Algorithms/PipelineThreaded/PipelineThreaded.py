@@ -1,22 +1,55 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from mpl_toolkits.mplot3d import Axes3D
 import threading
 import time
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import random
 
 from dataDecoderTI import DataDecoderTI
+from frameAggregator import FrameAggregator
+import pointFilter
+import selfSpeedEstimator
+from kalmanFilter import KalmanFilter
+import veSpeedFilter
+import dbCluster
+import occupancyGrid
 
 
-# Shared data for 3D points
-points = []
-lock = threading.Lock()
 
-# Thread 1: Generate random 3D points
-def generate_points():
+# -------------------------------
+# Simulation parameters
+# -------------------------------
+#Defining the number of how many frames from the past should be used in the frame aggregator
+# 0 = only current frame
+# n = current frame + n previous frames
+FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
+
+#Defining a minimum SNR for the filter stage
+FILTER_SNR_MIN = 12
+
+#Defining minimum and maximum z for the filter stage
+FILTER_Z_MIN = -0.3
+FILTER_Z_MAX = 2
+
+#Defining minimum and maximum phi for the filter stage
+FILTER_PHI_MIN = -85
+FILTER_PHI_MAX = 85
+
+#Defining the self-speed's Kalman filter process variance and measurement variance
+KALMAN_FILTER_PROCESS_VARIANCE = 0.01
+KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+
+
+
+# -------------------------------
+# FUNCTION: Thread 1 for getting data from the sensor
+# -------------------------------
+def sensor_thread_func():
     decoder = DataDecoderTI()
     decoder.initIWR6843("COM6", "COM7", "profile_azim60_elev30_optimized.cfg")
-    
-    global points
+
+    global newFramesFromSensor
+    global newFramesLock
     while True:
         numFrames = decoder.pollIWR6843()
 
@@ -24,46 +57,208 @@ def generate_points():
             continue
 
         newFrames = decoder.get_and_delete_decoded_frames(numFrames)
+
+        with newFramesLock:
+            newFramesFromSensor += newFrames
+
+
+
+# -------------------------------
+# FUNCTION: Updating the simulation when the value of the slider has changed
+# -------------------------------
+self_speed_raw_history = []
+self_speed_filtered_history = []
+def update_sim(frame):
+    global self_speed_raw_history
+    global self_speed_filtered_history
+    
+    ##Feeding the pipeline
+    #Updating the frame aggregator
+    frame_aggregator.updateBuffer(frame)
+
+    #Getting the current point cloud frum the frame aggregator
+    point_cloud = frame_aggregator.getPoints()
+
+    #Filtering by SNR
+    point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
+
+    #Filtering by z
+    point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
+
+    #Filtering by phi
+    point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
+
+    #Estimating the self-speed
+    self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
+
+    #Kalman filtering the self-speed
+    self_speed_filtered = self_speed_kf.update(self_speed_raw)
+
+    #Calculating ve for all points (used for filtering afterwards)
+    point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
+
+    #Filtering points by ve
+    #point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered)
+
+    #Filtering point cloud by Ve
+    point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 0.2)
+
+    # -------------------------------
+    # STEP 1: First Clustering Stage
+    # -------------------------------
+    point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
+    clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
+    point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
+    clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
+
+    # Final cluster step
+    #point_cloud_clustered = pointFilter.extract_points(clusters_stage2)
+    point_cloud_clustered = clusters_stage2
+
+    ##Feeding the histories for the self speed
+    self_speed_raw_history.append(self_speed_raw)
+    self_speed_filtered_history.append(self_speed_filtered)
         
-        newPoints = []
-        for i in range(len(newFrames)):
-            frame = newFrames[i]
-            for p in range(len(frame["detectedPoints"])):
-                point = frame["detectedPoints"][p]
-                newPoints.append((point["x"], point["y"], point["z"]))
 
-        with lock:
-            points = newPoints
+    #Updating the graphs
+    update_graphs(point_cloud_ve_filtered, self_speed_raw_history, self_speed_filtered_history, point_cloud_clustered)
 
-# Main function
-if __name__ == "__main__":
-    thread1 = threading.Thread(target=generate_points)
 
-    # Start threads
-    thread1.start()
+
+# -------------------------------
+# FUNCTION: Updating the simulation's graphs
+# -------------------------------
+def update_graphs(points, self_speed_raw_history, self_speed_filtered_history, cluster_points):
+    #point_cloud_clustered = pointFilter.extract_points(cluster_points)
     
-    plt.ion()  # Interactive mode on
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ##Plotting the points in the 3D plot
+    #Creating arrays of the x,y,z coordinates
+    points_x = np.array([point["x"] for point in points])
+    points_y = np.array([point["y"] for point in points])
+    points_z = np.array([point["z"] for point in points])
 
-    while True:
-        with lock:
-            ax.clear()
-            if points:
-                xs, ys, zs = zip(*points)
-                ax.scatter(xs, ys, zs, c='blue', marker='o')
-            ax.set_xlim([-5, 5])
-            ax.set_ylim([0, 10])
-            ax.set_zlim([-1, 10])
-            ax.set_title("3D Points Plot")
-            ax.set_xlabel("X-axis")
-            ax.set_ylabel("Y-axis")
-            ax.set_zlabel("Z-axis")
-        plt.pause(0.025)  # Allow time for the plot to refresh
+    #Clearing the plot and plotting the points in the 3D plot
+    plot1.clear()
+    plot1.set_xlabel('X [m]')
+    plot1.set_ylabel('Y [m]')
+    plot1.set_zlabel('Z [m]')
+    plot1.set_xlim(-10, 10)
+    plot1.set_ylim(0, 15)
+    plot1.set_zlim(-0.30, 10)
+    plot1.scatter(points_x, points_y, points_z)
+
+    """
+    #Plotting the raw and filtered self-speed
+    plot2.clear()
+    plot2.set_xlim(0, len(self_speed_raw_history))
+    plot2.set_ylim(-3, 0)
+    plot2.plot(np.arange(0, len(self_speed_raw_history)), np.array(self_speed_raw_history), linestyle='--')
+    plot2.plot(np.arange(0, len(self_speed_filtered_history)), np.array(self_speed_filtered_history))
+    plot2.text(0.0, 0.0, f"Current Speed: {self_speed_filtered_history[-1]} m/s", color='purple')
+
+    # -------------------------------
+    # PLOT 3: Clustered Point Cloud (Top-Right)
+    # -------------------------------
+    priority_colors = {1: 'red', 2: 'orange', 3: 'green'}
+
+    plot3.clear()
+    plot3.set_title('Clustered Point Cloud')
+    plot3.set_xlabel('X [m]')
+    plot3.set_ylabel('Y [m]')
+    plot3.set_zlabel('Z [m]')
+    plot3.set_xlim(-10, 10)
+    plot3.set_ylim(0, 15)
+    plot3.set_zlim(-0.30, 10)
+    if cluster_points:
+        for _, cluster_data in cluster_points.items():
+            centroid = cluster_data['centroid']
+            priority = cluster_data['priority']
+            points = cluster_data['points']
+            doppler_avg = cluster_data['doppler_avg']  # Access average Doppler
+            
+            color = priority_colors.get(priority, 'gray')  # Default to gray if priority not in the dictionary
+
+            # Plot the cluster points
+            plot3.scatter(points[:, 0], points[:, 1], points[:, 2], c=color, s=8, alpha=0.7, label=f'Priority {priority}')
+
+            # Add Doppler and Priority labels at the centroid
+            plot3.text(centroid[0] + 0.2, centroid[1] + 0.2, centroid[2] + 0.2, f"{doppler_avg:.2f} m/s", color='purple')
+    else:
+        plot3.text(0, 0, 0, 'No Clusters Detected', fontsize=12, color='red')
+
+    # -------------------------------
+    # PLOT 4: Occupancy Grid (Bottom-Right)
+    # -------------------------------
+    if point_cloud_clustered.size > 0:
+        # Assuming grid_processor is initialized globally
+        occupancy_grid = grid_processor.calculate_cartesian_grid(point_cloud_clustered[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
+
+        plot4.clear()
+        plot4.set_title('Occupancy Grid')
+        plot4.set_xlabel('X [m]')
+        plot4.set_ylabel('Y [m]')
+        plot4.imshow(occupancy_grid.T, cmap=grid_processor.cmap, norm=grid_processor.norm, origin='lower', extent=(-10, 10, 0, 15))
+    else:
+        plot4.clear()
+        plot4.set_title('Occupancy Grid (No Data)')
+    """
+
+
+
+# -------------------------------
+# Program entry point
+# -------------------------------
+##Creating the pipeline's objects
+#Creating the frame aggregator
+frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
+
+#Creating the Kalman filter for the self-speed esimation
+self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
+
+#Defining dbClustering stages
+cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
+cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=3)
+
+#Define grid
+grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=1.0)
+
+
+##Preparing a thread with list and lock for acquiring sensor fata
+sensor_thread = threading.Thread(target=sensor_thread_func)
+newFramesFromSensor = []
+newFramesLock = threading.Lock()
+
+
+##Setting up the visualization and starting the simulation
+#Creating a figure of size 10x10
+fig = plt.figure(figsize=(10, 10))
+
+#Defining a 2x2 grid layout
+gs = GridSpec(2, 2, figure=fig)
+plot1 = fig.add_subplot(gs[0, 0], projection='3d')
+plot2 = fig.add_subplot(gs[1, 0])
+plot3 = fig.add_subplot(gs[0, 1], projection='3d')
+plot4 = fig.add_subplot(gs[1, 1])
+
+#Setting the initial view angle of the 3D-plot to top-down
+plot1.view_init(elev=90, azim=-90)
+plot3.view_init(elev=90, azim=-90)
+
+
+##Starting the simulation
+#Starting the sensor thread
+sensor_thread.start()
+
+plt.ion()
+
+while True:
+    newFrame = []
+    with newFramesLock:
+        if len(newFramesFromSensor) > 0:
+            newFrame = newFramesFromSensor.pop(0)
+            print(len(newFramesFromSensor))
+        else:
+            continue
     
-
-    # Wait for threads to finish
-    thread1.join()
-    thread2.join()
-    plt.ioff()  # Turn off interactive mode
-    plt.show()
+    update_sim(newFrame)
+    plt.pause(0.01)
