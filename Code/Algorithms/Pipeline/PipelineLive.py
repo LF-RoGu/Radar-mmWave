@@ -117,7 +117,7 @@ def send_configuration(port='COM4', baudrate=115200):
 # -------------------------------
 # Sensor Reading Thread
 # -------------------------------
-def sensor_thread(port='COM6', baudrate=921600):
+def sensor_thread(port='COM5', baudrate=921600):
     ser = serial.Serial(port, baudrate, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
     buffer = bytearray()
@@ -224,16 +224,20 @@ def data_monitor():
             local_clusters = latest_dbscan_clusters.copy()  # Copy clusters locally
             local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
 
-        # --- Print Self-Speed Estimation ---
-        if local_self_speed:
-            latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
-            print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
-
         # --- Print Cluster Warnings ---
         if not local_clusters:
             print("No clusters detected.")
             time.sleep(0.5)
             continue
+        if not local_self_speed:
+            print("No Self Speed detected.")
+            time.sleep(0.5)
+            continue
+
+        # --- Print Self-Speed Estimation ---
+        if local_self_speed:
+            latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
+            print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
 
         print("\n📡 Latest DBSCAN Clusters:")
         for cluster_id, cluster in enumerate(local_clusters):  
@@ -331,7 +335,7 @@ def plotting_thread():
 # Start Threads
 # -------------------------------
 if __name__ == "__main__":
-    send_configuration(port='COM6')
+    send_configuration(port='COM5')
     
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
