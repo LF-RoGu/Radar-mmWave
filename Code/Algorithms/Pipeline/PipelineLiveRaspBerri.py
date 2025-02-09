@@ -16,6 +16,9 @@ import veSpeedFilter
 import dbCluster
 import occupancyGrid
 
+from gpiozero import LED
+from brakeController import BrakeController
+
 # -------------------------------
 # Configuration Commands
 # -------------------------------
@@ -70,6 +73,9 @@ FILTER_PHI_MAX = 85
 #Defining the self-speed's Kalman filter process variance and measurement variance
 KALMAN_FILTER_PROCESS_VARIANCE = 0.01
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+
+# Brake controller setup
+brake_controller = BrakeController(brake_pin=17, cooldown_time=20)  # Create brake controller
 
 #Defining dbClustering stages
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
@@ -218,6 +224,8 @@ def data_monitor():
     offset = -90  # Adjusts the reference for azimuth
     brake_range = 4
 
+    detection_triggered = False  # Track if an object is detected
+
     while True:
         with plot_data_lock:
             local_clusters = latest_dbscan_clusters.copy()  # ✅ Use full cluster data instead of centroids
@@ -230,6 +238,7 @@ def data_monitor():
 
         # --- Check for empty clusters ---
         if len(local_clusters) == 0:
+            brake_controller.update(latest_speed, detection_triggered)  # Check if brake should be released
             print("No clusters detected.")
             time.sleep(0.5)
             continue
@@ -254,6 +263,9 @@ def data_monitor():
                 print(f"⚠️ Warning: Cluster {cluster_id} is at ~{r:.2f}m and {azimuth:.2f}°!")
                 # Activate break if object is in range and azimuth
                 detection_triggered = True  # Object detected
+
+        # Update Brake Logic Based on Detection & Speed
+        brake_controller.update(latest_speed, detection_triggered)
 
 
         time.sleep(0.5)  # Print updates every 0.5 seconds
