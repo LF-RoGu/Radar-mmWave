@@ -97,9 +97,11 @@ plot_data_lock = threading.Lock()
 latest_point_cloud_raw = []
 latest_point_cloud_filtered = []
 latest_self_speed_raw = []
+latest_occupancy_grid = []
+
 latest_self_speed_filtered = []
 latest_dbscan_clusters = []
-latest_occupancy_grid = []
+latest_dbscan_clusters_points = []
 
 # -------------------------------
 # Send Configuration to Sensor
@@ -117,7 +119,7 @@ def send_configuration(port='COM4', baudrate=115200):
 # -------------------------------
 # Sensor Reading Thread
 # -------------------------------
-def sensor_thread(port='COM5', baudrate=921600):
+def sensor_thread(port='COM6', baudrate=921600):
     ser = serial.Serial(port, baudrate, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
     buffer = bytearray()
@@ -196,17 +198,13 @@ def processing_thread():
                     point_cloud_clustered = clusters_stage2
 
                     # OccupancyGrid
-                    point_cloud_clustered = pointFilter.extract_points(point_cloud_clustered)
+                    pointCloud_clustered = pointFilter.extract_points(point_cloud_clustered)
 
 
                     # Thread-safe data update for plotting
                     with plot_data_lock:
-                        latest_point_cloud_raw
-                        latest_point_cloud_filtered = point_cloud_ve_filtered
                         latest_dbscan_clusters = point_cloud_clustered
-                        latest_occupancy_grid = grid_processor.calculate_cartesian_grid(point_cloud_clustered[:, :2], x_limits=(-10, 10), y_limits=(0, 15))
-                        #latest_occupancy_grid = grid_processor.calculate_polar_grid(point_cloud_clustered[:, :2], range_max , range_bins, angle_bins)
-                        latest_self_speed_raw.append(self_speed_raw)
+                        latest_dbscan_clusters_points = pointCloud_clustered
                         latest_self_speed_filtered.append(self_speed_filtered)
 
             except Exception as e:
@@ -217,48 +215,45 @@ def processing_thread():
 # -------------------------------
 def data_monitor():
     """ Continuously prints the latest processed data, including self-speed estimation and cluster warnings. """
-    offset = 270  # Adjusts the reference for azimuth
+    offset = -90  # Adjusts the reference for azimuth
 
     while True:
         with plot_data_lock:
-            local_clusters = latest_dbscan_clusters.copy()  # Copy clusters locally
+            local_clusters = latest_dbscan_clusters.copy()  # ✅ Use full cluster data instead of centroids
             local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
-
-        # --- Print Cluster Warnings ---
-        if not local_clusters:
-            print("No clusters detected.")
-            time.sleep(0.5)
-            continue
-        if not local_self_speed:
-            print("No Self Speed detected.")
-            time.sleep(0.5)
-            continue
 
         # --- Print Self-Speed Estimation ---
         if local_self_speed:
             latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
             print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
 
-        print("\n📡 Latest DBSCAN Clusters:")
-        for cluster_id, cluster in enumerate(local_clusters):  
-            if 'centroid' not in cluster:
-                print(f"Skipping cluster {cluster_id}: No centroid data.")
-                continue
+        # --- Check for empty clusters ---
+        if len(local_clusters) == 0:
+            print("No clusters detected.")
+            time.sleep(0.5)
+            continue
 
-            centroid = cluster['centroid']
+        print("\n📡 Latest DBSCAN Clusters:")
+        for cluster_id, cluster in local_clusters.items():
+
+            # Extract cluster information
+            centroid = cluster.get('centroid', np.array([0, 0, 0]))  # Default to [0,0,0] if missing
             priority = cluster.get('priority', 'N/A')
+            doppler_avg = cluster.get('doppler_avg', 0.0)  # Default to 0.0 if missing
 
             # Convert to polar coordinates
             r = np.linalg.norm(centroid[:2])  # Compute range (distance from origin)
             theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
 
-            print(f"📍 Cluster {cluster_id}: Centroid={centroid}, Range={r:.2f}m, Azimuth={theta:.2f}°, Priority={priority}")
+            print(f"📍 Cluster {cluster_id}: Centroid={centroid[:2]}, Range={r:.2f}m, Azimuth={theta:.2f}°, "
+                  f"Priority={priority}, Doppler Avg={doppler_avg:.2f}")
 
             # Check if the cluster is within the specified range and angle
-            if np.isclose(r, 6, atol=0.1) and 45 <= theta <= 315:
+            if (r <= 6.1) and (theta >= 315 or theta <= 45):
                 print(f"⚠️ Warning: Cluster {cluster_id} is at ~6m and {theta:.2f}°!")
 
         time.sleep(0.5)  # Print updates every 0.5 seconds
+
 
 
 
