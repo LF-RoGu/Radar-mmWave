@@ -16,6 +16,9 @@ import veSpeedFilter
 import dbCluster
 import occupancyGrid
 
+from gpiozero import LED
+from brakeController import BrakeController
+
 # -------------------------------
 # Configuration Commands
 # -------------------------------
@@ -70,6 +73,9 @@ FILTER_PHI_MAX = 85
 #Defining the self-speed's Kalman filter process variance and measurement variance
 KALMAN_FILTER_PROCESS_VARIANCE = 0.01
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+
+# Brake controller setup
+brake_controller = BrakeController(brake_pin=17, cooldown_time=20)  # Create brake controller
 
 #Defining dbClustering stages
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
@@ -214,8 +220,11 @@ def processing_thread():
 # Monitoring Thread
 # -------------------------------
 def data_monitor():
-    """ Continuously prints the latest processed data, including self-speed estimation and cluster warnings. """
+    # Continuously prints the latest processed data, including self-speed estimation and cluster warnings.
     offset = -90  # Adjusts the reference for azimuth
+    brake_range = 4
+
+    detection_triggered = False  # Track if an object is detected
 
     while True:
         with plot_data_lock:
@@ -229,6 +238,7 @@ def data_monitor():
 
         # --- Check for empty clusters ---
         if len(local_clusters) == 0:
+            brake_controller.update(latest_speed, detection_triggered)  # Check if brake should be released
             print("No clusters detected.")
             time.sleep(0.5)
             continue
@@ -243,14 +253,20 @@ def data_monitor():
 
             # Convert to polar coordinates
             r = np.linalg.norm(centroid[:2])  # Compute range (distance from origin)
-            theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
+            azimuth = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
 
             print(f"📍 Cluster {cluster_id}: Centroid={centroid[:2]}, Range={r:.2f}m, Azimuth={theta:.2f}°, "
                   f"Priority={priority}, Doppler Avg={doppler_avg:.2f}")
 
             # Check if the cluster is within the specified range and angle
-            if (r <= 6.1) and (theta >= 315 or theta <= 45):
-                print(f"⚠️ Warning: Cluster {cluster_id} is at ~6m and {theta:.2f}°!")
+            if (r <= brake_range) and (azimuth >= 315 or azimuth <= 45):
+                print(f"⚠️ Warning: Cluster {cluster_id} is at ~{brake_range}m and {azimuth:.2f}°!")
+                # Activate break if object is in range and azimuth
+                detection_triggered = True  # Object detected
+
+        # Update Brake Logic Based on Detection & Speed
+        brake_controller.update(latest_speed, detection_triggered)
+
 
         time.sleep(0.5)  # Print updates every 0.5 seconds
 
