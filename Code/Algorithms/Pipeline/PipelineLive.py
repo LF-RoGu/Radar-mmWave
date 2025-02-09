@@ -212,10 +212,59 @@ def processing_thread():
             except Exception as e:
                 print(f"Error decoding frame: {e}")
 
+# -------------------------------
+# Monitoring Thread
+# -------------------------------
+def data_monitor():
+    """ Continuously prints the latest processed data, including self-speed estimation and cluster warnings. """
+    offset = 270  # Adjusts the reference for azimuth
+
+    while True:
+        with plot_data_lock:
+            local_clusters = latest_dbscan_clusters.copy()  # Copy clusters locally
+            local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
+
+        # --- Print Self-Speed Estimation ---
+        if local_self_speed:
+            latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
+            print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
+
+        # --- Print Cluster Warnings ---
+        if not local_clusters:
+            print("No clusters detected.")
+            time.sleep(0.5)
+            continue
+
+        print("\n📡 Latest DBSCAN Clusters:")
+        for cluster_id, cluster in enumerate(local_clusters):  
+            if 'centroid' not in cluster:
+                print(f"Skipping cluster {cluster_id}: No centroid data.")
+                continue
+
+            centroid = cluster['centroid']
+            priority = cluster.get('priority', 'N/A')
+
+            # Convert to polar coordinates
+            r = np.linalg.norm(centroid[:2])  # Compute range (distance from origin)
+            theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
+
+            print(f"📍 Cluster {cluster_id}: Centroid={centroid}, Range={r:.2f}m, Azimuth={theta:.2f}°, Priority={priority}")
+
+            # Check if the cluster is within the specified range and angle
+            if np.isclose(r, 6, atol=0.1) and 45 <= theta <= 315:
+                print(f"⚠️ Warning: Cluster {cluster_id} is at ~6m and {theta:.2f}°!")
+
+        time.sleep(0.5)  # Print updates every 0.5 seconds
+
+
+
+
 
 # -------------------------------
 # Plotting Thread
 # -------------------------------
+import matplotlib.animation as animation
+
 def plotting_thread():
     global latest_point_cloud_raw, latest_point_cloud_filtered
     global latest_self_speed_raw, latest_self_speed_filtered
@@ -226,17 +275,17 @@ def plotting_thread():
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(2, 2, figure=fig)
 
-    plot_raw_data =         fig.add_subplot(gs[0, 0], projection='3d')
-    plot_filtered_data =    fig.add_subplot(gs[1, 0], projection='3d')
-    plot_Ve =               fig.add_subplot(gs[1, 1])
-    plot_dbCluster =        fig.add_subplot(gs[0, 2], projection='3d')
-    plot_occupancyGrid =    fig.add_subplot(gs[1, 2])
-    #plot_polarGrid =        fig.add_subplot(gs[1, 2], polar = True)
+    plot_Ve = fig.add_subplot(gs[0, 0])
+    plot_dbCluster = fig.add_subplot(gs[0, 1], projection='3d')
+    plot_occupancyGrid = fig.add_subplot(gs[1, 0])
 
+    # Store scatter plot handles
+    dbscan_scatter = None
 
-    while True:
+    def update_plot(_):
+        nonlocal dbscan_scatter
+
         with plot_data_lock:
-            # Safely copy data for plotting
             point_cloud_raw = latest_point_cloud_raw.copy()
             point_cloud_filtered = latest_point_cloud_filtered.copy()
             self_speed_raw = latest_self_speed_raw.copy()
@@ -244,89 +293,39 @@ def plotting_thread():
             dbscan_clusters = latest_dbscan_clusters.copy()
             occupancy_grid = latest_occupancy_grid.copy()
 
-        # --- Plot Raw Point Cloud ---
-        plot_raw_data.clear()
-        if point_cloud_raw:
-            try:
-                points_x = np.array([point["x"] for point in point_cloud_raw])
-                points_y = np.array([point["y"] for point in point_cloud_raw])
-                points_z = np.array([point["z"] for point in point_cloud_raw])
-
-                plot_raw_data.set_title('Physical Filters')
-                plot_raw_data.set_xlabel('X [m]')
-                plot_raw_data.set_ylabel('Y [m]')
-                plot_raw_data.set_zlabel('Z [m]')
-                plot_raw_data.set_xlim(-10, 10)
-                plot_raw_data.set_ylim(0, 15)
-                plot_raw_data.set_zlim(-0.30, 10)
-                plot_raw_data.scatter(points_x, points_y, points_z)
-            except Exception as e:
-                print(f"Error plotting raw data: {e}")
-        
-
-        # --- Plot Filtered Point Cloud ---
-        plot_filtered_data.clear()
-        if point_cloud_filtered:
-            try:
-                points_x = np.array([point["x"] for point in point_cloud_filtered])
-                points_y = np.array([point["y"] for point in point_cloud_filtered])
-                points_z = np.array([point["z"] for point in point_cloud_filtered])
-
-                plot_filtered_data.set_title('Ve Filters')
-                plot_filtered_data.set_xlabel('X [m]')
-                plot_filtered_data.set_ylabel('Y [m]')
-                plot_filtered_data.set_zlabel('Z [m]')
-                plot_filtered_data.set_xlim(-10, 10)
-                plot_filtered_data.set_ylim(0, 15)
-                plot_filtered_data.set_zlim(-0.30, 10)
-                plot_filtered_data.scatter(points_x, points_y, points_z)
-            except Exception as e:
-                print(f"Error plotting raw data: {e}")
-
-        # --- Plot Self-Speed (Raw vs Filtered) ---
+        # --- Update Self-Speed Plot ---
         plot_Ve.clear()
         if self_speed_raw and self_speed_filtered:
-            try:
-                plot_Ve.plot(self_speed_raw, linestyle='--', label='Raw Speed')
-                plot_Ve.plot(self_speed_filtered, label='Filtered Speed')
-                plot_Ve.legend()
-                plot_Ve.set_title("Self-Speed Estimation")
-                plot_Ve.set_ylim(-3, 3)
-            except Exception as e:
-                print(f"Error plotting self-speed: {e}")
-        
+            plot_Ve.plot(self_speed_raw, linestyle='--', label='Raw Speed')
+            plot_Ve.plot(self_speed_filtered, label='Filtered Speed')
+            plot_Ve.legend()
+            plot_Ve.set_title("Self-Speed Estimation")
+            plot_Ve.set_ylim(-3, 3)
 
-        # --- Plot DBSCAN Clusters ---
-        priority_colors = {1: 'red', 2: 'orange', 3: 'green'}
-        
+        # --- Update DBSCAN Clusters Plot ---
         plot_dbCluster.clear()
         if dbscan_clusters:
             try:
-                for i, cluster in enumerate(dbscan_clusters):
-                    cluster_points = pointFilter.extract_points(cluster)
-                    if cluster_points.size > 0:
-                        color = np.random.rand(3,)
-                        plot_dbCluster.scatter(cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2],
-                                               s=10, c=[color], label=f'Cluster {i + 1}')
-                plot_dbCluster.legend()
+                if dbscan_scatter:
+                    dbscan_scatter.remove()  # Remove previous scatter plot
+                
+                all_points = np.vstack([pointFilter.extract_points(cluster) for cluster in dbscan_clusters if pointFilter.extract_points(cluster).size > 0])
+                if all_points.size > 0:
+                    dbscan_scatter = plot_dbCluster.scatter(all_points[:, 0], all_points[:, 1], all_points[:, 2], s=10, c='b')
+                
                 plot_dbCluster.set_title("DBSCAN Clusters")
             except Exception as e:
                 print(f"Error plotting DBSCAN clusters: {e}")
+        
         plot_dbCluster.set_xlim(-10, 10)
         plot_dbCluster.set_ylim(0, 15)
         plot_dbCluster.set_zlim(-0.3, 2)
 
-        # --- Plot Occupancy Grid ---
-        plot_occupancyGrid.clear()
-        if occupancy_grid is not None:
-            try:
-                plot_occupancyGrid.imshow(occupancy_grid, cmap='gray', origin='lower')
-                plot_occupancyGrid.set_title("Occupancy Grid")
-            except Exception as e:
-                print(f"Error plotting occupancy grid: {e}")
+    # Use Matplotlib animation to update efficiently
+    ani = animation.FuncAnimation(fig, update_plot, interval=100)
 
+    plt.show(block=True)  # Keep the figure open
 
-        plt.pause(0.1)  # Smooth real-time updates
 
 # -------------------------------
 # Start Threads
@@ -336,7 +335,7 @@ if __name__ == "__main__":
     
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
-    threading.Thread(target=plotting_thread, daemon=True).start()
+    threading.Thread(target=data_monitor, daemon=True).start()
 
     while True:
-        time.sleep(1)
+        time.sleep(0.1)
