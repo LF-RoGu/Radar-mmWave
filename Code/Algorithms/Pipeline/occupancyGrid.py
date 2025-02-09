@@ -81,7 +81,7 @@ class OccupancyGridProcessor:
                 raise ValueError(f"Unsupported point format: {point}")
 
             # STEP 3: Convert to polar coordinates
-            offset = 90  # Rotate 'n' degrees clockwise
+            offset = 270  # Rotate 'n' degrees clockwise
             r = np.sqrt(x**2 + y**2)  # Range
             theta = (np.degrees(np.arctan2(y, x)) + offset) % 360  # Azimuth
 

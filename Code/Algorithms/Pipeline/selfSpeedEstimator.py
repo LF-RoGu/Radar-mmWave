@@ -3,27 +3,34 @@ import numpy as np
 __all__ = ['estimate_self_speed']
 
 def estimate_self_speed(pointCloud):
-    #Returning zero if there are no points to process
-    if len(pointCloud) < 1:
+    """Estimate self-speed using a weighted mean of Doppler velocities."""
+    
+    # Return 0 if there are not enough points
+    if len(pointCloud) < 3:
         return 0
 
-    #Preparing an array to contain angle to target and radial speed
-    phi_radspeed = []
+    # Store Doppler velocities and their weights
+    doppler_values = []
+    weights = []
 
-    #Iterating over all points
-    for i in range(len(pointCloud)):
-        #Calculating the angle to target
-        phi = np.rad2deg(np.arctan(pointCloud[i]["x"]/pointCloud[i]["y"]))
+    for point in pointCloud:
+        if point["y"] == 0:  # Avoid division by zero
+            continue
 
-        #Appending the angle and the radial speed 
-        phi_radspeed.append([phi, pointCloud[i]["doppler"]])
+        # Compute angle phi in degrees
+        phi = np.rad2deg(np.arctan(point["x"] / point["y"]))
 
-    #Converting array of tuples to NumPy array
-    phi_radspeed = np.array(phi_radspeed, dtype=float)
+        # Compute weight using cos(phi) to give more importance to direct observations
+        weight = abs(np.cos(np.radians(phi)))  # Avoid negative scaling
 
-    #Fitting a first order polynominal into the points
-    poly_coeff = np.polyfit(phi_radspeed[:,0], phi_radspeed[:,1], deg=2)  # Polynomial coefficients
-    poly_model = np.poly1d(poly_coeff)  # Polynomial model
+        doppler_values.append(point["doppler"] * weight)
+        weights.append(weight)
 
-    #Returning the self-speed after interpolating
-    return poly_model(0)
+    # If no valid data, return 0
+    if not doppler_values or not weights:
+        return 0
+
+    # Compute weighted average of Doppler velocities
+    self_speed_estimate = np.sum(doppler_values) / np.sum(weights)
+
+    return self_speed_estimate

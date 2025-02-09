@@ -4,8 +4,8 @@ import threading
 import queue
 from threading import Lock
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
-from matplotlib.animation import FuncAnimation
 
 import dataDecoder
 from frameAggregator import FrameAggregator
@@ -15,6 +15,9 @@ from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
 import occupancyGrid
+
+from gpiozero import LED
+from brakeController import BrakeController
 
 # -------------------------------
 # Configuration Commands
@@ -71,6 +74,9 @@ FILTER_PHI_MAX = 85
 KALMAN_FILTER_PROCESS_VARIANCE = 0.01
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 
+# Brake controller setup
+brake_controller = BrakeController(brake_pin=17, cooldown_time=20)  # Create brake controller
+
 #Defining dbClustering stages
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
 cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
@@ -83,6 +89,9 @@ frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
 
 #
+grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=0.5)
+
+#
 frame_queue = queue.Queue()
 
 #
@@ -91,10 +100,14 @@ read_lock = threading.Lock()
 plot_data_lock = threading.Lock()
 
 #
+latest_point_cloud_raw = []
 latest_point_cloud_filtered = []
-latest_point_cloud_clustered = []
 latest_self_speed_raw = []
+latest_occupancy_grid = []
+
 latest_self_speed_filtered = []
+latest_dbscan_clusters = []
+latest_dbscan_clusters_points = []
 
 # -------------------------------
 # Send Configuration to Sensor
@@ -112,7 +125,7 @@ def send_configuration(port='COM4', baudrate=115200):
 # -------------------------------
 # Sensor Reading Thread
 # -------------------------------
-def sensor_thread(port='COM8', baudrate=921600):
+def sensor_thread(port='COM6', baudrate=921600):
     ser = serial.Serial(port, baudrate, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
     buffer = bytearray()
@@ -141,8 +154,9 @@ def sensor_thread(port='COM8', baudrate=921600):
 # Data Processing Thread
 # -------------------------------
 def processing_thread():
-    global latest_point_cloud_filtered, latest_point_cloud_clustered
+    global latest_point_cloud_raw, latest_point_cloud_filtered
     global latest_self_speed_raw, latest_self_speed_filtered
+    global latest_dbscan_clusters, latest_occupancy_grid
 
     while True:
         frame = None
@@ -169,16 +183,13 @@ def processing_thread():
 
                     # Filtering by SNR
                     point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
-
                     # Filtering by z
                     point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
-
                     # Filtering by phi
                     point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
 
                     # Estimating the self-speed
                     self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
-
                     # Kalman filtering the self-speed
                     self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
@@ -190,89 +201,156 @@ def processing_thread():
                     clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
                     point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
                     clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
-
                     point_cloud_clustered = clusters_stage2
+
+                    # OccupancyGrid
+                    pointCloud_clustered = pointFilter.extract_points(point_cloud_clustered)
+
 
                     # Thread-safe data update for plotting
                     with plot_data_lock:
-                        latest_point_cloud_filtered = point_cloud_ve_filtered
-                        latest_point_cloud_clustered = point_cloud_clustered
-                        latest_self_speed_raw.append(self_speed_raw)
+                        latest_dbscan_clusters = point_cloud_clustered
+                        latest_dbscan_clusters_points = pointCloud_clustered
                         latest_self_speed_filtered.append(self_speed_filtered)
 
             except Exception as e:
                 print(f"Error decoding frame: {e}")
 
+# -------------------------------
+# Monitoring Thread
+# -------------------------------
+def data_monitor():
+    # Continuously prints the latest processed data, including self-speed estimation and cluster warnings.
+    offset = -90  # Adjusts the reference for azimuth
+    brake_range = 4
+
+    detection_triggered = False  # Track if an object is detected
+
+    while True:
+        with plot_data_lock:
+            local_clusters = latest_dbscan_clusters.copy()  # ✅ Use full cluster data instead of centroids
+            local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
+
+        # --- Print Self-Speed Estimation ---
+        if local_self_speed:
+            latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
+            print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
+
+        # --- Check for empty clusters ---
+        if len(local_clusters) == 0:
+            brake_controller.update(latest_speed, detection_triggered)  # Check if brake should be released
+            print("No clusters detected.")
+            time.sleep(0.5)
+            continue
+
+        print("\n📡 Latest DBSCAN Clusters:")
+        for cluster_id, cluster in local_clusters.items():
+
+            # Extract cluster information
+            centroid = cluster.get('centroid', np.array([0, 0, 0]))  # Default to [0,0,0] if missing
+            priority = cluster.get('priority', 'N/A')
+            doppler_avg = cluster.get('doppler_avg', 0.0)  # Default to 0.0 if missing
+
+            # Convert to polar coordinates
+            r = np.linalg.norm(centroid[:2])  # Compute range (distance from origin)
+            azimuth = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
+
+            print(f"📍 Cluster {cluster_id}: Centroid={centroid[:2]}, Range={r:.2f}m, Azimuth={theta:.2f}°, "
+                  f"Priority={priority}, Doppler Avg={doppler_avg:.2f}")
+
+            # Check if the cluster is within the specified range and angle
+            if (r <= brake_range) and (azimuth >= 315 or azimuth <= 45):
+                print(f"⚠️ Warning: Cluster {cluster_id} is at ~{brake_range}m and {azimuth:.2f}°!")
+                # Activate break if object is in range and azimuth
+                detection_triggered = True  # Object detected
+
+        # Update Brake Logic Based on Detection & Speed
+        brake_controller.update(latest_speed, detection_triggered)
+
+
+        time.sleep(0.5)  # Print updates every 0.5 seconds
+
+
+
+
+
 
 # -------------------------------
 # Plotting Thread
 # -------------------------------
+import matplotlib.animation as animation
+
 def plotting_thread():
-    global latest_point_cloud_filtered, latest_point_cloud_clustered
+    global latest_point_cloud_raw, latest_point_cloud_filtered
     global latest_self_speed_raw, latest_self_speed_filtered
+    global latest_dbscan_clusters, latest_occupancy_grid
 
     plt.ion()  # Enable interactive mode
-    fig = plt.figure(figsize=(10, 10))
-    ax_filtered = fig.add_subplot(221, projection='3d')
-    ax_clustered = fig.add_subplot(222, projection='3d')
-    ax_self_speed = fig.add_subplot(223)
 
-    while True:
+    fig = plt.figure(figsize=(10, 10))
+    gs = gridspec.GridSpec(2, 2, figure=fig)
+
+    plot_Ve = fig.add_subplot(gs[0, 0])
+    plot_dbCluster = fig.add_subplot(gs[0, 1], projection='3d')
+    plot_occupancyGrid = fig.add_subplot(gs[1, 0])
+
+    # Store scatter plot handles
+    dbscan_scatter = None
+
+    def update_plot(_):
+        nonlocal dbscan_scatter
+
         with plot_data_lock:
-            # Safely copy data for plotting
+            point_cloud_raw = latest_point_cloud_raw.copy()
             point_cloud_filtered = latest_point_cloud_filtered.copy()
-            point_cloud_clustered = latest_point_cloud_clustered.copy()
             self_speed_raw = latest_self_speed_raw.copy()
             self_speed_filtered = latest_self_speed_filtered.copy()
+            dbscan_clusters = latest_dbscan_clusters.copy()
+            occupancy_grid = latest_occupancy_grid.copy()
 
-        # Clear previous plots
-        ax_filtered.clear()
-        ax_clustered.clear()
-        ax_self_speed.clear()
-
-        # Plot Filtered Point Cloud
-        if point_cloud_filtered:
-            try:
-                x = [p["x"] for p in point_cloud_filtered if isinstance(p, dict)]
-                y = [p["y"] for p in point_cloud_filtered if isinstance(p, dict)]
-                z = [p["z"] for p in point_cloud_filtered if isinstance(p, dict)]
-                ax_filtered.scatter(x, y, z, c='blue', s=2)
-                ax_filtered.set_title("Filtered Point Cloud")
-                ax_filtered.set_xlim(-10, 10)
-                ax_filtered.set_ylim(0, 15)
-                ax_filtered.set_zlim(-0.3, 2)
-            except Exception as e:
-                print(f"Error plotting filtered points: {e}")
-
-        # Plot Clustered Points
-        if point_cloud_clustered:
-            try:
-                for cluster in point_cloud_clustered:
-                    cluster_points = pointFilter.extract_points(cluster)
-                    ax_clustered.scatter(cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2], s=5)
-                ax_clustered.set_title("Clustered Points")
-            except Exception as e:
-                print(f"Error plotting clustered points: {e}")
-
-        # Plot Self-Speed (Raw vs Filtered)
+        # --- Update Self-Speed Plot ---
+        plot_Ve.clear()
         if self_speed_raw and self_speed_filtered:
-            ax_self_speed.plot(self_speed_raw, linestyle='--', label='Raw Speed')
-            ax_self_speed.plot(self_speed_filtered, label='Filtered Speed')
-            ax_self_speed.legend()
-            ax_self_speed.set_title("Self-Speed Estimation")
-            ax_self_speed.set_ylim(-3, 1)
+            plot_Ve.plot(self_speed_raw, linestyle='--', label='Raw Speed')
+            plot_Ve.plot(self_speed_filtered, label='Filtered Speed')
+            plot_Ve.legend()
+            plot_Ve.set_title("Self-Speed Estimation")
+            plot_Ve.set_ylim(-3, 3)
 
-        plt.pause(0.5)  # Update the plot
+        # --- Update DBSCAN Clusters Plot ---
+        plot_dbCluster.clear()
+        if dbscan_clusters:
+            try:
+                if dbscan_scatter:
+                    dbscan_scatter.remove()  # Remove previous scatter plot
+                
+                all_points = np.vstack([pointFilter.extract_points(cluster) for cluster in dbscan_clusters if pointFilter.extract_points(cluster).size > 0])
+                if all_points.size > 0:
+                    dbscan_scatter = plot_dbCluster.scatter(all_points[:, 0], all_points[:, 1], all_points[:, 2], s=10, c='b')
+                
+                plot_dbCluster.set_title("DBSCAN Clusters")
+            except Exception as e:
+                print(f"Error plotting DBSCAN clusters: {e}")
+        
+        plot_dbCluster.set_xlim(-10, 10)
+        plot_dbCluster.set_ylim(0, 15)
+        plot_dbCluster.set_zlim(-0.3, 2)
+
+    # Use Matplotlib animation to update efficiently
+    ani = animation.FuncAnimation(fig, update_plot, interval=100)
+
+    plt.show(block=True)  # Keep the figure open
+
 
 # -------------------------------
 # Start Threads
 # -------------------------------
 if __name__ == "__main__":
-    send_configuration(port='COM4')
+    send_configuration(port='COM5')
     
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
-    threading.Thread(target=plotting_thread, daemon=True).start()
+    threading.Thread(target=data_monitor, daemon=True).start()
 
     while True:
-        time.sleep(1)
+        time.sleep(0.1)
