@@ -110,6 +110,11 @@ def plot_clusters_polar(clusters, ax, range_max, range_bins, angle_bins):
         priority = cluster['priority']
         r = np.linalg.norm(centroid[:2])
         theta = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360
+
+        # Check if the distance is approximately 6m and the angle is between 45 and 315 degrees.
+        if np.isclose(r, 6, atol=0.1) and 45 <= theta <= 315:
+            print(f"Warning: Cluster {cluster_id} is at ~6m and {theta:.2f}°!")
+
         if r < range_max:
             r_bin = int(r / (range_max / range_bins))
             theta_bin = int(theta / (360 / angle_bins))
@@ -165,14 +170,6 @@ def plot_with_slider(frames_data, num_frames=10):
         # Second Clustering Stage
         clustersStage2, _ = cluster_points(points_stage1, eps=1.0, min_samples=6)
         points_stage2 = np.concatenate([cluster['points'] for cluster in clustersStage2.values()])
-
-        # Print cluster coordinates and Doppler speed after second clustering
-        for cid, cluster in clustersStage2.items():
-            print(f"Cluster {cid}:")
-            for point in cluster['points']:
-                x, y, z, doppler = point
-                print(f"  X: {x:.2f} m, Y: {y:.2f} m, Z: {z:.2f} m, Doppler: {doppler:.2f} m/s")
-            print("-" * 40)
 
         # Calculate Occupancy Grid using the final clustered points
         occupancy_grid = calculate_occupancy_grid(points_stage2[:, :2], x_limits, y_limits, grid_spacing)
