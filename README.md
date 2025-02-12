@@ -2,6 +2,9 @@
 
 This repository contains materials and projects for the Radar and SiCo2 classes.
 
+This project aims to develop a real-time object detection and collision avoidance system using the IWR6843AOPEVM mmWave radar sensor. The system processes raw radar data to extract meaningful information about surroundings, estimate self-speed, detect obstacles, and trigger a braking mechanism when necessary.
+
+
 ## Repository Structure
 
 - [Code](Code/): Contains algorithms created in python for testing.
