@@ -250,7 +250,7 @@ def data_monitor():
                   f"Priority={priority}, Doppler Avg={doppler_avg:.2f}")
 
             # Check if the cluster is within the specified range and angle
-            if (r <= brake_range) and (azimuth >= 315 or azimuth <= 45):
+            if (r <= brake_range) and (azimuth >= 330 or azimuth <= 30):
                 print(f"⚠️ Warning: Cluster {cluster_id} is at ~{r:.2f}m and {azimuth:.2f}°!")
                 # Activate break if object is in range and azimuth
                 detection_triggered = True  # Object detected

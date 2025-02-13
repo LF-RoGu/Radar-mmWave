@@ -224,9 +224,8 @@ def data_monitor():
     offset = -90  # Adjusts the reference for azimuth
     brake_range = 4
 
-    detection_triggered = False  # Track if an object is detected
-
     while True:
+        detection_triggered = False  # Track if an object is detected
         with plot_data_lock:
             local_clusters = latest_dbscan_clusters.copy()  # ✅ Use full cluster data instead of centroids
             local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
@@ -238,7 +237,6 @@ def data_monitor():
 
         # --- Check for empty clusters ---
         if len(local_clusters) == 0:
-            brake_controller.update(latest_speed, detection_triggered)  # Check if brake should be released
             print("No clusters detected.")
             time.sleep(0.5)
             continue

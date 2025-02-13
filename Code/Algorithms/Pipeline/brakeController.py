@@ -35,5 +35,5 @@ class BrakeController:
         # Check brake logic: Activate on detection, release when speed is 0.
         if detection_triggered:
             self.activate_brake()
-        elif self_speed == 0:
+        elif self_speed < 1:
             self.release_brake()
