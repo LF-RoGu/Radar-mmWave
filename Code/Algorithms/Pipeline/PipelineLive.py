@@ -18,11 +18,9 @@ import serial
 import time
 import threading
 import queue
-from threading import Lock
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import numpy as np
 import warnings
+import logging
+import numpy as np
 
 # Local Imports
 import radarSensor
@@ -33,9 +31,14 @@ import selfSpeedEstimator
 from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
-import occupancyGrid
 
-# List of configuration commands for initializing the mmWave sensor.
+## Set logging level
+LOGGING_LEVEL = logging.DEBUG
+
+## Setting the distance (m) for the emergency brake to activate
+EMERGENCY_BRAKE_RANGE = 4
+
+## @brief List of configuration commands for initializing the mmWave sensor.
 ## This configuration commands is using the following presets:
 ## - 30 FPS
 ## - 60° Azimuth
@@ -74,13 +77,12 @@ SENSOR_CONFIG_COMMANDS = [
 
 # Port Configuration, depending on the information from the device manager on how your device treats the UART sensor. Since we have a USB-PORT to a USB-BRIDGE (Sensor side). Assigned the number of the comm ports depending on your device.
 ## CONFIG_PORT -> Enhanced Port
-## DATA_PORT   -> Standard Port
 SENSOR_CONFIG_PORT = "COM9"
+## DATA_PORT   -> Standard Port
 SENSOR_DATA_PORT = "COM8"
 
 # Defining the number of how many frames from the past should be used in the frame aggregator
-## 0 = only current frame
-## n = current frame + n previous frames
+## 0 = only current frame, n = current frame + n previous frames
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 
 ## Defining the minimum value of SNR so a point can be consider as a valid point.
@@ -103,15 +105,13 @@ KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 ## Creating the frame aggregator
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 
-## Creating the Kalman filter for the self-speed esimation
+## @brief Initializes the Kalman filter for self-speed estimation.
 self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
 
 ## Defining dbClustering stages
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
 cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
 
-## Currently not in use: occupancy grid for processing the clusters
-#grid_processor = occupancyGrid.OccupancyGridProcessor(grid_spacing=0.5)
 
 # Thread locks
 ## Setting up a queue together with a lock for passing the data from the sensor thread to the processing thread
@@ -191,7 +191,7 @@ def processing_thread():
     while True:
         frame = None
 
-        #Trying to get the next frame from the queue; continuing if there was no new frame
+        # Trying to get the next frame from the queue; continuing if there was no new frame
         try:
             with frame_lock:
                 frame = frame_queue.get_nowait()
@@ -206,34 +206,34 @@ def processing_thread():
             decoded_frames = dataDecoder.dataToFrames(frame_list)
 
             for decoded in decoded_frames:
-                #Updating the frame aggregator
+                # Updating the frame aggregator
                 frame_aggregator.updateBuffer(decoded)
 
-                #Getting the current point cloud from the frame aggregator
+                # Getting the current point cloud from the frame aggregator
                 point_cloud = frame_aggregator.getPoints()
 
-                #Filtering by SNR
+                # Filtering by SNR
                 point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
-                #Filtering by z
+                # Filtering by z
                 point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
-                #Filtering by phi
+                # Filtering by phi
                 point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
 
-                #Estimating the self-speed
+                # Estimating the self-speed
                 self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
-                #Kalman filtering the self-speed
+                # Kalman filtering the self-speed
                 self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
-                #Filtering point cloud by Ve
+                # Filtering point cloud by Ve
                 point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
                 point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 0.5)
-                #print(f"\n[!]Filtered points: {len(point_cloud_filtered) - len(point_cloud_ve_filtered)}")
+                # print(f"\n[!]Filtered points: {len(point_cloud_filtered) - len(point_cloud_ve_filtered)}")
 
-                #Clustering the points (stage 1)
+                # Clustering the points (stage 1)
                 point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
                 clusters_stage1, _ = cluster_processor_stage1.cluster_points(point_cloud_clustering_stage1)
                 
-                #Clustering the points (stage 2)
+                # Clustering the points (stage 2)
                 point_cloud_clustering_stage2 = pointFilter.extract_points(clusters_stage1)
                 clusters_stage2, _ = cluster_processor_stage2.cluster_points(point_cloud_clustering_stage2)
 
@@ -244,7 +244,7 @@ def processing_thread():
                     latest_self_speed_filtered.append(self_speed_filtered)
 
         except Exception as e:
-            print(f"Error decoding frame: {e}")
+            logging.error(f"Error decoding frame: {e}")
 
 def data_monitor():
     """!
@@ -260,25 +260,25 @@ def data_monitor():
 
     # Continuously prints the latest processed data, including self-speed estimation and cluster warnings.
     offset = -90  # Adjusts the reference for azimuth
-    brake_range = 4
 
     while True:
+        # Copying the most recent data thread-safe
         with processed_data_lock:
-            local_clusters = latest_dbscan_clusters.copy()  # ✅ Use full cluster data instead of centroids
-            local_self_speed = latest_self_speed_filtered.copy()  # Copy self-speed data
+            local_clusters = latest_dbscan_clusters.copy()
+            local_self_speed = latest_self_speed_filtered.copy()
 
-        # --- Print Self-Speed Estimation ---
+        # Printing the latest self-speed estimation
         if local_self_speed:
             latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
-            print(f"\n🚗 Self-Speed Estimation: {latest_speed:.2f} m/s")
+            logging.debug(f"Self-Speed Estimation: {latest_speed:.2f} m/s")
 
-        # --- Check for empty clusters ---
+        # Sleeping if there are no new clusters
         if len(local_clusters) == 0:
-            print("No clusters detected.")
+            logging.debug("No clusters detected.")
             time.sleep(0.5)
             continue
 
-        print("\n📡 Latest DBSCAN Clusters:")
+        logging.debug("Latest DBSCAN Clusters:")
         for cluster_id, cluster in local_clusters.items():
 
             # Extract cluster information
@@ -290,12 +290,12 @@ def data_monitor():
             r = np.linalg.norm(centroid[:2])  # Compute range (distance from origin)
             azimuth = (np.degrees(np.arctan2(centroid[1], centroid[0])) + offset) % 360  # Compute azimuth
 
-            print(f"[!] Cluster {cluster_id}: Centroid={centroid[:2]}, Range={r:.2f}m, Azimuth={azimuth:.2f}°, "
+            logging.debug(f"Cluster {cluster_id}: Centroid={centroid[:2]}, Range={r:.2f}m, Azimuth={azimuth:.2f}°, "
                   f"Priority={priority}, Doppler Avg={doppler_avg:.2f}")
 
             # Check if the cluster is within the specified range and angle
-            if (r <= brake_range) and (azimuth >= 330 or azimuth <= 30):
-                print(f"[!] Warning: Cluster {cluster_id} is at ~{r:.2f}m and {azimuth:.2f}°!")
+            if (r <= EMERGENCY_BRAKE_RANGE) and (azimuth >= 330 or azimuth <= 30):
+                logging.warning(f"Cluster {cluster_id} is at ~{r:.2f}m and {azimuth:.2f}°!")
                 # Activate break if object is in range and azimuth
                 detection_triggered = True  # Object detected
 
@@ -322,21 +322,21 @@ if __name__ == "__main__":
     @pre The mmWave sensor must be properly connected and configured.
     @post Sensor data is continuously collected, processed, and monitored in concurrent threads.
     """
+    # Disabling warnings (of numpy)
     warnings.filterwarnings('ignore')
+
+    # Setting the logging level
+    logging.basicConfig(level=LOGGING_LEVEL)
 
 
     # Send configuration commands to the radar sensor before starting the threads
     radarSensor.send_configuration(SENSOR_CONFIG_COMMANDS, SENSOR_CONFIG_PORT)
     
-    # -------------------------------
-    # Start Background Threads
-    # -------------------------------
+    # Starting all background threads
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
     threading.Thread(target=data_monitor, daemon=True).start()
 
-    # -------------------------------
-    # Main Loop
-    # -------------------------------
+    # Doing something
     while True:
         time.sleep(0.1)
