@@ -51,6 +51,9 @@ CONFIG_COMMANDS = [
     "sensorStart"
 ]
 
+SENSOR_CONFIG_PORT = "COM9"
+SENSOR_DATA_PORT = "COM8"
+
 #Defining the number of how many frames from the past should be used in the frame aggregator
 # 0 = only current frame
 # n = current frame + n previous frames
@@ -106,7 +109,7 @@ latest_dbscan_clusters_points = []
 # -------------------------------
 # Send Configuration to Sensor
 # -------------------------------
-def send_configuration(port='COM6', baudrate=115200):
+def send_configuration(port, baudrate=115200):
     ser = serial.Serial(port, baudrate, timeout=1)
     time.sleep(2)
 
@@ -119,8 +122,8 @@ def send_configuration(port='COM6', baudrate=115200):
 # -------------------------------
 # Sensor Reading Thread
 # -------------------------------
-def sensor_thread(port='COM7', baudrate=921600):
-    ser = serial.Serial(port, baudrate, timeout=1)
+def sensor_thread():
+    ser = serial.Serial(SENSOR_DATA_PORT, 921600, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
     buffer = bytearray()
 
@@ -169,28 +172,29 @@ def processing_thread():
                 decoded_frames = dataDecoder.dataToFrames(frame_list)
 
                 for decoded in decoded_frames:
-                    # Updating the frame aggregator
+                    #Updating the frame aggregator
                     frame_aggregator.updateBuffer(decoded)
 
-                    # Getting the current point cloud from the frame aggregator
+                    #Getting the current point cloud from the frame aggregator
                     point_cloud = frame_aggregator.getPoints()
 
-                    # Filtering by SNR
+                    #Filtering by SNR
                     point_cloud_filtered = pointFilter.filterSNRmin(point_cloud, FILTER_SNR_MIN)
-                    # Filtering by z
+                    #Filtering by z
                     point_cloud_filtered = pointFilter.filterCartesianZ(point_cloud_filtered, FILTER_Z_MIN, FILTER_Z_MAX)
-                    # Filtering by phi
+                    #Filtering by phi
                     point_cloud_filtered = pointFilter.filterSphericalPhi(point_cloud_filtered, FILTER_PHI_MIN, FILTER_PHI_MAX)
 
-                    # Estimating the self-speed
+                    #Estimating the self-speed
                     self_speed_raw = selfSpeedEstimator.estimate_self_speed(point_cloud_filtered)
-                    # Kalman filtering the self-speed
+                    #Kalman filtering the self-speed
                     self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
-                    # Filtering point cloud by Ve
-                    point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
-                    #point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
-                    #point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 5.0)
+                    #Filtering point cloud by Ve
+                    #point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
+                    point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
+                    point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 1.0)
+                    #print(len(point_cloud_filtered) - len(point_cloud_filtered))
 
                     # First Clustering Stage
                     point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
@@ -336,7 +340,7 @@ def plotting_thread():
 # Start Threads
 # -------------------------------
 if __name__ == "__main__":
-    send_configuration(port='COM6')
+    send_configuration(SENSOR_CONFIG_PORT)
     
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
