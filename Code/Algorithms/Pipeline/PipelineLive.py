@@ -106,7 +106,7 @@ latest_dbscan_clusters_points = []
 # -------------------------------
 # Send Configuration to Sensor
 # -------------------------------
-def send_configuration(port='COM4', baudrate=115200):
+def send_configuration(port='COM6', baudrate=115200):
     ser = serial.Serial(port, baudrate, timeout=1)
     time.sleep(2)
 
@@ -119,7 +119,7 @@ def send_configuration(port='COM4', baudrate=115200):
 # -------------------------------
 # Sensor Reading Thread
 # -------------------------------
-def sensor_thread(port='COM6', baudrate=921600):
+def sensor_thread(port='COM7', baudrate=921600):
     ser = serial.Serial(port, baudrate, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
     buffer = bytearray()
@@ -189,6 +189,8 @@ def processing_thread():
 
                     # Filtering point cloud by Ve
                     point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
+                    #point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
+                    #point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 5.0)
 
                     # First Clustering Stage
                     point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
@@ -334,7 +336,7 @@ def plotting_thread():
 # Start Threads
 # -------------------------------
 if __name__ == "__main__":
-    send_configuration(port='COM5')
+    send_configuration(port='COM6')
     
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()

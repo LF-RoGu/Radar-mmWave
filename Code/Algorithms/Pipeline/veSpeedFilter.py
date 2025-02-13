@@ -20,8 +20,14 @@ def calculateVe(point_cloud):
     return point_cloud_ve
 
 
-def filterPointsWithVe(point_cloud, self_speed_filtered):
+def filterPointsWithVe(point_cloud, self_speed_filtered, abs_threshold):
     point_cloud_ve_filtered = []
+
+    for i in range(len(point_cloud)):
+        if abs(point_cloud[i]["ve"] - self_speed_filtered) <= abs_threshold:
+            point_cloud_ve_filtered.append(point_cloud[i])
+
+    return point_cloud_ve_filtered
 
     ##Filtering using IQR method
 
