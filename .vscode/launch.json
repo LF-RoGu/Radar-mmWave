@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "PipelineLive PC",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Code/Algorithms/Pipeline/PipelineLive.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

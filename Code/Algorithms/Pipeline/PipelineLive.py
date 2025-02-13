@@ -75,69 +75,105 @@ SENSOR_CONFIG_COMMANDS = [
     "sensorStart"
 ]
 
-# Port Configuration, depending on the information from the device manager on how your device treats the UART sensor. Since we have a USB-PORT to a USB-BRIDGE (Sensor side). Assigned the number of the comm ports depending on your device.
-## CONFIG_PORT -> Enhanced Port
+## @defgroup Global Constants
+## @{
+
+## @brief UART port used for sensor configuration.
+## @note CONFIG_PORT -> Enhanced Port
 SENSOR_CONFIG_PORT = "COM9"
-## DATA_PORT   -> Standard Port
+## @brief UART port used for receiving sensor data.
+## @note DATA_PORT   -> Standard Port
 SENSOR_DATA_PORT = "COM8"
 
-# Defining the number of how many frames from the past should be used in the frame aggregator
+## @brief Number of past frames to store in the frame aggregator.
 ## 0 = only current frame, n = current frame + n previous frames
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
+FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 
-## Defining the minimum value of SNR so a point can be consider as a valid point.
+## @brief Minimum SNR value required for a point to be considered valid.
 FILTER_SNR_MIN = 12
 
-## Defining minimum and maximum z for the filter stage
+## @brief Minimum Z-coordinate threshold for filtering points (meters).
 FILTER_Z_MIN = -0.3
-FILTER_Z_MAX = 2
+## @brief Maximum Z-coordinate threshold for filtering points (meters).
+FILTER_Z_MAX = 2.0
 
-## Defining minimum and maximum phi for the filter stage
+## @brief Minimum Phi angle threshold for filtering points (degrees).
 FILTER_PHI_MIN = -85
+## @brief Maximum Phi angle threshold for filtering points (degrees).
 FILTER_PHI_MAX = 85
 
-## Defining the self-speed's Kalman filter process variance and measurement variance
+## @brief Process variance for the Kalman filter (affects smoothness of estimates).
 KALMAN_FILTER_PROCESS_VARIANCE = 0.01
+## @brief Measurement variance for the Kalman filter (accounts for sensor noise).
 KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
+## @}  # End of Constants
 
 
-# Creating the pipeline's objects
-## Creating the frame aggregator
+## @defgroup Pipeline Constructors
+## @{
+## @brief Creates the frame aggregator to store past frames.
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
-
 ## @brief Initializes the Kalman filter for self-speed estimation.
 self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, measurement_variance=KALMAN_FILTER_MEASUREMENT_VARIANCE)
-
-## Defining dbClustering stages
+## @brief Defines the first-stage DBSCAN clustering processor.
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
+## @brief Defines the second-stage DBSCAN clustering processor.
 cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
+## @}
 
 
-# Thread locks
-## Setting up a queue together with a lock for passing the data from the sensor thread to the processing thread
+## @defgroup Thread locks
+## @{
+## @brief Queue for passing sensor data from the sensor thread to the processing thread.
 frame_queue = queue.Queue()
+## @brief Lock to ensure safe access to `frame_queue` between threads.
 frame_lock = threading.Lock()
-
-# Setting up buffers together with a lock for storing data for plotting 
-latest_point_cloud_raw = []
-latest_point_cloud_filtered = []
-latest_self_speed_raw = []
-latest_occupancy_grid = []
-latest_self_speed_filtered = []
-latest_dbscan_clusters = []
+## @brief Lock to synchronize access to processed data before plotting.
 processed_data_lock = threading.Lock()
+## @}
 
+## @defgroup Global variables
+## @brief Stores the latest raw point cloud data from the sensor.
+latest_point_cloud_raw = []
+## @brief Stores the latest point cloud data after filtering.
+latest_point_cloud_filtered = []
+## @brief Stores the latest unfiltered self-speed estimations.
+latest_self_speed_raw = []
+## @brief Stores the latest Kalman-filtered self-speed estimations.
+latest_self_speed_filtered = []
+## @brief Stores the most recent detected DBSCAN clusters.
+latest_dbscan_clusters = []
+## @brief Stores the latest occupancy grid representation of the environment.
+latest_occupancy_grid = []
+## @}
 
+## @defgroup threadFunctions Thread Functions
+## @brief Functions that run in separate threads to handle sensor data acquisition, processing, and monitoring.
+##
+## These functions are executed in parallel using Python's `threading` module.
+## Each function runs indefinitely in its own thread, ensuring real-time data handling.
+## 
+## @note These functions rely on global variables and require thread-safe mechanisms such as locks.
+## @{
 
-# Functions
+# Thread function definitions with @ingroup threadFunctions
+
+## @}
+
 def sensor_thread():
     """!
     Reads data from the UART from the mmWave sensor, detects frames using a predefined MAGIC WORD,
     and stores valid frames in a thread-safe queue for further processing.
 
-    @return Buffer with current frame obtained from the sensor.
-
+    @note This function runs indefinitely in a separate thread.
     @note Uses `frame_lock` to prevent race conditions when accessing global data.
+
+    @param in SENSOR_DATA_PORT  The UART port from which sensor data is read.
+    @param out frame_queue  Thread-safe queue where valid frames are stored.
+    @param inout buffer  Internal buffer that accumulates incoming bytes before processing.
+
+    @ingroup threadFunctions
     """
     ser = serial.Serial(SENSOR_DATA_PORT, 921600, timeout=1)
     magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
@@ -172,6 +208,9 @@ def processing_thread():
     - Estimates self-speed. 
     The processed data is then stored in shared global variables for visualization and further analysis.
 
+    @note This function runs indefinitely in a separate thread.
+    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+
     @param in latest_point_cloud_raw         Raw point cloud data from the sensor.
     @param in latest_point_cloud_filtered    Filtered point cloud after SNR, Z, and Phi filtering.
     @param in latest_self_speed_raw          Unfiltered self-speed estimation from the point cloud.
@@ -179,10 +218,10 @@ def processing_thread():
     @param in latest_dbscan_clusters         Clusters detected in the point cloud.
     @param in latest_occupancy_grid          Occupancy grid representation of the scene.
 
-    @return latest_dbscan_clusters         Updated with the clustered point cloud after processing.
-    @return latest_self_speed_filtered     Updated with the latest Kalman-filtered self-speed estimation.
+    @param out latest_dbscan_clusters         Updated with the clustered point cloud after processing.
+    @param out latest_self_speed_filtered     Updated with the latest Kalman-filtered self-speed estimation.
     
-    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+    @ingroup threadFunctions
     """
     global latest_point_cloud_raw, latest_point_cloud_filtered
     global latest_self_speed_raw, latest_self_speed_filtered
@@ -252,10 +291,13 @@ def data_monitor():
     global variables, displaying real-time updates. It runs as a monitoring thread
     and checks for potential obstacles within a predefined range and azimuth.
 
+    @note This function runs indefinitely in a separate thread.
+    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+
     @param in latest_dbscan_clusters      Dictionary containing the most recent detected radar clusters.
     @param in latest_self_speed_filtered  List storing the most recent Kalman-filtered self-speed estimations.
-    
-    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+
+    @ingroup threadFunctions
     """
 
     # Continuously prints the latest processed data, including self-speed estimation and cluster warnings.
@@ -300,11 +342,10 @@ def data_monitor():
                 detection_triggered = True  # Object detected
 
 
-        time.sleep(0.5)  # Print updates every 0.5 seconds
+        time.sleep(0.5)  # Printing updates every 0.5 seconds
 
-# -------------------------------
-# Start Threads
-# -------------------------------
+
+# Main program entry point
 if __name__ == "__main__":
     """! 
     Main program entry point.
@@ -329,7 +370,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=LOGGING_LEVEL)
 
 
-    # Send configuration commands to the radar sensor before starting the threads
+    # Sending the configuration commands to the radar sensor before starting the threads
     radarSensor.send_configuration(SENSOR_CONFIG_COMMANDS, SENSOR_CONFIG_PORT)
     
     # Starting all background threads
