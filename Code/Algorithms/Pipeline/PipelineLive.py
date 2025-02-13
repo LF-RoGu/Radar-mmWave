@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+"""! @brief Example Python program with Doxygen style comments."""
+##
+# @mainpage Pipeline 
+#
+# @section description_main Description
+# An example Python program demonstrating how to use Doxygen style comments for
+# generating source code documentation with Doxygen.
+#
+# @section notes_main Notes
+# - Add special project notes here that you want to communicate to the user.
+
 import serial
 import time
 import threading
@@ -6,6 +18,7 @@ from threading import Lock
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
+import warnings
 
 import dataDecoder
 from frameAggregator import FrameAggregator
@@ -191,10 +204,9 @@ def processing_thread():
                     self_speed_filtered = self_speed_kf.update(self_speed_raw)
 
                     #Filtering point cloud by Ve
-                    #point_cloud_ve_filtered = pointFilter.filter_by_speed(point_cloud_filtered, self_speed_filtered, 1.0)
                     point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
-                    point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 1.0)
-                    #print(len(point_cloud_filtered) - len(point_cloud_filtered))
+                    point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 0.5)
+                    #print(f"\n[!]Filtered points: {len(point_cloud_filtered) - len(point_cloud_ve_filtered)}")
 
                     # First Clustering Stage
                     point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
@@ -272,7 +284,6 @@ def data_monitor():
 # -------------------------------
 # Plotting Thread
 # -------------------------------
-import matplotlib.animation as animation
 
 def plotting_thread():
     global latest_point_cloud_raw, latest_point_cloud_filtered
@@ -340,6 +351,8 @@ def plotting_thread():
 # Start Threads
 # -------------------------------
 if __name__ == "__main__":
+    warnings.filterwarnings('ignore')
+
     send_configuration(SENSOR_CONFIG_PORT)
     
     threading.Thread(target=sensor_thread, daemon=True).start()
