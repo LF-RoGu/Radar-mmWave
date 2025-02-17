@@ -1,13 +1,24 @@
-#!/usr/bin/env python3
-"""! @brief Pipeline for object detection and prevention for static objects using mmWave sensor."""
-##
-# @mainpage PipelineLive
+"""""! 
+    @file PipelineLive.py
+    @brief Pipeline for real-time object detection and collision prevention using mmWave sensor.
+    @details This script processes radar sensor data to detect static obstacles, estimate velocity,
+    and trigger emergency braking when necessary.
+
+    @defgroup Pipeline_V2 Pipeline Live
+    @brief Real-time processing pipeline.
+    @{
+"""
+
+## @mainpage PipelineLive
 #
-# @section description_main This project aims to develop a real-time object detection and collision avoidance system using the IWR6843AOPEVM mmWave radar sensor. The system processes raw radar data to extract meaningful information about surroundings, estimate self-speed, detect obstacles, and trigger a braking mechanism when necessary.
-# 
+# @section description_main Description
+# This project aims to develop a real-time object detection and collision avoidance system
+# using the IWR6843AOPEVM mmWave radar sensor. The system processes raw radar data
+# to extract meaningful information about surroundings, estimate self-speed, detect obstacles,
+# and trigger a braking mechanism when necessary.
 #
 # @section notes_main Notes
-# - Add special project notes here that you want to communicate to the user.
+# - Add any special project notes here.
 #
 # @section authors_main Author(s)
 # - Luis Fernando Rodriguez Gutierrez
@@ -32,10 +43,12 @@ from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
 
-## Set logging level
-LOGGING_LEVEL = logging.DEBUG
+## @defgroup Global Constants
+## @{
 
-## Setting the distance (m) for the emergency brake to activate
+## @brief Set logging level
+LOGGING_LEVEL = logging.DEBUG
+## @brief Setting the distance (m) for the emergency brake to activate
 EMERGENCY_BRAKE_RANGE = 4
 
 ## @brief List of configuration commands for initializing the mmWave sensor.
@@ -75,9 +88,6 @@ SENSOR_CONFIG_COMMANDS = [
     "sensorStart"
 ]
 
-## @defgroup Global Constants
-## @{
-
 ## @brief UART port used for sensor configuration.
 ## @note CONFIG_PORT -> Enhanced Port
 SENSOR_CONFIG_PORT = "COM9"
@@ -111,7 +121,9 @@ KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 
 
 ## @defgroup Pipeline Constructors
+## @brief Initializes core objects for the pipeline.
 ## @{
+
 ## @brief Creates the frame aggregator to store past frames.
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 ## @brief Initializes the Kalman filter for self-speed estimation.
@@ -120,20 +132,22 @@ self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, me
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
 ## @brief Defines the second-stage DBSCAN clustering processor.
 cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
-## @}
+## @} # End of Pipeline Constructors
 
 
 ## @defgroup Thread locks
 ## @{
+
 ## @brief Queue for passing sensor data from the sensor thread to the processing thread.
 frame_queue = queue.Queue()
 ## @brief Lock to ensure safe access to `frame_queue` between threads.
 frame_lock = threading.Lock()
 ## @brief Lock to synchronize access to processed data before plotting.
 processed_data_lock = threading.Lock()
-## @}
+## @} # End of Thread locks
 
 ## @defgroup Global variables
+## @{
 ## @brief Stores the latest raw point cloud data from the sensor.
 latest_point_cloud_raw = []
 ## @brief Stores the latest point cloud data after filtering.
@@ -156,10 +170,6 @@ latest_occupancy_grid = []
 ## 
 ## @note These functions rely on global variables and require thread-safe mechanisms such as locks.
 ## @{
-
-# Thread function definitions with @ingroup threadFunctions
-
-## @}
 
 def sensor_thread():
     """!
@@ -202,10 +212,11 @@ def sensor_thread():
 def processing_thread():
     """!
     This function continuously retrieves sensor data frames using the following process:
-    - Obtain information from a shared queue.
-    - Decodes them.
-    - Applies filtering and clustering techniques.
-    - Estimates self-speed. 
+    - Decodes incoming frames into usable point clouds.
+    - Applies filtering to remove noise and irrelevant data.
+    - Estimates self-speed using Doppler velocity data.
+    - Uses DBSCAN clustering to group detected objects.
+    - Stores processed results in global variables for visualization.
     The processed data is then stored in shared global variables for visualization and further analysis.
 
     @note This function runs indefinitely in a separate thread.
@@ -381,3 +392,7 @@ if __name__ == "__main__":
     # Doing something
     while True:
         time.sleep(0.1)
+
+## @}
+
+## @}  # End of Pipeline_V2 group

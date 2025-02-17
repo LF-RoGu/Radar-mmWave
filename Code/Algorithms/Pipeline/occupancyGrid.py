@@ -1,3 +1,17 @@
+"""!
+@file occupancyGrid.py
+@brief Implements occupancy grid processing for radar-based mapping.
+
+@details This module provides tools for generating Cartesian and Polar occupancy grids
+from point cloud data, allowing real-time environment mapping. The occupancy grid
+provides spatial representation for detected objects, making it useful for
+navigation and collision avoidance applications.
+
+@defgroup Occupancy_Grid Occupancy Grid Processor
+@brief Provides functionality for creating occupancy grids from radar point clouds.
+@{
+"""
+
 import numpy as np
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
@@ -32,9 +46,24 @@ plt.show()
 
 # CLASS: OccupancyGridProcessor
 class OccupancyGridProcessor:
+    """!
+    @class OccupancyGridProcessor
+    @ingroup Occupancy_Grid
+    @brief Processes point cloud data into occupancy grids.
 
+    @details This class enables the transformation of point cloud data into occupancy grids
+    for both Cartesian and Polar coordinate systems. It includes customizable grid spacing,
+    density mapping, and visualization utilities.
+    """
     # FUNCTION: Initialize the grid processor with grid spacing
     def __init__(self, grid_spacing=0.5):
+        """!
+        @brief Initializes the occupancy grid processor.
+
+        @param in grid_spacing Spacing between grid cells (default: 0.5 meters).
+        
+        @ingroup Occupancy_Grid
+        """
         # Default spacing between grid cells
         self.grid_spacing = grid_spacing  
         # Auto-initialize colormap
@@ -42,6 +71,17 @@ class OccupancyGridProcessor:
 
     # FUNCTION: Calculate Cartesian Occupancy Grid
     def calculate_cartesian_grid(self, points, x_limits, y_limits):
+        """!
+        @brief Computes the Cartesian occupancy grid from point cloud data.
+        
+        @param in points Numpy array of shape (N, 2) or (N, 3) containing point cloud data.
+        @param in x_limits Tuple defining the X-axis bounds (min, max).
+        @param in y_limits Tuple defining the Y-axis bounds (min, max).
+
+        @return 2D numpy array representing the occupancy grid.
+        
+        @ingroup Occupancy_Grid
+        """
         # STEP 1: Calculate grid size
         x_bins = int((x_limits[1] - x_limits[0]) / self.grid_spacing)
         y_bins = int((y_limits[1] - y_limits[0]) / self.grid_spacing)
@@ -68,6 +108,18 @@ class OccupancyGridProcessor:
 
     # FUNCTION: Calculate Polar Occupancy Grid
     def calculate_polar_grid(self, points, range_max, range_bins, angle_bins):
+        """!
+        @brief Computes the Polar occupancy grid from point cloud data.
+        
+        @param in points Numpy array of shape (N, 2) or (N, 3) containing point cloud data.
+        @param in range_max Maximum range value for the grid.
+        @param in range_bins Number of bins in the range dimension.
+        @param in angle_bins Number of bins in the angular dimension.
+
+        @return 2D numpy array representing the occupancy grid in polar coordinates.
+        
+        @ingroup Occupancy_Grid
+        """
         # STEP 1: Initialize the polar grid
         polar_grid = np.zeros((range_bins, angle_bins))
 
@@ -95,6 +147,13 @@ class OccupancyGridProcessor:
 
     # FUNCTION: Create a Custom Colormap for Visualization
     def create_custom_colormap(self):
+        """!
+        @brief Creates a custom colormap for visualizing occupancy grid density.
+
+        @return Tuple containing the colormap and boundary normalization.
+        
+        @ingroup Occupancy_Grid
+        """
         # STEP 1: Define colors for different densities
         colors = [
             "white",      # Background (0 density)

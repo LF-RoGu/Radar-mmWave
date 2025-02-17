@@ -1,3 +1,16 @@
+"""!
+@file dbCluster.py
+@brief Implements DBSCAN clustering for radar point cloud data.
+
+@details This module applies the DBSCAN clustering algorithm to radar detections,
+computing cluster properties such as centroids, priorities, range, and azimuth.
+Clusters are classified based on size, and their properties are returned for further processing.
+
+@defgroup DB_Cluster
+@brief Performs DBSCAN clustering on radar point clouds.
+@{
+"""
+
 from sklearn.cluster import DBSCAN
 import numpy as np
 
@@ -7,11 +20,26 @@ import numpy as np
 # PURPOSE: Perform DBSCAN clustering and handle various input formats.
 # -------------------------------
 class ClusterProcessor:
+    """!
+    @class ClusterProcessor
+    @ingroup DB_Cluster
+    @brief Processes radar point clouds using DBSCAN clustering.
 
+    @details This class performs clustering on radar detections and computes key properties
+    such as centroid position, priority level, Doppler velocity, range, and azimuth angle.
+    """
     # -------------------------------
     # FUNCTION: Initialize the clustering processor with DBSCAN parameters
     # -------------------------------
     def __init__(self, eps=1.0, min_samples=6):
+        """!
+        @brief Initializes the clustering processor with DBSCAN parameters.
+        
+        @param in eps Maximum distance between samples for DBSCAN to consider them as neighbors.
+        @param in min_samples Minimum number of samples required to form a cluster.
+        
+        @ingroup DB_Cluster
+        """
         self.eps = eps  # Maximum distance between samples for DBSCAN
         self.min_samples = min_samples  # Minimum samples for core point
 
@@ -19,6 +47,15 @@ class ClusterProcessor:
     # FUNCTION: Calculate priority based on cluster size
     # -------------------------------
     def calculate_priority(self, cluster_size):
+        """!
+        @brief Determines the priority level of a cluster based on its size.
+
+        @param in cluster_size Number of points in the cluster.
+
+        @return Priority level (1 to 3, where 3 is the highest priority).
+        
+        @ingroup DB_Cluster
+        """
         if cluster_size >= 10:
             return 3  # High priority
         elif 5 <= cluster_size < 10:
@@ -31,12 +68,30 @@ class ClusterProcessor:
     # FUNCTION: Compute centroid of a cluster
     # -------------------------------
     def compute_centroid(self, points):
+        """!
+        @brief Computes the centroid of a cluster.
+        
+        @param in points Numpy array of shape (N, 3) representing the cluster points.
+
+        @return Numpy array representing the centroid.
+        
+        @ingroup DB_Cluster
+        """
         return np.mean(points, axis=0)
 
     # -------------------------------
     # FUNCTION: Compute range and azimuth of the centroid to the origin
     # -------------------------------
     def compute_range_and_azimuth(self, centroid):
+        """!
+        @brief Computes the range and azimuth angle of the centroid from the origin.
+
+        @param in centroid Numpy array representing the centroid of a cluster.
+
+        @return Tuple containing (range_to_origin, azimuth_to_origin).
+        
+        @ingroup DB_Cluster
+        """
         range_to_origin = np.linalg.norm(centroid[:2])  # X, Y plane distance
         azimuth_to_origin = np.degrees(np.arctan2(centroid[1], centroid[0]))  # Azimuth angle in degrees
         return range_to_origin, azimuth_to_origin
@@ -45,15 +100,16 @@ class ClusterProcessor:
     # FUNCTION: Perform DBSCAN clustering and compute cluster properties
     # -------------------------------
     def cluster_points(self, points):
-        """
-        Perform DBSCAN clustering on point cloud data.
+        """!
+        @brief Performs DBSCAN clustering on radar point cloud data.
 
-        Args:
-            points (list/dict or np.ndarray): Input point cloud data.
+        @param in points Numpy array of shape (N, 4) containing detected radar points.
 
-        Returns:
-            dict: Clusters with centroids, priorities, and points.
-            list: Range and azimuth for each cluster.
+        @return data type with:
+            - Dictionary of clusters (centroid, priority, points, doppler_avg).
+            - List of tuples (cluster_id, range_to_origin, azimuth_to_origin, cluster_points).
+        
+        @ingroup DB_Cluster
         """
         # STEP 1: Ensure points are in proper format
         if len(points) == 0:
@@ -97,3 +153,5 @@ class ClusterProcessor:
             cluster_range_azimuth.append((cluster_id, range_to_origin, azimuth_to_origin, cluster_points))
 
         return clusters, cluster_range_azimuth
+    
+## @}  # End of DB_Cluster group

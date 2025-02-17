@@ -1,3 +1,29 @@
+"""""! 
+    @file PipelineLiveRaspBerri.py
+    @brief Pipeline for real-time object detection and collision prevention using mmWave sensor.
+    @details This script processes radar sensor data to detect static obstacles, estimate velocity,
+    and trigger emergency braking when necessary.
+
+    @defgroup Pipeline_V3 Pipeline RaspBerri
+    @brief Optimized pipeline for Raspberry Pi.
+    @{
+"""
+
+## @mainpage PipelineLiveRaspBerri
+#
+# @section description_main Description
+# This project aims to develop a real-time object detection and collision avoidance system
+# using the IWR6843AOPEVM mmWave radar sensor. The system processes raw radar data
+# to extract meaningful information about surroundings, estimate self-speed, detect obstacles,
+# and trigger a braking mechanism when necessary.
+#
+# @section notes_main Notes
+# - Add any special project notes here.
+#
+# @section authors_main Author(s)
+# - Luis Fernando Rodriguez Gutierrez
+# - Leander Hackmann
+
 import serial
 import time
 import threading
@@ -352,3 +378,5 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(0.1)
+
+## @}  # End of Pipeline_V3 group

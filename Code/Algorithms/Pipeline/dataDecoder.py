@@ -1,12 +1,31 @@
-import os
+"""!
+@file dataDecoder.py
+@brief Decodes raw radar data frames into structured information.
+
+@details This module processes binary radar data by parsing frame headers, TLV headers,
+and extracting payloads to generate structured detections, heatmaps, and statistics.
+It supports parsing detected points, range profiles, Doppler heatmaps, and temperature statistics.
+
+@defgroup Data_Decoder Data Decoder
+@brief Parses and decodes radar sensor data frames.
+@{
+"""
+
 import pandas as pd
 import struct
-from datetime import datetime
 
-#Only decodeData should be visible to the outside
+# Only decodeData should be visible to the outside
 __all__ = ['decodeData']
 
 def parse_frame_header(raw_data):
+    """!
+    @brief Parses the frame header from raw radar data.
+    
+    @param in raw_data List of raw bytes representing the radar frame.
+    @return Dictionary containing parsed frame header fields.
+    
+    @ingroup Data_Decoder
+    """
     if len(raw_data) < 40:
         raise ValueError("Insufficient data for Frame Header")
 
@@ -27,6 +46,14 @@ def parse_frame_header(raw_data):
     }
 
 def parse_tlv_header(raw_data):
+    """!
+    @brief Parses the TLV header from raw radar data.
+
+    @param in raw_data List of raw bytes representing the radar frame.
+    @return Dictionary containing parsed TLV type and length.
+    
+    @ingroup Data_Decoder
+    """
     if len(raw_data) < 8:
         raise ValueError("Insufficient data for TLV Header")
 
@@ -37,6 +64,15 @@ def parse_tlv_header(raw_data):
     return {"TLV Type": tlv_type, "TLV Length": tlv_length}
 
 def parse_tlv_payload(tlv_header, raw_data):
+    """!
+    @brief Parses the payload of a TLV structure.
+    
+    @param in tlv_header Dictionary containing TLV Type and TLV Length.
+    @param in  raw_data List of raw bytes representing the remaining radar frame.
+    @return Dictionary containing parsed TLV data.
+    
+    @ingroup Data_Decoder
+    """
     tlv_type = tlv_header["TLV Type"]
     tlv_length = tlv_header["TLV Length"]
     payload_length = tlv_length
@@ -135,6 +171,14 @@ def parse_tlv_payload(tlv_header, raw_data):
 
 
 def dataToFrames(raw_frame):
+    """!
+    @brief Converts raw radar data into structured frames.
+
+    @param in raw_frame Raw byte sequence representing a single radar data frame.
+    @return List of structured frames containing decoded radar data.
+    
+    @ingroup Data_Decoder
+    """
     #Preparing a return list containing all frames
     decodedFrames = []
     raw_data_list = list(raw_frame)
@@ -174,6 +218,16 @@ def dataToFrames(raw_frame):
     return decodedFrames
 
 def decodeData(file_path):
+    """!
+    @brief Reads and decodes a radar data file.
+
+    @param in file_path Path to the CSV file containing raw radar data.
+    @return List of structured frames containing decoded radar data.
+    
+    @ingroup Data_Decoder
+    """
     csvData = pd.read_csv(file_path)
     decodedFrames = dataToFrames(csvData)
     return decodedFrames
+
+## @}  # End of Data_Decoder group
