@@ -155,9 +155,9 @@ latest_point_cloud_filtered = []
 ## @brief Stores the latest unfiltered self-speed estimations.
 latest_self_speed_raw = []
 ## @brief Stores the latest Kalman-filtered self-speed estimations.
-latest_self_speed_filtered = []
+latest_self_speed_filtered = 0
 ## @brief Stores the most recent detected DBSCAN clusters.
-latest_dbscan_clusters = []
+latest_dbscan_clusters = 0
 ## @brief Stores the latest occupancy grid representation of the environment.
 latest_occupancy_grid = []
 ## @}
@@ -291,7 +291,7 @@ def processing_thread():
                 # Thread-safe data update for plotting
                 with processed_data_lock:
                     latest_dbscan_clusters = clusters_stage2
-                    latest_self_speed_filtered.append(self_speed_filtered)
+                    latest_self_speed_filtered = self_speed_filtered
 
         except Exception as e:
             logging.error(f"Error decoding frame: {e}")
