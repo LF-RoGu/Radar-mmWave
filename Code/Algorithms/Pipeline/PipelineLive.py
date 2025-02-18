@@ -30,6 +30,7 @@ import threading
 import warnings
 import logging
 import numpy as np
+from gpiozero import DigitalOutputDevice
 
 # Local Imports
 from dataDecoderTI import DataDecoderTI
@@ -70,6 +71,9 @@ SENSOR_CONFIG_PORT_PC = "COM6"
 ## @note DATA_PORT   -> Standard Port
 SENSOR_DATA_PORT_PC = "COM7"
 
+## @brief Seting the GPIO-Pin of the braking signal on the embedded linux device
+PLATFORM_EMBEDDED_BRAKE_GPIO_PIN = 26
+
 ## @brief Number of past frames to store in the frame aggregator.
 ## 0 = only current frame, n = current frame + n previous frames
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
@@ -107,6 +111,9 @@ self_speed_kf = KalmanFilter(process_variance=KALMAN_FILTER_PROCESS_VARIANCE, me
 cluster_processor_stage1 = dbCluster.ClusterProcessor(eps=2.0, min_samples=2)
 ## @brief Defines the second-stage DBSCAN clustering processor.
 cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
+## @brief Defines a DigitalOutputDevice for the brake signal if on an embedded linux platform
+if PLATFORM_EMBEDDED:
+    brakeSignal = DigitalOutputDevice(PLATFORM_EMBEDDED_BRAKE_GPIO_PIN)
 ## @} # End of Pipeline Constructors
 
 
@@ -310,6 +317,9 @@ def braking_system():
         
         # Activating the brake and storing the timestamp for timeout if the brake is not already activated
         if brake_activation_trigger and not brake_activated:
+            if PLATFORM_EMBEDDED:
+                brakeSignal.on()
+            
             brake_activated = True
             brake_activated_timestamp = time.time()
             logging.warning("Brake is now activated")
@@ -317,6 +327,9 @@ def braking_system():
         
         # Deactivating the brake if it was activated and the timeout is already over
         if brake_activated and (time.time() - brake_activated_timestamp) >= EMERGENCY_BRAKE_TIMEOUT:
+            if PLATFORM_EMBEDDED:
+                brakeSignal.off()
+
             brake_activated = False
             brake_activated_timestamp = None
             logging.warning("Brake is now deactivated")
