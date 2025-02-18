@@ -25,17 +25,14 @@
 # - Leander Hackmann
 
 # Imports
-import serial
 import time
 import threading
-import queue
 import warnings
 import logging
 import numpy as np
 
 # Local Imports
-import radarSensor
-import dataDecoder
+from dataDecoderTI import DataDecoderTI
 from frameAggregator import FrameAggregator
 import pointFilter
 import selfSpeedEstimator
@@ -128,7 +125,8 @@ KALMAN_FILTER_MEASUREMENT_VARIANCE = 0.1
 ## @defgroup Pipeline Constructors
 ## @brief Initializes core objects for the pipeline.
 ## @{
-
+## @brief Creates the sensor object
+radarSensor = DataDecoderTI()
 ## @brief Creates the frame aggregator to store past frames.
 frame_aggregator = FrameAggregator(FRAME_AGGREGATOR_NUM_PAST_FRAMES)
 ## @brief Initializes the Kalman filter for self-speed estimation.
@@ -143,9 +141,9 @@ cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
 ## @defgroup Thread locks
 ## @{
 
-## @brief Queue for passing sensor data from the sensor thread to the processing thread.
-frame_queue = queue.Queue()
-## @brief Lock to ensure safe access to `frame_queue` between threads.
+## @brief List for passing sensor data from the sensor thread to the processing thread.
+frame_list = []
+## @brief Lock to ensure safe access to `frame_list` between threads.
 frame_lock = threading.Lock()
 ## @brief Lock to synchronize access to processed data before plotting.
 processed_data_lock = threading.Lock()
@@ -171,39 +169,35 @@ latest_dbscan_clusters = []
 def sensor_thread():
     """!
     Reads data from the UART from the mmWave sensor, detects frames using a predefined MAGIC WORD,
-    and stores valid frames in a thread-safe queue for further processing.
+    and stores valid frames in a thread-safe list for further processing.
 
     @note This function runs indefinitely in a separate thread.
     @note Uses `frame_lock` to prevent race conditions when accessing global data.
 
-    @param in SENSOR_DATA_PORT  The UART port from which sensor data is read.
-    @param out frame_queue  Thread-safe queue where valid frames are stored.
-    @param inout buffer  Internal buffer that accumulates incoming bytes before processing.
+    @param in radarSensor       The radar sensor object.
+    @param inout frame_lock     Lock for thread-safe access to 'frame_list'
+    @param out frame_list       List where valid frames are stored.
 
     @ingroup threadFunctions
     """
-    ser = serial.Serial(SENSOR_DATA_PORT, 921600, timeout=1)
-    magic_word = b'\x02\x01\x04\x03\x06\x05\x08\x07'
-    buffer = bytearray()
+    global radarSensor
+    global frame_list
+    global frame_lock
 
     while True:
-        if ser.in_waiting:
-            buffer.extend(ser.read(ser.in_waiting))
+        # Polling the IWR6843 sensor and getting the number of decoded frames
+        numFrames = radarSensor.pollIWR6843()
 
-            while magic_word in buffer:
-                start_idx = buffer.find(magic_word)
-                end_idx = buffer.find(magic_word, start_idx + 8)
+        # Continuing if there are no new frames
+        if numFrames == 0:
+            continue
 
-                if end_idx == -1:
-                    break
+        # Getting the new frames and deleting them from the sensor's internal buffer
+        newFrames = radarSensor.get_and_delete_decoded_frames(numFrames)
 
-                frame = buffer[start_idx:end_idx]
-
-                # Thread-safe write operation
-                with frame_lock:
-                    frame_queue.put(frame)
-
-                buffer = buffer[end_idx:]
+        # Appending the new frames to the global list of decoded frames in a thread-safe way
+        with frame_lock:
+            frame_list += newFrames
 
 
 def processing_thread():
@@ -213,45 +207,45 @@ def processing_thread():
     - Applies filtering to remove noise and irrelevant data.
     - Estimates self-speed using Doppler velocity data.
     - Uses DBSCAN clustering to group detected objects.
-    - Stores processed results in global variables for visualization.
-    The processed data is then stored in shared global variables for visualization and further analysis.
+    - Stores processed results in global variables for monitoring and processing.
+    The processed data is then stored in shared global variables for monitoring and further analysis.
 
     @note This function runs indefinitely in a separate thread.
-    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+    @note Uses `frame_lock` and `processed_data_lock` to prevent race conditions when accessing global data.
 
-    @param in latest_self_speed_filtered     Kalman-filtered self-speed estimation.
-    @param in latest_dbscan_clusters         Clusters detected in the point cloud.
+    @param inout frame_lock     Lock for thread-safe access to `frame_list`.
+    @param inout frame_list     List where valid frames are stored.
 
-    @param out latest_dbscan_clusters         Updated with the clustered point cloud after processing.
-    @param out latest_self_speed_filtered     Updated with the latest Kalman-filtered self-speed estimation.
+    @param inout processed_data_lock        Lock for thread-safe access to `latest_dbscan_clusters` and `latest_self_speed_filtered`
+    @param out latest_dbscan_clusters       Updated with the latest clusters after processing.
+    @param out latest_self_speed_filtered   Updated with the latest Kalman-filtered self-speed estimation.
     
     @ingroup threadFunctions
     """
+
+    global frame_lock
+    global frame_list
 
     global processed_data_lock
     global latest_self_speed_filtered
     global latest_dbscan_clusters
 
     while True:
-        frame = None
+        frames_to_process = []
 
-        # Trying to get the next frame from the queue; continuing if there was no new frame
-        try:
-            with frame_lock:
-                frame = frame_queue.get_nowait()
-        except:
-            continue
+        # Trying to get the all new frame from the list; continuing if there was no new frame
+        with frame_lock:
+            if len(frame_list) == 0:
+                continue
+
+            frames_to_process = frame_list
+            frame_list = []
         
         try:
-            # Converting the bytearray to a list for decoding
-            frame_list = list(frame)
-
-            # Decode the frame correctly
-            decoded_frames = dataDecoder.dataToFrames(frame_list)
-
-            for decoded in decoded_frames:
+            # Processing frame-by-frame
+            for frame in frames_to_process:
                 # Updating the frame aggregator
-                frame_aggregator.updateBuffer(decoded)
+                frame_aggregator.updateBuffer(frame)
 
                 # Getting the current point cloud from the frame aggregator
                 point_cloud = frame_aggregator.getPoints()
@@ -271,7 +265,6 @@ def processing_thread():
                 # Filtering point cloud by Ve
                 point_cloud_ve = veSpeedFilter.calculateVe(point_cloud_filtered)
                 point_cloud_ve_filtered = veSpeedFilter.filterPointsWithVe(point_cloud_ve, self_speed_filtered, 0.5)
-                # print(f"\n[!]Filtered points: {len(point_cloud_filtered) - len(point_cloud_ve_filtered)}")
 
                 # Clustering the points (stage 1)
                 point_cloud_clustering_stage1 = pointFilter.extract_points(point_cloud_ve_filtered)
@@ -299,18 +292,19 @@ def braking_system():
     @note This function runs indefinitely in a separate thread.
     @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
 
-    @param in latest_dbscan_clusters      Dictionary containing the most recent detected radar clusters.
-    @param in latest_self_speed_filtered  List storing the most recent Kalman-filtered self-speed estimations.
+    @param inout processed_data_lock        Lock for thread-safe access to `latest_dbscan_clusters` and `latest_self_speed_filtered`
+    @param in latest_dbscan_clusters        Dictionary containing the most recent detected radar clusters.
+    @param in latest_self_speed_filtered    List storing the most recent Kalman-filtered self-speed estimation.
 
     @ingroup threadFunctions
     """
 
+    global processed_data_lock
     global latest_dbscan_clusters
     global latest_self_speed_filtered
     
     brake_activated = False
     brake_activated_timestamp = None
-    
     while True:
         # Copying the most recent data thread-safe
         with processed_data_lock:
@@ -366,11 +360,16 @@ def data_monitor():
     @note This function runs indefinitely in a separate thread.
     @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
 
-    @param in latest_dbscan_clusters      Dictionary containing the most recent detected radar clusters.
-    @param in latest_self_speed_filtered  List storing the most recent Kalman-filtered self-speed estimations.
+    @param inout processed_data_lock        Lock for thread-safe access to `latest_dbscan_clusters` and `latest_self_speed_filtered`
+    @param in latest_dbscan_clusters        Dictionary containing the most recent detected radar clusters.
+    @param in latest_self_speed_filtered    List storing the most recent Kalman-filtered self-speed estimation.
 
     @ingroup threadFunctions
     """
+
+    global processed_data_lock
+    global latest_dbscan_clusters
+    global latest_self_speed_filtered
 
     # Continuously prints the latest processed data, including self-speed estimation and cluster warnings.
     offset = -90  # Adjusts the reference for azimuth
@@ -441,7 +440,7 @@ if __name__ == "__main__":
 
 
     # Sending the configuration commands to the radar sensor before starting the threads
-    radarSensor.send_configuration(SENSOR_CONFIG_COMMANDS, SENSOR_CONFIG_PORT)
+    radarSensor.initIWR6843(SENSOR_CONFIG_PORT, SENSOR_DATA_PORT, "profile_azim60_elev30_optimized.cfg")
     
     # Starting all background threads
     threading.Thread(target=sensor_thread, daemon=True).start()
