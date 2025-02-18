@@ -49,7 +49,13 @@ import dbCluster
 ## @brief Set logging level
 LOGGING_LEVEL = logging.DEBUG
 ## @brief Setting the distance (m) for the emergency brake to activate
-EMERGENCY_BRAKE_RANGE = 4
+EMERGENCY_BRAKE_RANGE = 3
+## @brief Setting the angle (+- from 0°) for the emergency brake to activate
+EMERGENCY_BRAKE_PHI = 10
+## @brief Setting the minimal self-speed (m/s) for the emergency brake to activate
+EMERGENCY_BRAKE_MIN_SELFSPEED = -0.75
+## @brief Setting the timeout (s) that needs to pass after an activation for the brake to be deactivated
+EMERGENCY_BRAKE_TIMEOUT = 5
 
 ## @brief List of configuration commands for initializing the mmWave sensor.
 ## This configuration commands is using the following presets:
@@ -147,18 +153,10 @@ processed_data_lock = threading.Lock()
 
 ## @defgroup Global variables
 ## @{
-## @brief Stores the latest raw point cloud data from the sensor.
-latest_point_cloud_raw = []
-## @brief Stores the latest point cloud data after filtering.
-latest_point_cloud_filtered = []
-## @brief Stores the latest unfiltered self-speed estimations.
-latest_self_speed_raw = []
-## @brief Stores the latest Kalman-filtered self-speed estimations.
-latest_self_speed_filtered = []
+## @brief Stores the latest Kalman-filtered self-speed estimation.
+latest_self_speed_filtered = 0
 ## @brief Stores the most recent detected DBSCAN clusters.
 latest_dbscan_clusters = []
-## @brief Stores the latest occupancy grid representation of the environment.
-latest_occupancy_grid = []
 ## @}
 
 ## @defgroup threadFunctions Thread Functions
@@ -221,21 +219,18 @@ def processing_thread():
     @note This function runs indefinitely in a separate thread.
     @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
 
-    @param in latest_point_cloud_raw         Raw point cloud data from the sensor.
-    @param in latest_point_cloud_filtered    Filtered point cloud after SNR, Z, and Phi filtering.
-    @param in latest_self_speed_raw          Unfiltered self-speed estimation from the point cloud.
     @param in latest_self_speed_filtered     Kalman-filtered self-speed estimation.
     @param in latest_dbscan_clusters         Clusters detected in the point cloud.
-    @param in latest_occupancy_grid          Occupancy grid representation of the scene.
 
     @param out latest_dbscan_clusters         Updated with the clustered point cloud after processing.
     @param out latest_self_speed_filtered     Updated with the latest Kalman-filtered self-speed estimation.
     
     @ingroup threadFunctions
     """
-    global latest_point_cloud_raw, latest_point_cloud_filtered
-    global latest_self_speed_raw, latest_self_speed_filtered
-    global latest_dbscan_clusters, latest_occupancy_grid
+
+    global processed_data_lock
+    global latest_self_speed_filtered
+    global latest_dbscan_clusters
 
     while True:
         frame = None
@@ -295,6 +290,73 @@ def processing_thread():
         except Exception as e:
             logging.error(f"Error decoding frame: {e}")
 
+def braking_system():
+    """!
+    This function retrieves self-speed estimations and clustered radar detections from shared
+    global variables, processes the clusters and initiates the braking event if needed.
+    After an initiated braking event, the brake is released.
+
+    @note This function runs indefinitely in a separate thread.
+    @note Uses `processed_data_lock` to prevent race conditions when accessing global data.
+
+    @param in latest_dbscan_clusters      Dictionary containing the most recent detected radar clusters.
+    @param in latest_self_speed_filtered  List storing the most recent Kalman-filtered self-speed estimations.
+
+    @ingroup threadFunctions
+    """
+
+    global latest_dbscan_clusters
+    global latest_self_speed_filtered
+    
+    brake_activated = False
+    brake_activated_timestamp = None
+    
+    while True:
+        # Copying the most recent data thread-safe
+        with processed_data_lock:
+            local_clusters = latest_dbscan_clusters.copy()
+            local_self_speed = latest_self_speed_filtered
+
+        # Continuing if there are no clusters
+        if not local_clusters:
+            continue
+
+        # Flag for storing if the brake needs to be activated    
+        brake_activation_trigger = False
+
+        # Iterating over all clusters to check if the brake needs to be activated
+        for cluster_id, cluster in local_clusters.items():
+            centroid = cluster.get('centroid', np.array([0, 0, 0]))
+            
+            # Calculating the distance to the cluster's centroid
+            r = np.linalg.norm(centroid[:2])
+            # Checking distance of the cluster's centroid and continuing if too far away
+            if r > EMERGENCY_BRAKE_RANGE:
+                continue
+            
+            # Calculating the angle to the cluster's centroid
+            phi = np.rad2deg(np.arctan(centroid[0]/centroid[1]))
+            # Checking if the cluster's centroid is inside the safety zone and if we are moving
+            if abs(phi) <= EMERGENCY_BRAKE_PHI and local_self_speed < EMERGENCY_BRAKE_MIN_SELFSPEED:
+                # Setting the brake activation trigger, logging and breaking out of the loop
+                brake_activation_trigger = True
+                break
+        
+        # Activating the brake and storing the timestamp for timeout if the brake is not already activated
+        if brake_activation_trigger and not brake_activated:
+            brake_activated = True
+            brake_activated_timestamp = time.time()
+            logging.warning("Brake is now activated")
+            continue
+        
+        # Deactivating the brake if it was activated and the timeout is already over
+        if brake_activated and (time.time() - brake_activated_timestamp) >= EMERGENCY_BRAKE_TIMEOUT:
+            brake_activated = False
+            brake_activated_timestamp = None
+            logging.warning("Brake is now deactivated")
+            continue
+
+
 def data_monitor():
     """!
     This function retrieves self-speed estimations and clustered radar detections from shared
@@ -317,11 +379,10 @@ def data_monitor():
         # Copying the most recent data thread-safe
         with processed_data_lock:
             local_clusters = latest_dbscan_clusters.copy()
-            local_self_speed = latest_self_speed_filtered.copy()
+            local_self_speed = latest_self_speed_filtered
 
         # Printing the latest self-speed estimation
-        if local_self_speed:
-            logging.debug(f"Self-Speed Estimation: {local_self_speed:.2f} m/s")
+        logging.debug(f"Self-Speed Estimation: {local_self_speed:.2f} m/s")
 
         # Sleeping if there are no new clusters
         if not local_clusters or len(local_clusters) == 0:
@@ -385,7 +446,8 @@ if __name__ == "__main__":
     # Starting all background threads
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
-    threading.Thread(target=data_monitor, daemon=True).start()
+    #threading.Thread(target=data_monitor, daemon=True).start()
+    threading.Thread(target=braking_system, daemon=True).start()
 
     # Doing something
     while True:
