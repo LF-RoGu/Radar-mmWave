@@ -42,7 +42,8 @@ import dbCluster
 
 ## @defgroup Global Constants
 ## @{
-
+## @brief Set platform (embedded device w Linux / Windows PC)
+PLATFORM_EMBEDDED = False
 ## @brief Set logging level
 LOGGING_LEVEL = logging.DEBUG
 ## @brief Setting the distance (m) for the emergency brake to activate
@@ -54,49 +55,20 @@ EMERGENCY_BRAKE_MIN_SELFSPEED = -0.75
 ## @brief Setting the timeout (s) that needs to pass after an activation for the brake to be deactivated
 EMERGENCY_BRAKE_TIMEOUT = 5
 
-## @brief List of configuration commands for initializing the mmWave sensor.
-## This configuration commands is using the following presets:
-## - 30 FPS
-## - 60° Azimuth
-## - 30° Elevation 
-SENSOR_CONFIG_COMMANDS = [
-    "sensorStop",
-    "flushCfg",
-    "dfeDataOutputMode 1",
-    "channelCfg 15 7 0",
-    "adcCfg 2 1",
-    "adcbufCfg -1 0 1 1 1",
-    "profileCfg 0 60 46 7 18.24 0 0 82.237 1 128 12499 0 0 158",
-    "chirpCfg 0 0 0 0 0 0 0 1",
-    "chirpCfg 1 1 0 0 0 0 0 2",
-    "frameCfg 0 1 128 0 33.333 1 0",
-    "lowPower 0 0",
-    "guiMonitor -1 1 0 0 0 0 0",
-    "cfarCfg -1 0 2 8 4 3 0 15 1",
-    "cfarCfg -1 1 0 8 4 4 1 15 1",
-    "multiObjBeamForming -1 1 0.5",
-    "clutterRemoval -1 0",
-    "calibDcRangeSig -1 0 -5 8 256",
-    "extendedMaxVelocity -1 0",
-    "lvdsStreamCfg -1 0 0 0",
-    "compRangeBiasAndRxChanPhase 0.0 1 0 -1 0 1 0 -1 0 1 0 -1 0 1 0 -1 0 1 0 -1 0 1 0 -1 0",
-    "measureRangeBiasAndRxChanPhase 0 1.5 0.2",
-    "CQRxSatMonitor 0 3 4 31 0",
-    "CQSigImgMonitor 0 63 4",
-    "analogMonitor 0 0",
-    "aoaFovCfg -1 -90 90 -90 90",
-    "cfarFovCfg -1 0 0 18.23",
-    "cfarFovCfg -1 1 -9.72 9.72",
-    "calibData 0 0 0",
-    "sensorStart"
-]
-
-## @brief UART port used for sensor configuration.
+## @brief Seting the sensor's config file filename
+SENSOR_CONFIG_FILE = "profile_azim60_elev30_optimized.cfg"
+## @brief UART port used for sensor configuration on the embedded linux device.
 ## @note CONFIG_PORT -> Enhanced Port
-SENSOR_CONFIG_PORT = "COM6"
-## @brief UART port used for receiving sensor data.
+SENSOR_CONFIG_PORT_EMBEDDED = "/dev/ttyUSB0"
+## @brief UART port used for receiving sensor data on the embedded linux device.
 ## @note DATA_PORT   -> Standard Port
-SENSOR_DATA_PORT = "COM7"
+SENSOR_DATA_PORT_EMBEDDED = "/dev/ttyUSB1"
+## @brief UART port used for sensor configuration on the Windows PC.
+## @note CONFIG_PORT -> Enhanced Port
+SENSOR_CONFIG_PORT_PC = "COM6"
+## @brief UART port used for receiving sensor data Windows PC.
+## @note DATA_PORT   -> Standard Port
+SENSOR_DATA_PORT_PC = "COM7"
 
 ## @brief Number of past frames to store in the frame aggregator.
 ## 0 = only current frame, n = current frame + n previous frames
@@ -440,13 +412,16 @@ if __name__ == "__main__":
 
 
     # Sending the configuration commands to the radar sensor before starting the threads
-    radarSensor.initIWR6843(SENSOR_CONFIG_PORT, SENSOR_DATA_PORT, "profile_azim60_elev30_optimized.cfg")
+    if PLATFORM_EMBEDDED:
+        radarSensor.initIWR6843(SENSOR_CONFIG_PORT_EMBEDDED, SENSOR_DATA_PORT_EMBEDDED, SENSOR_CONFIG_FILE)
+    else:
+        radarSensor.initIWR6843(SENSOR_CONFIG_PORT_PC, SENSOR_DATA_PORT_PC, SENSOR_CONFIG_FILE)
     
     # Starting all background threads
     threading.Thread(target=sensor_thread, daemon=True).start()
     threading.Thread(target=processing_thread, daemon=True).start()
-    #threading.Thread(target=data_monitor, daemon=True).start()
-    threading.Thread(target=braking_system, daemon=True).start()
+    threading.Thread(target=data_monitor, daemon=True).start()
+    #threading.Thread(target=braking_system, daemon=True).start()
 
     # Doing something
     while True:
