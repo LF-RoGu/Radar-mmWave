@@ -11,8 +11,6 @@ points across multiple frames to improve tracking performance.
 @{
 """
 
-import numpy as np
-
 ## @defgroup Frame_Aggregator Frame Aggregator
 ## @brief Manages frame buffering and point retrieval for radar processing.
 ## @{
