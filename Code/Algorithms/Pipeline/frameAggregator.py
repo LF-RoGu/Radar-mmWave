@@ -79,6 +79,6 @@ class FrameAggregator:
             points = points + self.frames[frm]["detectedPoints"]
         
         #Returning the list
-        return 
+        return points
     
 ## @}  # End of Frame_Aggregator group

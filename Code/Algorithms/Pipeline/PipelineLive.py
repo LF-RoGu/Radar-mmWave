@@ -90,14 +90,13 @@ SENSOR_CONFIG_COMMANDS = [
 
 ## @brief UART port used for sensor configuration.
 ## @note CONFIG_PORT -> Enhanced Port
-SENSOR_CONFIG_PORT = "COM9"
+SENSOR_CONFIG_PORT = "COM6"
 ## @brief UART port used for receiving sensor data.
 ## @note DATA_PORT   -> Standard Port
-SENSOR_DATA_PORT = "COM8"
+SENSOR_DATA_PORT = "COM7"
 
 ## @brief Number of past frames to store in the frame aggregator.
 ## 0 = only current frame, n = current frame + n previous frames
-FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 
 ## @brief Minimum SNR value required for a point to be considered valid.
@@ -155,9 +154,9 @@ latest_point_cloud_filtered = []
 ## @brief Stores the latest unfiltered self-speed estimations.
 latest_self_speed_raw = []
 ## @brief Stores the latest Kalman-filtered self-speed estimations.
-latest_self_speed_filtered = 0
+latest_self_speed_filtered = []
 ## @brief Stores the most recent detected DBSCAN clusters.
-latest_dbscan_clusters = 0
+latest_dbscan_clusters = []
 ## @brief Stores the latest occupancy grid representation of the environment.
 latest_occupancy_grid = []
 ## @}
@@ -322,11 +321,10 @@ def data_monitor():
 
         # Printing the latest self-speed estimation
         if local_self_speed:
-            latest_speed = local_self_speed[-1]  # Get the most recent self-speed estimation
-            logging.debug(f"Self-Speed Estimation: {latest_speed:.2f} m/s")
+            logging.debug(f"Self-Speed Estimation: {local_self_speed:.2f} m/s")
 
         # Sleeping if there are no new clusters
-        if len(local_clusters) == 0:
+        if not local_clusters or len(local_clusters) == 0:
             logging.debug("No clusters detected.")
             time.sleep(0.5)
             continue
