@@ -109,7 +109,7 @@ FRAME_AGGREGATOR_NUM_PAST_FRAMES = 9
 FILTER_SNR_MIN = 12
 
 ## @brief Minimum Z-coordinate threshold for filtering points (meters).
-FILTER_Z_MIN = -0.3
+FILTER_Z_MIN = 0.0
 ## @brief Maximum Z-coordinate threshold for filtering points (meters).
 FILTER_Z_MAX = 2.0
 
