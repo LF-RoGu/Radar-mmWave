@@ -40,6 +40,7 @@ import selfSpeedEstimator
 from kalmanFilter import KalmanFilter
 import veSpeedFilter
 import dbCluster
+from linearController import LinearSpeedController
 
 ## @defgroup Global Constants
 ## @{
@@ -114,6 +115,7 @@ cluster_processor_stage2 = dbCluster.ClusterProcessor(eps=1.0, min_samples=4)
 ## @brief Defines a DigitalOutputDevice for the brake signal if on an embedded linux platform
 if PLATFORM_EMBEDDED:
     brakeSignal = DigitalOutputDevice(PLATFORM_EMBEDDED_BRAKE_GPIO_PIN)
+    speedController = LinearSpeedController()
 ## @} # End of Pipeline Constructors
 
 
@@ -296,6 +298,8 @@ def braking_system():
 
         # Flag for storing if the brake needs to be activated    
         brake_activation_trigger = False
+        # Calculate current brake distance depending on the current self speed estimation.
+        speedController.stopping_distance(local_self_speed)
 
         # Iterating over all clusters to check if the brake needs to be activated
         for cluster_id, cluster in local_clusters.items():
@@ -304,7 +308,7 @@ def braking_system():
             # Calculating the distance to the cluster's centroid
             r = np.linalg.norm(centroid[:2])
             # Checking distance of the cluster's centroid and continuing if too far away
-            if r > EMERGENCY_BRAKE_RANGE:
+            if speedController.control(local_self_speed, r) is not 0:
                 continue
             
             # Calculating the angle to the cluster's centroid
