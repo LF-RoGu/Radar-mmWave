@@ -1,3 +1,29 @@
+"""""! 
+    @file Pipeline.py
+    @brief Pipeline for real-time object detection and collision prevention using mmWave sensor.
+    @details This script processes radar sensor data to detect static obstacles, estimate velocity,
+    and trigger emergency braking when necessary.
+
+    @defgroup Pipeline_V1 Pipeline v1
+    @brief Original pipeline implementation.
+    @{
+"""
+
+## @mainpage Pipeline
+#
+# @section description_main Description
+# This project aims to develop a real-time object detection and collision avoidance system
+# using the IWR6843AOPEVM mmWave radar sensor. The system processes raw radar data
+# to extract meaningful information about surroundings, estimate self-speed, detect obstacles,
+# and trigger a braking mechanism when necessary.
+#
+# @section notes_main Notes
+# - Add any special project notes here.
+#
+# @section authors_main Author(s)
+# - Luis Fernando Rodriguez Gutierrez
+# - Leander Hackmann
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -282,3 +308,5 @@ slider.on_changed(update_sim)
 ##Starting the simulation with the first frame and showing the plot
 update_sim(0)
 plt.show()
+
+## @}  # End of Pipeline_V1 group
