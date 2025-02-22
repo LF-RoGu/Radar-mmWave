@@ -139,13 +139,96 @@ def plot_occupancy_grid_cartesian(grid, ax, x_limits, y_limits, grid_spacing):
     ax.set_ylabel('Y [m]')
     ax.set_title("Occupancy Grid (Cartesian)")
 
+class BayesianOccupancyGrid:
+    """
+    Bayesian occupancy grid using log-odds representation.
+    This class updates occupancy probabilities based on radar detections over time.
+    """
+
+    def __init__(self, grid_size=(40, 30), resolution=0.5, x_limits=(-10, 10), y_limits=(0, 15),
+                 L_hit=0.9, L_miss=-0.7, L_min=-2.0, L_max=2.0, decay_factor=0.9):
+        """
+        Initializes the occupancy grid with Bayesian filtering.
+
+        :param grid_size: (tuple) Number of cells in (X, Y).
+        :param resolution: (float) Size of each grid cell in meters.
+        :param x_limits: (tuple) X-axis limits of the grid (min, max).
+        :param y_limits: (tuple) Y-axis limits of the grid (min, max).
+        :param L_hit: (float) Log-odds increase for occupied cells.
+        :param L_miss: (float) Log-odds decrease for free cells.
+        :param L_min: (float) Minimum log-odds value.
+        :param L_max: (float) Maximum log-odds value.
+        :param decay_factor: (float) Forgetting factor for old detections.
+        """
+        self.grid_size = grid_size
+        self.resolution = resolution
+        self.x_limits = x_limits  # <-- FIXED: Now properly stored
+        self.y_limits = y_limits  # <-- FIXED: Now properly stored
+        self.L_hit = L_hit
+        self.L_miss = L_miss
+        self.L_min = L_min
+        self.L_max = L_max
+        self.decay_factor = decay_factor
+
+        # Initialize occupancy grid in log-odds form
+        self.log_odds_grid = np.zeros(grid_size)
+
+    def world_to_grid(self, x, y):
+        """
+        Converts world coordinates (meters) to occupancy grid indices.
+        Adjusted for correct offset mapping.
+
+        :param x: X position in meters.
+        :param y: Y position in meters.
+        :return: (i, j) grid indices.
+        """
+        i = int((x - self.x_limits[0]) / self.resolution)  # X axis mapping
+        j = int((y - self.y_limits[0]) / self.resolution)  # Y axis mapping
+
+        # Ensure indices stay within the valid range
+        if 0 <= i < self.grid_size[0] and 0 <= j < self.grid_size[1]:
+            return i, j
+        return None  # Ignore points outside grid bounds
+
+    def update_grid(self, detections):
+        """
+        Updates the occupancy grid based on new radar detections.
+        :param detections: List of (X, Y) detections.
+        """
+        # Apply decay to remove old detections gradually
+        self.log_odds_grid *= self.decay_factor
+
+        for (x, y) in detections:
+            cell = self.world_to_grid(x, y)
+            if cell:
+                i, j = cell
+                # Increase log-odds if a detection is present
+                self.log_odds_grid[i, j] = np.clip(self.log_odds_grid[i, j] + self.L_hit, self.L_min, self.L_max)
+
+        # Convert log-odds to probability
+        prob_grid = 1 / (1 + np.exp(-self.log_odds_grid))
+        return prob_grid
+
+    def get_probability_grid(self):
+        """
+        Converts log-odds grid to probability representation.
+        :return: Probability grid.
+        """
+        return 1 / (1 + np.exp(-self.log_odds_grid))
+
+
+# Initialize the Bayesian occupancy grid
+occupancy_grid = BayesianOccupancyGrid(grid_size=(40, 30), resolution=0.5, x_limits=(-10, 10), y_limits=(0, 15))
+
 # Interactive slider-based visualization
 def plot_with_slider(frames_data, num_frames=10):
     fig = plt.figure(figsize=(18, 6))
     gs = GridSpec(1, 3, figure=fig)
+
     ax_cartesian = fig.add_subplot(gs[0, 0], projection='3d')
     ax_polar = fig.add_subplot(gs[0, 1], polar=True)
     ax_occupancy = fig.add_subplot(gs[0, 2])
+
     ax_slider = plt.axes([0.2, 0.01, 0.65, 0.03])
     slider = Slider(ax_slider, 'Frame', 1, len(frames_data) - num_frames + 1, valinit=1, valstep=1)
 
@@ -159,6 +242,7 @@ def plot_with_slider(frames_data, num_frames=10):
     def update(val):
         start_frame = int(slider.val)
         submap = aggregate_submap(frames_data, start_frame, num_frames)
+
         ax_cartesian.clear()
         ax_polar.clear()
         ax_occupancy.clear()
@@ -171,23 +255,40 @@ def plot_with_slider(frames_data, num_frames=10):
         clustersStage2, _ = cluster_points(points_stage1, eps=1.0, min_samples=6)
         points_stage2 = np.concatenate([cluster['points'] for cluster in clustersStage2.values()])
 
-        # Calculate Occupancy Grid using the final clustered points
-        occupancy_grid = calculate_occupancy_grid(points_stage2[:, :2], x_limits, y_limits, grid_spacing)
+        # Extract (X, Y) detections and update Bayesian grid
+        detections = [(p[0], p[1]) for p in points_stage2 if occupancy_grid.world_to_grid(p[0], p[1]) is not None]
 
-        # Plot using the second stage clusters
+        # Initialize prob_grid with prior probabilities before updating with detections
+        prob_grid = occupancy_grid.get_probability_grid()
+
+        # Update Bayesian Occupancy Grid only for valid grid positions
+        if detections:
+            prob_grid = occupancy_grid.update_grid(detections)
+
+        # Plot 3D Cartesian Clusters
         plot_clusters_cartesian(clustersStage2, ax_cartesian)
         plot_clusters_polar(clustersStage2, ax_polar, range_max, range_bins, angle_bins)
-        plot_occupancy_grid_cartesian(occupancy_grid, ax_occupancy, x_limits, y_limits, grid_spacing)
 
+        extent = [occupancy_grid.x_limits[0], occupancy_grid.x_limits[1], 
+                occupancy_grid.y_limits[0], occupancy_grid.y_limits[1]]
+
+        ax_occupancy.imshow(prob_grid.T, extent=extent, origin='lower', cmap="coolwarm", alpha=0.7)
+
+        ax_occupancy.set_xlabel('X [m]')
+        ax_occupancy.set_ylabel('Y [m]')
+        ax_occupancy.set_title("Bayesian Occupancy Grid (Probabilities)")
 
         ax_cartesian.set_xlim(-10, 10)
         ax_cartesian.set_ylim(0, 15)
         ax_cartesian.set_zlim(-0.5, 5)
         ax_cartesian.set_title("3D Cluster View")
+
         ax_polar.set_ylim(0, range_max)
         ax_occupancy.set_xlim(x_limits)
         ax_occupancy.set_ylim(y_limits)
+
         plt.draw()
+
 
     slider.on_changed(update)
     update(1)
