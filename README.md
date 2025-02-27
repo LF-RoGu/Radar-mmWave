@@ -8,18 +8,23 @@ This project aims to develop a real-time object detection and collision avoidanc
 ## Repository Structure
 
 - [Code](Code/): Contains algorithms created in python for testing.
-  - [Algorithms](Code/Algorithms):
+  - [Algorithms](Code/Algorithms): Multiple algorithms that where used, from testing, understanding and final implementations.
     - [ObjectDetectionRadarCompareData](Code/Algorithms/ObjectDetectionRadarCompareData.py)
-  - [Radar](Code/Radar):
+    - [Pipeline](Code/Algorithms/Pipeline/PipelineLive.py)
+  - [LocalSim](Code/LocalSim): Contains a simple code so the data collected from the sensor can be visualized and be used for debugging.
+    - [LocalVisualizer](Code/LocalSim/Pipeline.py)
+  - [Radar](Code/Radar): C++ code to be able to record data using the TI sensor and a computer.
     - [Radar](Code/Radar/Radar):
+  - [Modules](Code/Modules): Contains the final modules used for the live visualization of the project.
 - [Literature](Literature/): Contains literature resources.
-  - [Notes](Literature/Notes):
-  - [Radar](Literature/Radar):
-  - [PDFResources](Literature/PDFResources):
+  - [Notes](Literature/Notes): Contains information to understand the project and be able to replicate it.
+  - [PDFResources](Literature/PDFResources): Contains multiple sources that can be found also in the web, to understand better the project and subject in general.
   - [Doxygen](Literature/Doxygen/docs/html/index.html):
 - [Logs](Logs/): Contain logs captured in the vehicle.
   - [LogsPart1](Logs/LogsPart1):
   - [LogsPart2](Logs/LogsPart2):
+  - [LogsPart3](Logs/LogsPart3):
+  - [LogsPart4](Logs/LogsPart4):
   - [PlotLogs](Logs/PlotLogs):
 
 
