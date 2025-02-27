@@ -3,6 +3,14 @@
 
 ## Algorithms
 In this folder of the repository you are going to find different types of algorithms. From the code that will run in a raspberrypi, to codes that are used for debugging. In which a file is read to obtain the point cloud or any other relevant information from the sensor.
+## LocalSim
+In this folder is the files to be able to visualize the recorded data in the Logs folder. You will be able to visualize the data obtained in different formats to be able to understand the basic of data processing that is needed. For example:
+- Raw Point cloud.
+- Point cloud with physical filters.
+- Point cloud with velocity estimation filters.
+- Point cloud clustered (Density Based).
+- Vehicle velocity estimation.
+- Occupancy Grid.
 ## Modules
 In this folder of the repository you are going to find the submodules used for the project. This modules work in a class based system, as the goal is for this system to be closer to c++ using and easier to pass in the future.
 
