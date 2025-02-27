@@ -1,0 +1,3 @@
+<map id="ClusterProcessor" name="ClusterProcessor">
+<area shape="rect" id="Node000001" title="Processes radar point clouds using DBSCAN clustering." alt="" coords="5,5,117,75"/>
+</map>

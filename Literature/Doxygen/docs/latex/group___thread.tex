@@ -1,0 +1,24 @@
+\doxysection{locks}
+\hypertarget{group___thread}{}\label{group___thread}\index{locks@{locks}}
+
+
+\# End of Pipeline Constructors  
+
+
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{group___thread_gac77fbdbea8c6a8dfe58458f571ae4632}\label{group___thread_gac77fbdbea8c6a8dfe58458f571ae4632} 
+list {\bfseries Pipeline\+Live.\+frame\+\_\+list} = \mbox{[}$\,$\mbox{]}
+\begin{DoxyCompactList}\small\item\em List for passing sensor data from the sensor thread to the processing thread. \end{DoxyCompactList}\item 
+\Hypertarget{group___thread_ga85b63676acae97cb9db39535cf0cf585}\label{group___thread_ga85b63676acae97cb9db39535cf0cf585} 
+{\bfseries Pipeline\+Live.\+frame\+\_\+lock} = threading.\+Lock()
+\begin{DoxyCompactList}\small\item\em Lock to ensure safe access to {\ttfamily frame\+\_\+list} between threads. \end{DoxyCompactList}\item 
+\Hypertarget{group___thread_ga1f3e49a1668ff8e9077d3a081b23ff46}\label{group___thread_ga1f3e49a1668ff8e9077d3a081b23ff46} 
+{\bfseries Pipeline\+Live.\+processed\+\_\+data\+\_\+lock} = threading.\+Lock()
+\begin{DoxyCompactList}\small\item\em Lock to synchronize access to processed data before plotting. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\# End of Pipeline Constructors 
+

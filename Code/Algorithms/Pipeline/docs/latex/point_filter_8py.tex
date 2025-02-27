@@ -1,0 +1,36 @@
+\doxysection{point\+Filter.\+py File Reference}
+\hypertarget{point_filter_8py}{}\label{point_filter_8py}\index{pointFilter.py@{pointFilter.py}}
+
+
+Implements point cloud filtering based on various spatial and signal properties.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___point___filter_ga631579ff9c361f3f652a5f58c85b4a10}{point\+Filter.\+filter\+SNRmin}} (input\+Points, snr\+\_\+min)
+\begin{DoxyCompactList}\small\item\em Filters points based on minimum SNR value. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gaf543a20a1f51b77aa749d81eefc5ac53}{point\+Filter.\+filter\+CartesianX}} (input\+Points, x\+\_\+min, x\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian X coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga1df41a2eb8b21559a09279775eac5807}{point\+Filter.\+filter\+CartesianY}} (input\+Points, y\+\_\+min, y\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian Y coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga207c37b905681e4f8519bb5f5b30b14b}{point\+Filter.\+filter\+CartesianZ}} (input\+Points, z\+\_\+min, z\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian Z coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga674a056ed3c17e22b7d420136d3eeb14}{point\+Filter.\+filter\+Doppler}} (input\+Points, doppler\+\_\+min, doppler\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Doppler velocity range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gabe11f1088731ee9dfcea0a92e30a6948}{point\+Filter.\+filter\+SphericalR}} (input\+Points, r\+\_\+min, r\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on spherical radius range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gab6c94e32759ed941356126ae4a863770}{point\+Filter.\+filter\+Spherical\+Theta}} (input\+Points, theta\+\_\+min, theta\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on spherical elevation angle. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga50342d94538ddf6e154960bd664c36fc}{point\+Filter.\+filter\+Spherical\+Phi}} (input\+Points, phi\+\_\+min, phi\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on azimuth angle in spherical coordinates. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga0465407181880769690f2d4374b4a124}{point\+Filter.\+filter\+\_\+by\+\_\+speed}} (input\+Points, self\+\_\+speed, speed\+\_\+threshold)
+\begin{DoxyCompactList}\small\item\em Filters points based on relative speed threshold. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gad800f05da1e8d3287356fde0fa8d8cfb}{point\+Filter.\+extract\+\_\+points}} (data)
+\begin{DoxyCompactList}\small\item\em Extracts points from various dictionary formats and converts them to a Num\+Py array. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Implements point cloud filtering based on various spatial and signal properties. 
+
+This module provides functions to filter radar point clouds based on SNR, Cartesian coordinates, Doppler velocity, and spherical coordinates. It allows selective filtering to refine object detection and noise reduction for improved accuracy. 

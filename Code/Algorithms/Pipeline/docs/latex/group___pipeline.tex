@@ -1,0 +1,39 @@
+\doxysection{Constructors}
+\hypertarget{group___pipeline}{}\label{group___pipeline}\index{Constructors@{Constructors}}
+
+
+\# End of Constants  
+
+
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{group___pipeline_gacf1fd43a922ace8db140bba1b8f778d6}\label{group___pipeline_gacf1fd43a922ace8db140bba1b8f778d6} 
+{\bfseries Pipeline\+Live.\+radar\+Sensor} = Data\+Decoder\+TI()
+\item 
+\Hypertarget{group___pipeline_ga90aafabc509b099ed5aa047111afbdef}\label{group___pipeline_ga90aafabc509b099ed5aa047111afbdef} 
+{\bfseries Pipeline\+Live.\+frame\+\_\+aggregator} = Frame\+Aggregator(\mbox{\hyperlink{group___global_ga35da387797b66a2ceaa4b3f1fab76d85}{FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES}})
+\begin{DoxyCompactList}\small\item\em Creates the frame aggregator to store past frames. \end{DoxyCompactList}\item 
+\Hypertarget{group___pipeline_gad8585684e796411fd7e4de8162917fef}\label{group___pipeline_gad8585684e796411fd7e4de8162917fef} 
+{\bfseries Pipeline\+Live.\+self\+\_\+speed\+\_\+kf} = Kalman\+Filter(process\+\_\+variance=\mbox{\hyperlink{group___global_ga32ffeacd6d85852fafcf25695e4df1b1}{KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE}}, measurement\+\_\+variance=\mbox{\hyperlink{group___global_ga976e246765450fe0336baf960a4a2636}{KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE}})
+\begin{DoxyCompactList}\small\item\em Initializes the Kalman filter for self-\/speed estimation. \end{DoxyCompactList}\item 
+\Hypertarget{group___pipeline_ga5bcf2fea41ae67c4958fb4b2ab689304}\label{group___pipeline_ga5bcf2fea41ae67c4958fb4b2ab689304} 
+{\bfseries Pipeline\+Live.\+cluster\+\_\+processor\+\_\+stage1} = db\+Cluster.\+Cluster\+Processor(eps=2.\+0, min\+\_\+samples=2)
+\begin{DoxyCompactList}\small\item\em Defines the first-\/stage DBSCAN clustering processor. \end{DoxyCompactList}\item 
+\Hypertarget{group___pipeline_ga82013ff4a5075840940aef3871048c9f}\label{group___pipeline_ga82013ff4a5075840940aef3871048c9f} 
+{\bfseries Pipeline\+Live.\+cluster\+\_\+processor\+\_\+stage2} = db\+Cluster.\+Cluster\+Processor(eps=1.\+0, min\+\_\+samples=4)
+\begin{DoxyCompactList}\small\item\em Defines the second-\/stage DBSCAN clustering processor. \end{DoxyCompactList}\item 
+\Hypertarget{group___pipeline_ga55c7bd3d4e00a031d77d62997bdd926e}\label{group___pipeline_ga55c7bd3d4e00a031d77d62997bdd926e} 
+{\bfseries Pipeline\+Live.\+brake\+Signal} = Digital\+Output\+Device(\mbox{\hyperlink{group___global_gabd68192703bf8ef31e630e3048087d85}{PLATFORM\+\_\+\+EMBEDDED\+\_\+\+BRAKE\+\_\+\+GPIO\+\_\+\+PIN}})
+\begin{DoxyCompactList}\small\item\em Defines a Digital\+Output\+Device for the brake signal if on an embedded linux platform. \end{DoxyCompactList}\item 
+\Hypertarget{group___pipeline_ga040830ce848039fffccc01ebe1cab43d}\label{group___pipeline_ga040830ce848039fffccc01ebe1cab43d} 
+{\bfseries Pipeline\+Live.\+speed\+Controller} = Linear\+Speed\+Controller()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\# End of Constants 
+
+Initializes core objects for the pipeline.
+
+Creates the sensor object 

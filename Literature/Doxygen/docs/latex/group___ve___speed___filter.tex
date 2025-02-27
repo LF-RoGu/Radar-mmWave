@@ -1,0 +1,62 @@
+\doxysection{Velocity Filtering}
+\hypertarget{group___ve___speed___filter}{}\label{group___ve___speed___filter}\index{Velocity Filtering@{Velocity Filtering}}
+
+
+Provides functions for calculating and filtering effective velocity (Ve).  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___ve___speed___filter_ga31723a83e3aaf653e17baa580cf474f8}{ve\+Speed\+Filter.\+calculate\+Ve}} (point\+\_\+cloud)
+\begin{DoxyCompactList}\small\item\em Computes the effective velocity (Ve) of detected objects. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___ve___speed___filter_ga8434e9b2bccbb891aee658818f9a1fa8}{ve\+Speed\+Filter.\+filter\+Points\+With\+Ve}} (point\+\_\+cloud, self\+\_\+speed\+\_\+filtered, abs\+\_\+threshold)
+\begin{DoxyCompactList}\small\item\em Filters points based on effective velocity relative to self-\/speed. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Provides functions for calculating and filtering effective velocity (Ve). 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group___ve___speed___filter_ga31723a83e3aaf653e17baa580cf474f8}\label{group___ve___speed___filter_ga31723a83e3aaf653e17baa580cf474f8} 
+\index{Velocity Filtering@{Velocity Filtering}!calculateVe@{calculateVe}}
+\index{calculateVe@{calculateVe}!Velocity Filtering@{Velocity Filtering}}
+\doxysubsubsection{\texorpdfstring{calculateVe()}{calculateVe()}}
+{\footnotesize\ttfamily ve\+Speed\+Filter.\+calculate\+Ve (\begin{DoxyParamCaption}\item[{}]{point\+\_\+cloud }\end{DoxyParamCaption})}
+
+
+
+Computes the effective velocity (Ve) of detected objects. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & point\+\_\+cloud List of dictionaries containing detected radar points, each with {\ttfamily x}, {\ttfamily y}, and {\ttfamily doppler} values.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+List of points with computed {\ttfamily ve} values. 
+\end{DoxyReturn}
+\Hypertarget{group___ve___speed___filter_ga8434e9b2bccbb891aee658818f9a1fa8}\label{group___ve___speed___filter_ga8434e9b2bccbb891aee658818f9a1fa8} 
+\index{Velocity Filtering@{Velocity Filtering}!filterPointsWithVe@{filterPointsWithVe}}
+\index{filterPointsWithVe@{filterPointsWithVe}!Velocity Filtering@{Velocity Filtering}}
+\doxysubsubsection{\texorpdfstring{filterPointsWithVe()}{filterPointsWithVe()}}
+{\footnotesize\ttfamily ve\+Speed\+Filter.\+filter\+Points\+With\+Ve (\begin{DoxyParamCaption}\item[{}]{point\+\_\+cloud,  }\item[{}]{self\+\_\+speed\+\_\+filtered,  }\item[{}]{abs\+\_\+threshold }\end{DoxyParamCaption})}
+
+
+
+Filters points based on effective velocity relative to self-\/speed. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & point\+\_\+cloud List of dictionaries containing detected radar points, each with {\ttfamily ve} values. \\
+\hline
+{\em in} & self\+\_\+speed\+\_\+filtered Filtered self-\/speed estimation of the vehicle. \\
+\hline
+{\em in} & abs\+\_\+threshold Maximum allowable deviation from self-\/speed.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}

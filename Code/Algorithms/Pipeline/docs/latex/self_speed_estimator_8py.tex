@@ -1,0 +1,18 @@
+\doxysection{self\+Speed\+Estimator.\+py File Reference}
+\hypertarget{self_speed_estimator_8py}{}\label{self_speed_estimator_8py}\index{selfSpeedEstimator.py@{selfSpeedEstimator.py}}
+
+
+Estimates the vehicle\textquotesingle{}s self-\/speed based on radar Doppler measurements.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___self___speed___estimator_gaa4200a3b8a3e89795e589f0d0f4b1cb0}{self\+Speed\+Estimator.\+estimate\+\_\+self\+\_\+speed}} (point\+Cloud)
+\begin{DoxyCompactList}\small\item\em Estimates the vehicle\textquotesingle{}s self-\/speed using Doppler velocity data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Estimates the vehicle\textquotesingle{}s self-\/speed based on radar Doppler measurements. 
+
+This module processes radar point cloud data to estimate the vehicle\textquotesingle{}s self-\/speed by fitting a polynomial model to the Doppler velocities of detected objects. The method calculates the angle to each target and determines the self-\/speed using polynomial regression. 

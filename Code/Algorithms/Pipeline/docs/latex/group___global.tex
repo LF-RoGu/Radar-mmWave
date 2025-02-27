@@ -1,0 +1,143 @@
+\doxysection{Constants}
+\hypertarget{group___global}{}\label{group___global}\index{Constants@{Constants}}
+
+
+Set platform (embedded device w Linux / Windows PC)  
+
+
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{group___global_ga83a7506e14d7287ba8bd34665050b787}\label{group___global_ga83a7506e14d7287ba8bd34665050b787} 
+bool {\bfseries Pipeline\+Live.\+PLATFORM\+\_\+\+EMBEDDED} = False
+\item 
+\Hypertarget{group___global_ga1e41a52f56dd3f60f84ded2768e602e4}\label{group___global_ga1e41a52f56dd3f60f84ded2768e602e4} 
+{\bfseries Pipeline\+Live.\+LOGGING\+\_\+\+LEVEL} = logging.\+DEBUG
+\begin{DoxyCompactList}\small\item\em Set logging level. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_gabf7235c82d36257e053aeb3cfabf05be}\label{group___global_gabf7235c82d36257e053aeb3cfabf05be} 
+int {\bfseries Pipeline\+Live.\+EMERGENCY\+\_\+\+BRAKE\+\_\+\+RANGE} = 3
+\begin{DoxyCompactList}\small\item\em Setting the distance (m) for the emergency brake to activate. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga3be2b98dd5060a45829e58ff8e9125b2}\label{group___global_ga3be2b98dd5060a45829e58ff8e9125b2} 
+int {\bfseries Pipeline\+Live.\+EMERGENCY\+\_\+\+BRAKE\+\_\+\+PHI} = 10
+\begin{DoxyCompactList}\small\item\em Setting the angle (+-\/ from 0°) for the emergency brake to activate. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga058322b61175f0090096e3b5243ff57b}\label{group___global_ga058322b61175f0090096e3b5243ff57b} 
+float {\bfseries Pipeline\+Live.\+EMERGENCY\+\_\+\+BRAKE\+\_\+\+MIN\+\_\+\+SELFSPEED} = -\/0.\+75
+\begin{DoxyCompactList}\small\item\em Setting the minimal self-\/speed (m/s) for the emergency brake to activate. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_gaf96cd0af357c20035735197c2a0e8f39}\label{group___global_gaf96cd0af357c20035735197c2a0e8f39} 
+int {\bfseries Pipeline\+Live.\+EMERGENCY\+\_\+\+BRAKE\+\_\+\+TIMEOUT} = 5
+\begin{DoxyCompactList}\small\item\em Setting the timeout (s) that needs to pass after an activation for the brake to be deactivated. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga303d6354f909f3a03e0023b3e0b9c614}\label{group___global_ga303d6354f909f3a03e0023b3e0b9c614} 
+str {\bfseries Pipeline\+Live.\+SENSOR\+\_\+\+CONFIG\+\_\+\+FILE} = \"{}profile\+\_\+azim60\+\_\+elev30\+\_\+optimized.\+cfg\"{}
+\begin{DoxyCompactList}\small\item\em Seting the sensor\textquotesingle{}s config file filename. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_ga9cc28b346e5e0a9f449fd7312e900cab}{Pipeline\+Live.\+SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+EMBEDDED}} = \"{}/dev/tty\+USB0\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for sensor configuration on the embedded linux device. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_gad83e7edc94af8c503a23cb40d1014dd1}{Pipeline\+Live.\+SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+EMBEDDED}} = \"{}/dev/tty\+USB1\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for receiving sensor data on the embedded linux device. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_gae1a85ac6cf02562e5d2406c2683ec5bc}{Pipeline\+Live.\+SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+PC}} = \"{}COM6\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for sensor configuration on the Windows PC. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_ga901ed91157781625aef2cc7d3db6fd12}{Pipeline\+Live.\+SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+PC}} = \"{}COM7\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for receiving sensor data Windows PC. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_gabd68192703bf8ef31e630e3048087d85}\label{group___global_gabd68192703bf8ef31e630e3048087d85} 
+int {\bfseries Pipeline\+Live.\+PLATFORM\+\_\+\+EMBEDDED\+\_\+\+BRAKE\+\_\+\+GPIO\+\_\+\+PIN} = 26
+\begin{DoxyCompactList}\small\item\em Seting the GPIO-\/\+Pin of the braking signal on the embedded linux device. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group___global_ga35da387797b66a2ceaa4b3f1fab76d85}{Pipeline\+Live.\+FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES}} = 9
+\begin{DoxyCompactList}\small\item\em Number of past frames to store in the frame aggregator. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga3d175caa1e7f4dde4a28e6a310aac0d4}\label{group___global_ga3d175caa1e7f4dde4a28e6a310aac0d4} 
+int {\bfseries Pipeline\+Live.\+FILTER\+\_\+\+SNR\+\_\+\+MIN} = 12
+\begin{DoxyCompactList}\small\item\em Minimum SNR value required for a point to be considered valid. \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga8edfcbd9d6d2106dbf00cc42fb033d31}\label{group___global_ga8edfcbd9d6d2106dbf00cc42fb033d31} 
+float {\bfseries Pipeline\+Live.\+FILTER\+\_\+\+Z\+\_\+\+MIN} = 0.\+0
+\begin{DoxyCompactList}\small\item\em Minimum Z-\/coordinate threshold for filtering points (meters). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga36c42b2fd7da69e4f0f8f4e78289c149}\label{group___global_ga36c42b2fd7da69e4f0f8f4e78289c149} 
+float {\bfseries Pipeline\+Live.\+FILTER\+\_\+\+Z\+\_\+\+MAX} = 2.\+0
+\begin{DoxyCompactList}\small\item\em Maximum Z-\/coordinate threshold for filtering points (meters). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga3fbeaf3176830bdfba1435ecdf2d3072}\label{group___global_ga3fbeaf3176830bdfba1435ecdf2d3072} 
+int {\bfseries Pipeline\+Live.\+FILTER\+\_\+\+PHI\+\_\+\+MIN} = -\/85
+\begin{DoxyCompactList}\small\item\em Minimum Phi angle threshold for filtering points (degrees). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga96487fb83fa86fca00d3b974594f8776}\label{group___global_ga96487fb83fa86fca00d3b974594f8776} 
+int {\bfseries Pipeline\+Live.\+FILTER\+\_\+\+PHI\+\_\+\+MAX} = 85
+\begin{DoxyCompactList}\small\item\em Maximum Phi angle threshold for filtering points (degrees). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga32ffeacd6d85852fafcf25695e4df1b1}\label{group___global_ga32ffeacd6d85852fafcf25695e4df1b1} 
+float {\bfseries Pipeline\+Live.\+KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE} = 0.\+01
+\begin{DoxyCompactList}\small\item\em Process variance for the Kalman filter (affects smoothness of estimates). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga976e246765450fe0336baf960a4a2636}\label{group___global_ga976e246765450fe0336baf960a4a2636} 
+float {\bfseries Pipeline\+Live.\+KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE} = 0.\+1
+\begin{DoxyCompactList}\small\item\em Measurement variance for the Kalman filter (accounts for sensor noise). \end{DoxyCompactList}\item 
+\Hypertarget{group___global_ga2df8bc0e7cc7664d0e0419b63959a7f7}\label{group___global_ga2df8bc0e7cc7664d0e0419b63959a7f7} 
+int {\bfseries Pipeline\+Live.\+latest\+\_\+self\+\_\+speed\+\_\+filtered} = 0
+\item 
+\Hypertarget{group___global_ga955b60a2b7c442a2d89e4c5ce6bb8102}\label{group___global_ga955b60a2b7c442a2d89e4c5ce6bb8102} 
+list {\bfseries Pipeline\+Live.\+latest\+\_\+dbscan\+\_\+clusters} = \mbox{[}$\,$\mbox{]}
+\begin{DoxyCompactList}\small\item\em Stores the most recent detected DBSCAN clusters. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Set platform (embedded device w Linux / Windows PC) 
+
+\# End of Thread locks
+
+Stores the latest Kalman-\/filtered self-\/speed estimation. 
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{group___global_ga35da387797b66a2ceaa4b3f1fab76d85}\label{group___global_ga35da387797b66a2ceaa4b3f1fab76d85} 
+\index{Constants@{Constants}!FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES@{FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES}}
+\index{FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES@{FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES}!Constants@{Constants}}
+\doxysubsubsection{\texorpdfstring{FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES}{FRAME\_AGGREGATOR\_NUM\_PAST\_FRAMES}}
+{\footnotesize\ttfamily int Pipeline\+Live.\+FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES = 9}
+
+
+
+Number of past frames to store in the frame aggregator. 
+
+0 = only current frame, n = current frame + n previous frames \Hypertarget{group___global_ga9cc28b346e5e0a9f449fd7312e900cab}\label{group___global_ga9cc28b346e5e0a9f449fd7312e900cab} 
+\index{Constants@{Constants}!SENSOR\_CONFIG\_PORT\_EMBEDDED@{SENSOR\_CONFIG\_PORT\_EMBEDDED}}
+\index{SENSOR\_CONFIG\_PORT\_EMBEDDED@{SENSOR\_CONFIG\_PORT\_EMBEDDED}!Constants@{Constants}}
+\doxysubsubsection{\texorpdfstring{SENSOR\_CONFIG\_PORT\_EMBEDDED}{SENSOR\_CONFIG\_PORT\_EMBEDDED}}
+{\footnotesize\ttfamily str Pipeline\+Live.\+SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+EMBEDDED = \"{}/dev/tty\+USB0\"{}}
+
+
+
+UART port used for sensor configuration on the embedded linux device. 
+
+\begin{DoxyParagraph}{Note\+: CONFIG\+\_\+\+PORT -\/\texorpdfstring{$>$}{>} Enhanced Port}
+
+\end{DoxyParagraph}
+\Hypertarget{group___global_gae1a85ac6cf02562e5d2406c2683ec5bc}\label{group___global_gae1a85ac6cf02562e5d2406c2683ec5bc} 
+\index{Constants@{Constants}!SENSOR\_CONFIG\_PORT\_PC@{SENSOR\_CONFIG\_PORT\_PC}}
+\index{SENSOR\_CONFIG\_PORT\_PC@{SENSOR\_CONFIG\_PORT\_PC}!Constants@{Constants}}
+\doxysubsubsection{\texorpdfstring{SENSOR\_CONFIG\_PORT\_PC}{SENSOR\_CONFIG\_PORT\_PC}}
+{\footnotesize\ttfamily str Pipeline\+Live.\+SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+PC = \"{}COM6\"{}}
+
+
+
+UART port used for sensor configuration on the Windows PC. 
+
+\begin{DoxyParagraph}{Note\+: CONFIG\+\_\+\+PORT -\/\texorpdfstring{$>$}{>} Enhanced Port}
+
+\end{DoxyParagraph}
+\Hypertarget{group___global_gad83e7edc94af8c503a23cb40d1014dd1}\label{group___global_gad83e7edc94af8c503a23cb40d1014dd1} 
+\index{Constants@{Constants}!SENSOR\_DATA\_PORT\_EMBEDDED@{SENSOR\_DATA\_PORT\_EMBEDDED}}
+\index{SENSOR\_DATA\_PORT\_EMBEDDED@{SENSOR\_DATA\_PORT\_EMBEDDED}!Constants@{Constants}}
+\doxysubsubsection{\texorpdfstring{SENSOR\_DATA\_PORT\_EMBEDDED}{SENSOR\_DATA\_PORT\_EMBEDDED}}
+{\footnotesize\ttfamily str Pipeline\+Live.\+SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+EMBEDDED = \"{}/dev/tty\+USB1\"{}}
+
+
+
+UART port used for receiving sensor data on the embedded linux device. 
+
+\begin{DoxyParagraph}{Note\+: DATA\+\_\+\+PORT -\/\texorpdfstring{$>$}{>} Standard Port}
+
+\end{DoxyParagraph}
+\Hypertarget{group___global_ga901ed91157781625aef2cc7d3db6fd12}\label{group___global_ga901ed91157781625aef2cc7d3db6fd12} 
+\index{Constants@{Constants}!SENSOR\_DATA\_PORT\_PC@{SENSOR\_DATA\_PORT\_PC}}
+\index{SENSOR\_DATA\_PORT\_PC@{SENSOR\_DATA\_PORT\_PC}!Constants@{Constants}}
+\doxysubsubsection{\texorpdfstring{SENSOR\_DATA\_PORT\_PC}{SENSOR\_DATA\_PORT\_PC}}
+{\footnotesize\ttfamily str Pipeline\+Live.\+SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+PC = \"{}COM7\"{}}
+
+
+
+UART port used for receiving sensor data Windows PC. 
+
+\begin{DoxyParagraph}{Note\+: DATA\+\_\+\+PORT -\/\texorpdfstring{$>$}{>} Standard Port}
+
+\end{DoxyParagraph}

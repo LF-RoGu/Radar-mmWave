@@ -1,0 +1,20 @@
+\doxysection{ve\+Speed\+Filter.\+py File Reference}
+\hypertarget{ve_speed_filter_8py}{}\label{ve_speed_filter_8py}\index{veSpeedFilter.py@{veSpeedFilter.py}}
+
+
+Computes and filters effective velocity (Ve) for radar-\/detected objects.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___ve___speed___filter_ga31723a83e3aaf653e17baa580cf474f8}{ve\+Speed\+Filter.\+calculate\+Ve}} (point\+\_\+cloud)
+\begin{DoxyCompactList}\small\item\em Computes the effective velocity (Ve) of detected objects. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___ve___speed___filter_ga8434e9b2bccbb891aee658818f9a1fa8}{ve\+Speed\+Filter.\+filter\+Points\+With\+Ve}} (point\+\_\+cloud, self\+\_\+speed\+\_\+filtered, abs\+\_\+threshold)
+\begin{DoxyCompactList}\small\item\em Filters points based on effective velocity relative to self-\/speed. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Computes and filters effective velocity (Ve) for radar-\/detected objects. 
+
+This module calculates the effective velocity (Ve) of detected objects by using Doppler velocity and the object\textquotesingle{}s azimuth angle. It also filters points based on a threshold relative to the vehicle\textquotesingle{}s self-\/speed. 

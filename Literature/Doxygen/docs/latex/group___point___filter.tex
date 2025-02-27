@@ -1,0 +1,252 @@
+\doxysection{Point Cloud Filtering}
+\hypertarget{group___point___filter}{}\label{group___point___filter}\index{Point Cloud Filtering@{Point Cloud Filtering}}
+
+
+Provides filtering functions for radar point clouds.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___point___filter_ga631579ff9c361f3f652a5f58c85b4a10}{point\+Filter.\+filter\+SNRmin}} (input\+Points, snr\+\_\+min)
+\begin{DoxyCompactList}\small\item\em Filters points based on minimum SNR value. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gaf543a20a1f51b77aa749d81eefc5ac53}{point\+Filter.\+filter\+CartesianX}} (input\+Points, x\+\_\+min, x\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian X coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga1df41a2eb8b21559a09279775eac5807}{point\+Filter.\+filter\+CartesianY}} (input\+Points, y\+\_\+min, y\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian Y coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga207c37b905681e4f8519bb5f5b30b14b}{point\+Filter.\+filter\+CartesianZ}} (input\+Points, z\+\_\+min, z\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Cartesian Z coordinate range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga674a056ed3c17e22b7d420136d3eeb14}{point\+Filter.\+filter\+Doppler}} (input\+Points, doppler\+\_\+min, doppler\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on Doppler velocity range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gabe11f1088731ee9dfcea0a92e30a6948}{point\+Filter.\+filter\+SphericalR}} (input\+Points, r\+\_\+min, r\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on spherical radius range. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gab6c94e32759ed941356126ae4a863770}{point\+Filter.\+filter\+Spherical\+Theta}} (input\+Points, theta\+\_\+min, theta\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on spherical elevation angle. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga50342d94538ddf6e154960bd664c36fc}{point\+Filter.\+filter\+Spherical\+Phi}} (input\+Points, phi\+\_\+min, phi\+\_\+max)
+\begin{DoxyCompactList}\small\item\em Filters points based on azimuth angle in spherical coordinates. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_ga0465407181880769690f2d4374b4a124}{point\+Filter.\+filter\+\_\+by\+\_\+speed}} (input\+Points, self\+\_\+speed, speed\+\_\+threshold)
+\begin{DoxyCompactList}\small\item\em Filters points based on relative speed threshold. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group___point___filter_gad800f05da1e8d3287356fde0fa8d8cfb}{point\+Filter.\+extract\+\_\+points}} (data)
+\begin{DoxyCompactList}\small\item\em Extracts points from various dictionary formats and converts them to a Num\+Py array. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Provides filtering functions for radar point clouds. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group___point___filter_gad800f05da1e8d3287356fde0fa8d8cfb}\label{group___point___filter_gad800f05da1e8d3287356fde0fa8d8cfb} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!extract\_points@{extract\_points}}
+\index{extract\_points@{extract\_points}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{extract\_points()}{extract\_points()}}
+{\footnotesize\ttfamily point\+Filter.\+extract\+\_\+points (\begin{DoxyParamCaption}\item[{}]{data }\end{DoxyParamCaption})}
+
+
+
+Extracts points from various dictionary formats and converts them to a Num\+Py array. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & data Input data containing detected points.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+2D Num\+Py array with columns \mbox{[}x, y, z, doppler\mbox{]}. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga0465407181880769690f2d4374b4a124}\label{group___point___filter_ga0465407181880769690f2d4374b4a124} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filter\_by\_speed@{filter\_by\_speed}}
+\index{filter\_by\_speed@{filter\_by\_speed}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filter\_by\_speed()}{filter\_by\_speed()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+\_\+by\+\_\+speed (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{self\+\_\+speed,  }\item[{}]{speed\+\_\+threshold }\end{DoxyParamCaption})}
+
+
+
+Filters points based on relative speed threshold. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & self\+\_\+speed Estimated self-\/speed of the vehicle. \\
+\hline
+{\em in} & speed\+\_\+threshold Maximum allowable deviation from self-\/speed.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_gaf543a20a1f51b77aa749d81eefc5ac53}\label{group___point___filter_gaf543a20a1f51b77aa749d81eefc5ac53} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterCartesianX@{filterCartesianX}}
+\index{filterCartesianX@{filterCartesianX}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterCartesianX()}{filterCartesianX()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+CartesianX (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{x\+\_\+min,  }\item[{}]{x\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on Cartesian X coordinate range. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & x\+\_\+min Minimum X coordinate value. \\
+\hline
+{\em in} & x\+\_\+max Maximum X coordinate value.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga1df41a2eb8b21559a09279775eac5807}\label{group___point___filter_ga1df41a2eb8b21559a09279775eac5807} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterCartesianY@{filterCartesianY}}
+\index{filterCartesianY@{filterCartesianY}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterCartesianY()}{filterCartesianY()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+CartesianY (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{y\+\_\+min,  }\item[{}]{y\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on Cartesian Y coordinate range. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & y\+\_\+min Minimum Y coordinate value. \\
+\hline
+{\em in} & y\+\_\+max Maximum Y coordinate value.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga207c37b905681e4f8519bb5f5b30b14b}\label{group___point___filter_ga207c37b905681e4f8519bb5f5b30b14b} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterCartesianZ@{filterCartesianZ}}
+\index{filterCartesianZ@{filterCartesianZ}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterCartesianZ()}{filterCartesianZ()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+CartesianZ (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{z\+\_\+min,  }\item[{}]{z\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on Cartesian Z coordinate range. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & z\+\_\+min Minimum Z coordinate value. \\
+\hline
+{\em in} & z\+\_\+max Maximum Z coordinate value.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga674a056ed3c17e22b7d420136d3eeb14}\label{group___point___filter_ga674a056ed3c17e22b7d420136d3eeb14} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterDoppler@{filterDoppler}}
+\index{filterDoppler@{filterDoppler}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterDoppler()}{filterDoppler()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+Doppler (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{doppler\+\_\+min,  }\item[{}]{doppler\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on Doppler velocity range. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & doppler\+\_\+min Minimum Doppler velocity value. \\
+\hline
+{\em in} & doppler\+\_\+max Maximum Doppler velocity value.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga631579ff9c361f3f652a5f58c85b4a10}\label{group___point___filter_ga631579ff9c361f3f652a5f58c85b4a10} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterSNRmin@{filterSNRmin}}
+\index{filterSNRmin@{filterSNRmin}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterSNRmin()}{filterSNRmin()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+SNRmin (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{snr\+\_\+min }\end{DoxyParamCaption})}
+
+
+
+Filters points based on minimum SNR value. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & snr\+\_\+min Minimum SNR value for filtering.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_ga50342d94538ddf6e154960bd664c36fc}\label{group___point___filter_ga50342d94538ddf6e154960bd664c36fc} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterSphericalPhi@{filterSphericalPhi}}
+\index{filterSphericalPhi@{filterSphericalPhi}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterSphericalPhi()}{filterSphericalPhi()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+Spherical\+Phi (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{phi\+\_\+min,  }\item[{}]{phi\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on azimuth angle in spherical coordinates. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & phi\+\_\+min Minimum azimuth angle (degrees). \\
+\hline
+{\em in} & phi\+\_\+max Maximum azimuth angle (degrees).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_gabe11f1088731ee9dfcea0a92e30a6948}\label{group___point___filter_gabe11f1088731ee9dfcea0a92e30a6948} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterSphericalR@{filterSphericalR}}
+\index{filterSphericalR@{filterSphericalR}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterSphericalR()}{filterSphericalR()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+SphericalR (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{r\+\_\+min,  }\item[{}]{r\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on spherical radius range. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & r\+\_\+min Minimum radial distance. \\
+\hline
+{\em in} & r\+\_\+max Maximum radial distance.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}
+\Hypertarget{group___point___filter_gab6c94e32759ed941356126ae4a863770}\label{group___point___filter_gab6c94e32759ed941356126ae4a863770} 
+\index{Point Cloud Filtering@{Point Cloud Filtering}!filterSphericalTheta@{filterSphericalTheta}}
+\index{filterSphericalTheta@{filterSphericalTheta}!Point Cloud Filtering@{Point Cloud Filtering}}
+\doxysubsubsection{\texorpdfstring{filterSphericalTheta()}{filterSphericalTheta()}}
+{\footnotesize\ttfamily point\+Filter.\+filter\+Spherical\+Theta (\begin{DoxyParamCaption}\item[{}]{input\+Points,  }\item[{}]{theta\+\_\+min,  }\item[{}]{theta\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+Filters points based on spherical elevation angle. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & input\+Points List of dictionaries containing radar point data. \\
+\hline
+{\em in} & theta\+\_\+min Minimum elevation angle (degrees). \\
+\hline
+{\em in} & theta\+\_\+max Maximum elevation angle (degrees).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filtered list of points. 
+\end{DoxyReturn}

@@ -1,0 +1,38 @@
+\doxysection{Self-\/\+Speed Estimator}
+\hypertarget{group___self___speed___estimator}{}\label{group___self___speed___estimator}\index{Self-\/Speed Estimator@{Self-\/Speed Estimator}}
+
+
+Provides functionality for estimating vehicle speed using radar data.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___self___speed___estimator_gaa4200a3b8a3e89795e589f0d0f4b1cb0}{self\+Speed\+Estimator.\+estimate\+\_\+self\+\_\+speed}} (point\+Cloud)
+\begin{DoxyCompactList}\small\item\em Estimates the vehicle\textquotesingle{}s self-\/speed using Doppler velocity data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Provides functionality for estimating vehicle speed using radar data. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group___self___speed___estimator_gaa4200a3b8a3e89795e589f0d0f4b1cb0}\label{group___self___speed___estimator_gaa4200a3b8a3e89795e589f0d0f4b1cb0} 
+\index{Self-\/Speed Estimator@{Self-\/Speed Estimator}!estimate\_self\_speed@{estimate\_self\_speed}}
+\index{estimate\_self\_speed@{estimate\_self\_speed}!Self-\/Speed Estimator@{Self-\/Speed Estimator}}
+\doxysubsubsection{\texorpdfstring{estimate\_self\_speed()}{estimate\_self\_speed()}}
+{\footnotesize\ttfamily self\+Speed\+Estimator.\+estimate\+\_\+self\+\_\+speed (\begin{DoxyParamCaption}\item[{}]{point\+Cloud }\end{DoxyParamCaption})}
+
+
+
+Estimates the vehicle\textquotesingle{}s self-\/speed using Doppler velocity data. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & point\+Cloud List of dictionaries containing detected radar points, each with {\ttfamily x}, {\ttfamily y}, and {\ttfamily doppler} values.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Estimated self-\/speed based on polynomial regression. 
+\end{DoxyReturn}

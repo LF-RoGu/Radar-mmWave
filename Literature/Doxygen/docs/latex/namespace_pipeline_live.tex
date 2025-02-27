@@ -1,0 +1,100 @@
+\doxysection{Pipeline\+Live Namespace Reference}
+\hypertarget{namespace_pipeline_live}{}\label{namespace_pipeline_live}\index{PipelineLive@{PipelineLive}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group__thread_functions_gacf7b8fdab2835e759d9de6449f07ab38}{braking\+\_\+system}} ()
+\begin{DoxyCompactList}\small\item\em This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, processes the clusters and initiates the braking event if needed. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+bool {\bfseries PLATFORM\+\_\+\+EMBEDDED} = False
+\item 
+{\bfseries LOGGING\+\_\+\+LEVEL} = logging.\+DEBUG
+\begin{DoxyCompactList}\small\item\em Set logging level. \end{DoxyCompactList}\item 
+int {\bfseries EMERGENCY\+\_\+\+BRAKE\+\_\+\+RANGE} = 3
+\begin{DoxyCompactList}\small\item\em Setting the distance (m) for the emergency brake to activate. \end{DoxyCompactList}\item 
+int {\bfseries EMERGENCY\+\_\+\+BRAKE\+\_\+\+PHI} = 10
+\begin{DoxyCompactList}\small\item\em Setting the angle (+-\/ from 0°) for the emergency brake to activate. \end{DoxyCompactList}\item 
+float {\bfseries EMERGENCY\+\_\+\+BRAKE\+\_\+\+MIN\+\_\+\+SELFSPEED} = -\/0.\+75
+\begin{DoxyCompactList}\small\item\em Setting the minimal self-\/speed (m/s) for the emergency brake to activate. \end{DoxyCompactList}\item 
+int {\bfseries EMERGENCY\+\_\+\+BRAKE\+\_\+\+TIMEOUT} = 5
+\begin{DoxyCompactList}\small\item\em Setting the timeout (s) that needs to pass after an activation for the brake to be deactivated. \end{DoxyCompactList}\item 
+str {\bfseries SENSOR\+\_\+\+CONFIG\+\_\+\+FILE} = \"{}profile\+\_\+azim60\+\_\+elev30\+\_\+optimized.\+cfg\"{}
+\begin{DoxyCompactList}\small\item\em Seting the sensor\textquotesingle{}s config file filename. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_ga9cc28b346e5e0a9f449fd7312e900cab}{SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+EMBEDDED}} = \"{}/dev/tty\+USB0\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for sensor configuration on the embedded linux device. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_gad83e7edc94af8c503a23cb40d1014dd1}{SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+EMBEDDED}} = \"{}/dev/tty\+USB1\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for receiving sensor data on the embedded linux device. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_gae1a85ac6cf02562e5d2406c2683ec5bc}{SENSOR\+\_\+\+CONFIG\+\_\+\+PORT\+\_\+\+PC}} = \"{}COM6\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for sensor configuration on the Windows PC. \end{DoxyCompactList}\item 
+str \mbox{\hyperlink{group___global_ga901ed91157781625aef2cc7d3db6fd12}{SENSOR\+\_\+\+DATA\+\_\+\+PORT\+\_\+\+PC}} = \"{}COM7\"{}
+\begin{DoxyCompactList}\small\item\em UART port used for receiving sensor data Windows PC. \end{DoxyCompactList}\item 
+int {\bfseries PLATFORM\+\_\+\+EMBEDDED\+\_\+\+BRAKE\+\_\+\+GPIO\+\_\+\+PIN} = 26
+\begin{DoxyCompactList}\small\item\em Seting the GPIO-\/\+Pin of the braking signal on the embedded linux device. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group___global_ga35da387797b66a2ceaa4b3f1fab76d85}{FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES}} = 9
+\begin{DoxyCompactList}\small\item\em Number of past frames to store in the frame aggregator. \end{DoxyCompactList}\item 
+int {\bfseries FILTER\+\_\+\+SNR\+\_\+\+MIN} = 12
+\begin{DoxyCompactList}\small\item\em Minimum SNR value required for a point to be considered valid. \end{DoxyCompactList}\item 
+float {\bfseries FILTER\+\_\+\+Z\+\_\+\+MIN} = 0.\+0
+\begin{DoxyCompactList}\small\item\em Minimum Z-\/coordinate threshold for filtering points (meters). \end{DoxyCompactList}\item 
+float {\bfseries FILTER\+\_\+\+Z\+\_\+\+MAX} = 2.\+0
+\begin{DoxyCompactList}\small\item\em Maximum Z-\/coordinate threshold for filtering points (meters). \end{DoxyCompactList}\item 
+int {\bfseries FILTER\+\_\+\+PHI\+\_\+\+MIN} = -\/85
+\begin{DoxyCompactList}\small\item\em Minimum Phi angle threshold for filtering points (degrees). \end{DoxyCompactList}\item 
+int {\bfseries FILTER\+\_\+\+PHI\+\_\+\+MAX} = 85
+\begin{DoxyCompactList}\small\item\em Maximum Phi angle threshold for filtering points (degrees). \end{DoxyCompactList}\item 
+float {\bfseries KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE} = 0.\+01
+\begin{DoxyCompactList}\small\item\em Process variance for the Kalman filter (affects smoothness of estimates). \end{DoxyCompactList}\item 
+float {\bfseries KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE} = 0.\+1
+\begin{DoxyCompactList}\small\item\em Measurement variance for the Kalman filter (accounts for sensor noise). \end{DoxyCompactList}\item 
+{\bfseries radar\+Sensor} = Data\+Decoder\+TI()
+\item 
+{\bfseries frame\+\_\+aggregator} = Frame\+Aggregator(\mbox{\hyperlink{group___global_ga35da387797b66a2ceaa4b3f1fab76d85}{FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES}})
+\begin{DoxyCompactList}\small\item\em Creates the frame aggregator to store past frames. \end{DoxyCompactList}\item 
+{\bfseries self\+\_\+speed\+\_\+kf} = Kalman\+Filter(process\+\_\+variance=\mbox{\hyperlink{group___global_ga32ffeacd6d85852fafcf25695e4df1b1}{KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE}}, measurement\+\_\+variance=\mbox{\hyperlink{group___global_ga976e246765450fe0336baf960a4a2636}{KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE}})
+\begin{DoxyCompactList}\small\item\em Initializes the Kalman filter for self-\/speed estimation. \end{DoxyCompactList}\item 
+{\bfseries cluster\+\_\+processor\+\_\+stage1} = db\+Cluster.\+Cluster\+Processor(eps=2.\+0, min\+\_\+samples=2)
+\begin{DoxyCompactList}\small\item\em Defines the first-\/stage DBSCAN clustering processor. \end{DoxyCompactList}\item 
+{\bfseries cluster\+\_\+processor\+\_\+stage2} = db\+Cluster.\+Cluster\+Processor(eps=1.\+0, min\+\_\+samples=4)
+\begin{DoxyCompactList}\small\item\em Defines the second-\/stage DBSCAN clustering processor. \end{DoxyCompactList}\item 
+{\bfseries brake\+Signal} = Digital\+Output\+Device(\mbox{\hyperlink{group___global_gabd68192703bf8ef31e630e3048087d85}{PLATFORM\+\_\+\+EMBEDDED\+\_\+\+BRAKE\+\_\+\+GPIO\+\_\+\+PIN}})
+\begin{DoxyCompactList}\small\item\em Defines a Digital\+Output\+Device for the brake signal if on an embedded linux platform. \end{DoxyCompactList}\item 
+{\bfseries speed\+Controller} = Linear\+Speed\+Controller()
+\item 
+list {\bfseries frame\+\_\+list} = \mbox{[}$\,$\mbox{]}
+\begin{DoxyCompactList}\small\item\em List for passing sensor data from the sensor thread to the processing thread. \end{DoxyCompactList}\item 
+{\bfseries frame\+\_\+lock} = threading.\+Lock()
+\begin{DoxyCompactList}\small\item\em Lock to ensure safe access to {\ttfamily frame\+\_\+list} between threads. \end{DoxyCompactList}\item 
+{\bfseries processed\+\_\+data\+\_\+lock} = threading.\+Lock()
+\begin{DoxyCompactList}\small\item\em Lock to synchronize access to processed data before plotting. \end{DoxyCompactList}\item 
+int {\bfseries latest\+\_\+self\+\_\+speed\+\_\+filtered} = 0
+\item 
+list {\bfseries latest\+\_\+dbscan\+\_\+clusters} = \mbox{[}$\,$\mbox{]}
+\begin{DoxyCompactList}\small\item\em Stores the most recent detected DBSCAN clusters. \end{DoxyCompactList}\item 
+{\bfseries level}
+\item 
+{\bfseries target}
+\item 
+\mbox{\hyperlink{group__thread_functions_ga8b0daf98c1c10475afa3eba4d73fbeef}{sensor\+\_\+thread}} ()
+\begin{DoxyCompactList}\small\item\em Reads data from the UART from the mm\+Wave sensor, detects frames using a predefined MAGIC WORD, and stores valid frames in a thread-\/safe list for further processing. \end{DoxyCompactList}\item 
+{\bfseries daemon}
+\item 
+\mbox{\hyperlink{group__thread_functions_ga1d0e31d5a18664c8dbd057372b099f5d}{processing\+\_\+thread}} ()
+\begin{DoxyCompactList}\small\item\em This function continuously retrieves sensor data frames using the following process\+: \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group__thread_functions_gaa8dce8b7cb4d949816f339650119ab0d}{data\+\_\+monitor}} ()
+\begin{DoxyCompactList}\small\item\em This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, displaying real-\/time updates. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}""! 
+    @file PipelineLive.py
+    @brief Pipeline for real-time object detection and collision prevention using mmWave sensor.
+    @details This script processes radar sensor data to detect static obstacles, estimate velocity,
+    and trigger emergency braking when necessary.
+
+    @defgroup Pipeline_V2 Pipeline Live
+    @brief Real-time processing pipeline.
+    @{
+\end{DoxyVerb}
+ 

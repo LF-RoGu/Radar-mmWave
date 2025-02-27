@@ -1,0 +1,3 @@
+<map id="OccupancyGridProcessor" name="OccupancyGridProcessor">
+<area shape="rect" id="Node000001" title="Processes point cloud data into occupancy grids." alt="" coords="5,5,165,75"/>
+</map>

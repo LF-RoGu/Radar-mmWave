@@ -1,0 +1,42 @@
+\doxysection{Radar Sensor Communication}
+\hypertarget{group___radar___sensor}{}\label{group___radar___sensor}\index{Radar Sensor Communication@{Radar Sensor Communication}}
+
+
+Provides functions for configuring and communicating with the radar sensor.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group___radar___sensor_ga472e05efb5b013f856d7b14a5a25927b}{radar\+Sensor.\+send\+\_\+configuration}} (configuration\+\_\+commands, configuration\+\_\+port, baudrate=115200)
+\begin{DoxyCompactList}\small\item\em Configures the IWR6843 radar sensor via UART. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Provides functions for configuring and communicating with the radar sensor. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group___radar___sensor_ga472e05efb5b013f856d7b14a5a25927b}\label{group___radar___sensor_ga472e05efb5b013f856d7b14a5a25927b} 
+\index{Radar Sensor Communication@{Radar Sensor Communication}!send\_configuration@{send\_configuration}}
+\index{send\_configuration@{send\_configuration}!Radar Sensor Communication@{Radar Sensor Communication}}
+\doxysubsubsection{\texorpdfstring{send\_configuration()}{send\_configuration()}}
+{\footnotesize\ttfamily radar\+Sensor.\+send\+\_\+configuration (\begin{DoxyParamCaption}\item[{}]{configuration\+\_\+commands,  }\item[{}]{configuration\+\_\+port,  }\item[{}]{baudrate = {\ttfamily 115200} }\end{DoxyParamCaption})}
+
+
+
+Configures the IWR6843 radar sensor via UART. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & configuration\+\_\+commands List of commands to initialize the sensor. \\
+\hline
+{\em in} & configuration\+\_\+port COM-\/\+Port for sending the commands to the sensor. \\
+\hline
+{\em in} & baudrate Baudrate used for communicating with the configuration COM-\/\+Port (standard 115200).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+None 
+\end{DoxyReturn}

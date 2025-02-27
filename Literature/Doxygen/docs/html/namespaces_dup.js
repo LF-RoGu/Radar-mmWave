@@ -1,0 +1,37 @@
+var namespaces_dup =
+[
+    [ "PipelineLive", "namespace_pipeline_live.html", [
+      [ "braking_system", "group__thread_functions.html#gacf7b8fdab2835e759d9de6449f07ab38", null ],
+      [ "brakeSignal", "group___pipeline.html#ga55c7bd3d4e00a031d77d62997bdd926e", null ],
+      [ "cluster_processor_stage1", "group___pipeline.html#ga5bcf2fea41ae67c4958fb4b2ab689304", null ],
+      [ "cluster_processor_stage2", "group___pipeline.html#ga82013ff4a5075840940aef3871048c9f", null ],
+      [ "data_monitor", "group__thread_functions.html#gaa8dce8b7cb4d949816f339650119ab0d", null ],
+      [ "EMERGENCY_BRAKE_MIN_SELFSPEED", "group___global.html#ga058322b61175f0090096e3b5243ff57b", null ],
+      [ "EMERGENCY_BRAKE_PHI", "group___global.html#ga3be2b98dd5060a45829e58ff8e9125b2", null ],
+      [ "EMERGENCY_BRAKE_RANGE", "group___global.html#gabf7235c82d36257e053aeb3cfabf05be", null ],
+      [ "EMERGENCY_BRAKE_TIMEOUT", "group___global.html#gaf96cd0af357c20035735197c2a0e8f39", null ],
+      [ "FILTER_PHI_MAX", "group___global.html#ga96487fb83fa86fca00d3b974594f8776", null ],
+      [ "FILTER_PHI_MIN", "group___global.html#ga3fbeaf3176830bdfba1435ecdf2d3072", null ],
+      [ "FILTER_SNR_MIN", "group___global.html#ga3d175caa1e7f4dde4a28e6a310aac0d4", null ],
+      [ "FILTER_Z_MAX", "group___global.html#ga36c42b2fd7da69e4f0f8f4e78289c149", null ],
+      [ "FILTER_Z_MIN", "group___global.html#ga8edfcbd9d6d2106dbf00cc42fb033d31", null ],
+      [ "frame_aggregator", "group___pipeline.html#ga90aafabc509b099ed5aa047111afbdef", null ],
+      [ "FRAME_AGGREGATOR_NUM_PAST_FRAMES", "group___global.html#ga35da387797b66a2ceaa4b3f1fab76d85", null ],
+      [ "frame_list", "group___thread.html#gac77fbdbea8c6a8dfe58458f571ae4632", null ],
+      [ "frame_lock", "group___thread.html#ga85b63676acae97cb9db39535cf0cf585", null ],
+      [ "KALMAN_FILTER_MEASUREMENT_VARIANCE", "group___global.html#ga976e246765450fe0336baf960a4a2636", null ],
+      [ "KALMAN_FILTER_PROCESS_VARIANCE", "group___global.html#ga32ffeacd6d85852fafcf25695e4df1b1", null ],
+      [ "latest_dbscan_clusters", "group___global.html#ga955b60a2b7c442a2d89e4c5ce6bb8102", null ],
+      [ "LOGGING_LEVEL", "group___global.html#ga1e41a52f56dd3f60f84ded2768e602e4", null ],
+      [ "PLATFORM_EMBEDDED_BRAKE_GPIO_PIN", "group___global.html#gabd68192703bf8ef31e630e3048087d85", null ],
+      [ "processed_data_lock", "group___thread.html#ga1f3e49a1668ff8e9077d3a081b23ff46", null ],
+      [ "processing_thread", "group__thread_functions.html#ga1d0e31d5a18664c8dbd057372b099f5d", null ],
+      [ "self_speed_kf", "group___pipeline.html#gad8585684e796411fd7e4de8162917fef", null ],
+      [ "SENSOR_CONFIG_FILE", "group___global.html#ga303d6354f909f3a03e0023b3e0b9c614", null ],
+      [ "SENSOR_CONFIG_PORT_EMBEDDED", "group___global.html#ga9cc28b346e5e0a9f449fd7312e900cab", null ],
+      [ "SENSOR_CONFIG_PORT_PC", "group___global.html#gae1a85ac6cf02562e5d2406c2683ec5bc", null ],
+      [ "SENSOR_DATA_PORT_EMBEDDED", "group___global.html#gad83e7edc94af8c503a23cb40d1014dd1", null ],
+      [ "SENSOR_DATA_PORT_PC", "group___global.html#ga901ed91157781625aef2cc7d3db6fd12", null ],
+      [ "sensor_thread", "group__thread_functions.html#ga8b0daf98c1c10475afa3eba4d73fbeef", null ]
+    ] ]
+];

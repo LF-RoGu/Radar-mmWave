@@ -1,0 +1,163 @@
+\doxysection{Thread Functions}
+\hypertarget{group__thread_functions}{}\label{group__thread_functions}\index{Thread Functions@{Thread Functions}}
+
+
+Functions that run in separate threads to handle sensor data acquisition, processing, and monitoring.  
+
+
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{group__thread_functions_gacf7b8fdab2835e759d9de6449f07ab38}{Pipeline\+Live.\+braking\+\_\+system}} ()
+\begin{DoxyCompactList}\small\item\em This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, processes the clusters and initiates the braking event if needed. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{group__thread_functions_ga5a14bbf5c30104cf9e5b1b7ba627a3f8}\label{group__thread_functions_ga5a14bbf5c30104cf9e5b1b7ba627a3f8} 
+{\bfseries Pipeline\+Live.\+level}
+\item 
+\Hypertarget{group__thread_functions_gaa02d7ca5b61b82f7f7d7d2668b739a1a}\label{group__thread_functions_gaa02d7ca5b61b82f7f7d7d2668b739a1a} 
+{\bfseries Pipeline\+Live.\+target}
+\item 
+\mbox{\hyperlink{group__thread_functions_ga8b0daf98c1c10475afa3eba4d73fbeef}{Pipeline\+Live.\+sensor\+\_\+thread}} ()
+\begin{DoxyCompactList}\small\item\em Reads data from the UART from the mm\+Wave sensor, detects frames using a predefined MAGIC WORD, and stores valid frames in a thread-\/safe list for further processing. \end{DoxyCompactList}\item 
+\Hypertarget{group__thread_functions_ga659fb3f3421e365a3e4136383d7baea1}\label{group__thread_functions_ga659fb3f3421e365a3e4136383d7baea1} 
+{\bfseries Pipeline\+Live.\+daemon}
+\item 
+\mbox{\hyperlink{group__thread_functions_ga1d0e31d5a18664c8dbd057372b099f5d}{Pipeline\+Live.\+processing\+\_\+thread}} ()
+\begin{DoxyCompactList}\small\item\em This function continuously retrieves sensor data frames using the following process\+: \end{DoxyCompactList}\item 
+\mbox{\hyperlink{group__thread_functions_gaa8dce8b7cb4d949816f339650119ab0d}{Pipeline\+Live.\+data\+\_\+monitor}} ()
+\begin{DoxyCompactList}\small\item\em This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, displaying real-\/time updates. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions that run in separate threads to handle sensor data acquisition, processing, and monitoring. 
+
+These functions are executed in parallel using Python\textquotesingle{}s {\ttfamily threading} module. Each function runs indefinitely in its own thread, ensuring real-\/time data handling.
+
+\begin{DoxyParagraph}{Note\+: These functions rely on global variables and require thread-\/safe mechanisms such as locks.}
+
+\end{DoxyParagraph}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__thread_functions_gacf7b8fdab2835e759d9de6449f07ab38}\label{group__thread_functions_gacf7b8fdab2835e759d9de6449f07ab38} 
+\index{Thread Functions@{Thread Functions}!braking\_system@{braking\_system}}
+\index{braking\_system@{braking\_system}!Thread Functions@{Thread Functions}}
+\doxysubsubsection{\texorpdfstring{braking\_system()}{braking\_system()}}
+{\footnotesize\ttfamily Pipeline\+Live.\+braking\+\_\+system (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, processes the clusters and initiates the braking event if needed. 
+
+After an initiated braking event, the brake is released.
+
+\begin{DoxyParagraph}{Note\+: This function runs indefinitely in a separate thread.}
+
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Note\+: Uses {\ttfamily processed\+\_\+data\+\_\+lock} to prevent race conditions when accessing global data.}
+
+\end{DoxyParagraph}
+
+\begin{DoxyParams}{Parameters}
+{\em inout} & processed\+\_\+data\+\_\+lock Lock for thread-\/safe access to {\ttfamily latest\+\_\+dbscan\+\_\+clusters} and {\ttfamily latest\+\_\+self\+\_\+speed\+\_\+filtered} \\
+\hline
+{\em in} & latest\+\_\+dbscan\+\_\+clusters Dictionary containing the most recent detected radar clusters. \\
+\hline
+{\em in} & latest\+\_\+self\+\_\+speed\+\_\+filtered List storing the most recent Kalman-\/filtered self-\/speed estimation. \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{group__thread_functions_gaa8dce8b7cb4d949816f339650119ab0d}\label{group__thread_functions_gaa8dce8b7cb4d949816f339650119ab0d} 
+\index{Thread Functions@{Thread Functions}!data\_monitor@{data\_monitor}}
+\index{data\_monitor@{data\_monitor}!Thread Functions@{Thread Functions}}
+\doxysubsubsection{\texorpdfstring{data\_monitor}{data\_monitor}}
+{\footnotesize\ttfamily Pipeline\+Live.\+data\+\_\+monitor (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+This function retrieves self-\/speed estimations and clustered radar detections from shared global variables, displaying real-\/time updates. 
+
+It runs as a monitoring thread and checks for potential obstacles within a predefined range and azimuth.
+
+\begin{DoxyParagraph}{Note\+: This function runs indefinitely in a separate thread.}
+
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Note\+: Uses {\ttfamily processed\+\_\+data\+\_\+lock} to prevent race conditions when accessing global data.}
+
+\end{DoxyParagraph}
+
+\begin{DoxyParams}{Parameters}
+{\em inout} & processed\+\_\+data\+\_\+lock Lock for thread-\/safe access to {\ttfamily latest\+\_\+dbscan\+\_\+clusters} and {\ttfamily latest\+\_\+self\+\_\+speed\+\_\+filtered} \\
+\hline
+{\em in} & latest\+\_\+dbscan\+\_\+clusters Dictionary containing the most recent detected radar clusters. \\
+\hline
+{\em in} & latest\+\_\+self\+\_\+speed\+\_\+filtered List storing the most recent Kalman-\/filtered self-\/speed estimation. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{group__thread_functions_ga1d0e31d5a18664c8dbd057372b099f5d}\label{group__thread_functions_ga1d0e31d5a18664c8dbd057372b099f5d} 
+\index{Thread Functions@{Thread Functions}!processing\_thread@{processing\_thread}}
+\index{processing\_thread@{processing\_thread}!Thread Functions@{Thread Functions}}
+\doxysubsubsection{\texorpdfstring{processing\_thread}{processing\_thread}}
+{\footnotesize\ttfamily Pipeline\+Live.\+processing\+\_\+thread (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+This function continuously retrieves sensor data frames using the following process\+: 
+
+
+\begin{DoxyItemize}
+\item Decodes incoming frames into usable point clouds.
+\item Applies filtering to remove noise and irrelevant data.
+\item Estimates self-\/speed using Doppler velocity data.
+\item Uses DBSCAN clustering to group detected objects.
+\item Stores processed results in global variables for monitoring and processing. The processed data is then stored in shared global variables for monitoring and further analysis.
+\end{DoxyItemize}
+
+\begin{DoxyParagraph}{Note\+: This function runs indefinitely in a separate thread.}
+
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Note\+: Uses {\ttfamily frame\+\_\+lock} and {\ttfamily processed\+\_\+data\+\_\+lock} to prevent race conditions when accessing global data.}
+
+\end{DoxyParagraph}
+
+\begin{DoxyParams}{Parameters}
+{\em inout} & frame\+\_\+lock Lock for thread-\/safe access to {\ttfamily frame\+\_\+list}. \\
+\hline
+{\em inout} & frame\+\_\+list List where valid frames are stored.\\
+\hline
+{\em inout} & processed\+\_\+data\+\_\+lock Lock for thread-\/safe access to {\ttfamily latest\+\_\+dbscan\+\_\+clusters} and {\ttfamily latest\+\_\+self\+\_\+speed\+\_\+filtered} \\
+\hline
+{\em out} & latest\+\_\+dbscan\+\_\+clusters Updated with the latest clusters after processing. \\
+\hline
+{\em out} & latest\+\_\+self\+\_\+speed\+\_\+filtered Updated with the latest Kalman-\/filtered self-\/speed estimation. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{group__thread_functions_ga8b0daf98c1c10475afa3eba4d73fbeef}\label{group__thread_functions_ga8b0daf98c1c10475afa3eba4d73fbeef} 
+\index{Thread Functions@{Thread Functions}!sensor\_thread@{sensor\_thread}}
+\index{sensor\_thread@{sensor\_thread}!Thread Functions@{Thread Functions}}
+\doxysubsubsection{\texorpdfstring{sensor\_thread}{sensor\_thread}}
+{\footnotesize\ttfamily Pipeline\+Live.\+sensor\+\_\+thread (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Reads data from the UART from the mm\+Wave sensor, detects frames using a predefined MAGIC WORD, and stores valid frames in a thread-\/safe list for further processing. 
+
+\begin{DoxyParagraph}{Note\+: This function runs indefinitely in a separate thread.}
+
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Note\+: Uses {\ttfamily frame\+\_\+lock} to prevent race conditions when accessing global data.}
+
+\end{DoxyParagraph}
+
+\begin{DoxyParams}{Parameters}
+{\em in} & radar\+Sensor The radar sensor object. \\
+\hline
+{\em inout} & frame\+\_\+lock Lock for thread-\/safe access to \textquotesingle{}frame\+\_\+list\textquotesingle{} \\
+\hline
+{\em out} & frame\+\_\+list List where valid frames are stored. \\
+\hline
+\end{DoxyParams}

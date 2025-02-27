@@ -9,7 +9,7 @@
     @{
 """
 
-## @mainpage PipelineLive
+## @mainpage Pipeline
 #
 # @section description_main Description
 # This project aims to develop a real-time object detection and collision avoidance system
@@ -18,7 +18,16 @@
 # and trigger a braking mechanism when necessary.
 #
 # @section notes_main Notes
-# - Add any special project notes here.
+# - For this project the bare minimum to be able to replicated is an IWR6843AOPEVM mmWave sensor from TI.
+#
+# @section hardware_sec Hardware Used
+# - Radar Sensor: IWR6843AOPEVM
+# - Processing Unit: Raspberry Pi
+# - Communication: UART interface
+#
+# @section notes_sec Special Considerations
+# - The radar operates at 30 FPS or 12 FPS, configurable via UART commands.
+# - The field of view is adjustable between 30° and 60° azimuth.
 #
 # @section authors_main Author(s)
 # - Luis Fernando Rodriguez Gutierrez

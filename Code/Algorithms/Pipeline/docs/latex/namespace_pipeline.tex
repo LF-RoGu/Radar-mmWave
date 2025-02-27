@@ -1,0 +1,124 @@
+\doxysection{Pipeline Namespace Reference}
+\hypertarget{namespace_pipeline}{}\label{namespace_pipeline}\index{Pipeline@{Pipeline}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespace_pipeline_a87a43da6f7ebeafde7e6da48a0abbbf9}\label{namespace_pipeline_a87a43da6f7ebeafde7e6da48a0abbbf9} 
+{\bfseries update\+\_\+sim} (new\+\_\+num\+\_\+frame)
+\item 
+\Hypertarget{namespace_pipeline_a1df25ab7ea194f93a9e6fa05849dfaae}\label{namespace_pipeline_a1df25ab7ea194f93a9e6fa05849dfaae} 
+{\bfseries update\+\_\+graphs} (raw\+\_\+points, filtered\+\_\+points, self\+\_\+speed\+\_\+raw\+\_\+history, self\+\_\+speed\+\_\+filtered\+\_\+history, cluster\+\_\+points)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{namespace_pipeline_ab43414e2903d640fafa71644c1fb19ec}\label{namespace_pipeline_ab43414e2903d640fafa71644c1fb19ec} 
+int {\bfseries FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES} = 9
+\item 
+\Hypertarget{namespace_pipeline_a8b81abf8ef916906422f6cb3c90398bb}\label{namespace_pipeline_a8b81abf8ef916906422f6cb3c90398bb} 
+int {\bfseries FILTER\+\_\+\+SNR\+\_\+\+MIN} = 12
+\item 
+\Hypertarget{namespace_pipeline_acad60432cebc7de3361fa1b7b118155f}\label{namespace_pipeline_acad60432cebc7de3361fa1b7b118155f} 
+float {\bfseries FILTER\+\_\+\+Z\+\_\+\+MIN} = -\/0.\+3
+\item 
+\Hypertarget{namespace_pipeline_a37b9a34035f2571161ce5681225dd82c}\label{namespace_pipeline_a37b9a34035f2571161ce5681225dd82c} 
+int {\bfseries FILTER\+\_\+\+Z\+\_\+\+MAX} = 2
+\item 
+\Hypertarget{namespace_pipeline_a95f70e1e94c83a3969b1356be60cbe88}\label{namespace_pipeline_a95f70e1e94c83a3969b1356be60cbe88} 
+int {\bfseries FILTER\+\_\+\+PHI\+\_\+\+MIN} = -\/85
+\item 
+\Hypertarget{namespace_pipeline_aa6f5f6d87f358bbec13c34d06b1e25e1}\label{namespace_pipeline_aa6f5f6d87f358bbec13c34d06b1e25e1} 
+int {\bfseries FILTER\+\_\+\+PHI\+\_\+\+MAX} = 85
+\item 
+\Hypertarget{namespace_pipeline_a1465e6135a5acc463cb84cae024468b5}\label{namespace_pipeline_a1465e6135a5acc463cb84cae024468b5} 
+float {\bfseries KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE} = 0.\+01
+\item 
+\Hypertarget{namespace_pipeline_a283177661080a8d51a5c02c5ee24727d}\label{namespace_pipeline_a283177661080a8d51a5c02c5ee24727d} 
+float {\bfseries KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE} = 0.\+1
+\item 
+\Hypertarget{namespace_pipeline_a7fff5fa632eb638f11b7b35726b29083}\label{namespace_pipeline_a7fff5fa632eb638f11b7b35726b29083} 
+{\bfseries cluster\+\_\+processor\+\_\+stage1} = db\+Cluster.\+Cluster\+Processor(eps=2.\+0, min\+\_\+samples=2)
+\item 
+\Hypertarget{namespace_pipeline_af9a9458da67bfccb0faeb8157829834e}\label{namespace_pipeline_af9a9458da67bfccb0faeb8157829834e} 
+{\bfseries cluster\+\_\+processor\+\_\+stage2} = db\+Cluster.\+Cluster\+Processor(eps=1.\+0, min\+\_\+samples=4)
+\item 
+\Hypertarget{namespace_pipeline_a26996ff42a62d8b5fcf5238a0c1ebc52}\label{namespace_pipeline_a26996ff42a62d8b5fcf5238a0c1ebc52} 
+{\bfseries grid\+\_\+processor} = occupancy\+Grid.\+Occupancy\+Grid\+Processor(grid\+\_\+spacing=0.\+5)
+\item 
+\Hypertarget{namespace_pipeline_a1a3c2f31de394e0d6c8617de6e72ab6d}\label{namespace_pipeline_a1a3c2f31de394e0d6c8617de6e72ab6d} 
+list {\bfseries self\+\_\+speed\+\_\+raw\+\_\+history} = \mbox{[}$\,$\mbox{]}
+\item 
+\Hypertarget{namespace_pipeline_a7b9d14e5a09ac454169012e281bf9cba}\label{namespace_pipeline_a7b9d14e5a09ac454169012e281bf9cba} 
+list {\bfseries self\+\_\+speed\+\_\+filtered\+\_\+history} = \mbox{[}$\,$\mbox{]}
+\item 
+\Hypertarget{namespace_pipeline_a5f6abf41c67b962a0bc191a9ada0e20a}\label{namespace_pipeline_a5f6abf41c67b962a0bc191a9ada0e20a} 
+{\bfseries script\+\_\+dir} = os.\+path.\+dirname(os.\+path.\+abspath(\+\_\+\+\_\+file\+\_\+\+\_\+))
+\begin{DoxyCompactList}\small\item\em Getting the data Creating an absolute path to the raw data from a relative path. \end{DoxyCompactList}\item 
+\Hypertarget{namespace_pipeline_a8f8ea14c798c896407a68fdfe2f0f0c8}\label{namespace_pipeline_a8f8ea14c798c896407a68fdfe2f0f0c8} 
+{\bfseries log\+\_\+file} = os.\+path.\+abspath(os.\+path.\+join(\mbox{\hyperlink{namespace_pipeline_a5f6abf41c67b962a0bc191a9ada0e20a}{script\+\_\+dir}}, \"{}../../../Logs/Logs\+Part3/Dynamic\+Monitoring/Test\+\_\+30fps\+\_\+dist15mts\+\_\+vehicle\+Log\+\_\+5mps\+\_\+3x3\+Wall\+\_\+pedestrian\+\_\+log.\+csv\"{}))
+\item 
+\Hypertarget{namespace_pipeline_af88e574f63923e3ecd19e307b800962b}\label{namespace_pipeline_af88e574f63923e3ecd19e307b800962b} 
+{\bfseries frames} = data\+Decoder.\+decode\+Data(log\+\_\+file)
+\item 
+\Hypertarget{namespace_pipeline_af8de9caccfbc457d950481a37b3c78ea}\label{namespace_pipeline_af8de9caccfbc457d950481a37b3c78ea} 
+{\bfseries frame\+\_\+aggregator} = \mbox{\hyperlink{class_frame_aggregator}{Frame\+Aggregator}}(FRAME\+\_\+\+AGGREGATOR\+\_\+\+NUM\+\_\+\+PAST\+\_\+\+FRAMES)
+\begin{DoxyCompactList}\small\item\em Creating the pipeline\textquotesingle{}s objects Creating the frame aggregator. \end{DoxyCompactList}\item 
+\Hypertarget{namespace_pipeline_a4bcb3bd95a715a01b7617bbc3dbca111}\label{namespace_pipeline_a4bcb3bd95a715a01b7617bbc3dbca111} 
+{\bfseries self\+\_\+speed\+\_\+kf} = \mbox{\hyperlink{class_kalman_filter}{Kalman\+Filter}}(process\+\_\+variance=KALMAN\+\_\+\+FILTER\+\_\+\+PROCESS\+\_\+\+VARIANCE, measurement\+\_\+variance=KALMAN\+\_\+\+FILTER\+\_\+\+MEASUREMENT\+\_\+\+VARIANCE)
+\item 
+\Hypertarget{namespace_pipeline_a0dd26a48791111ab6867d72ad5f991e2}\label{namespace_pipeline_a0dd26a48791111ab6867d72ad5f991e2} 
+{\bfseries fig} = plt.\+figure(figsize=(10, 10))
+\begin{DoxyCompactList}\small\item\em Setting up the visualization and starting the simulation Creating a figure of size 10x10. \end{DoxyCompactList}\item 
+\Hypertarget{namespace_pipeline_ac1d1f5921e2a9c816966cbed81bf4f58}\label{namespace_pipeline_ac1d1f5921e2a9c816966cbed81bf4f58} 
+{\bfseries gs} = Grid\+Spec(2, 4, figure=\mbox{\hyperlink{namespace_pipeline_a0dd26a48791111ab6867d72ad5f991e2}{fig}})
+\item 
+\Hypertarget{namespace_pipeline_a78754da41f9d747fd00606ac7ab552c4}\label{namespace_pipeline_a78754da41f9d747fd00606ac7ab552c4} 
+{\bfseries plot\+\_\+raw\+\_\+data} = fig.\+add\+\_\+subplot(gs\mbox{[}0, 0\mbox{]}, projection=\textquotesingle{}3d\textquotesingle{})
+\item 
+\Hypertarget{namespace_pipeline_a4fbadca5c7a3895b06e7e3785207d404}\label{namespace_pipeline_a4fbadca5c7a3895b06e7e3785207d404} 
+{\bfseries plot\+\_\+filtered\+\_\+data} = fig.\+add\+\_\+subplot(gs\mbox{[}1, 0\mbox{]}, projection=\textquotesingle{}3d\textquotesingle{})
+\item 
+\Hypertarget{namespace_pipeline_a70cc9413ef264d12bc6cb11728e25c4b}\label{namespace_pipeline_a70cc9413ef264d12bc6cb11728e25c4b} 
+{\bfseries plot\+\_\+\+Ve} = fig.\+add\+\_\+subplot(gs\mbox{[}1, 1\mbox{]})
+\item 
+\Hypertarget{namespace_pipeline_a220dbd7a43b6fcd2f2477b2c501fd761}\label{namespace_pipeline_a220dbd7a43b6fcd2f2477b2c501fd761} 
+{\bfseries plot\+\_\+db\+Cluster} = fig.\+add\+\_\+subplot(gs\mbox{[}0, 2\mbox{]}, projection=\textquotesingle{}3d\textquotesingle{})
+\item 
+\Hypertarget{namespace_pipeline_a5cd8b1881d6bb7886550cb28d9295945}\label{namespace_pipeline_a5cd8b1881d6bb7886550cb28d9295945} 
+{\bfseries plot\+\_\+occupancy\+Grid} = fig.\+add\+\_\+subplot(gs\mbox{[}1, 2\mbox{]})
+\item 
+\Hypertarget{namespace_pipeline_a2ad1e897cfa69441441c9907c4aa029a}\label{namespace_pipeline_a2ad1e897cfa69441441c9907c4aa029a} 
+{\bfseries plot\+\_\+db\+Clustering\+Cartesian} = fig.\+add\+\_\+subplot(gs\mbox{[}0,3\mbox{]}, polar=True)
+\item 
+\Hypertarget{namespace_pipeline_ab72811e4d4c1791b87e331ca3af88960}\label{namespace_pipeline_ab72811e4d4c1791b87e331ca3af88960} 
+{\bfseries plot\+\_\+occupancy\+Grid\+Cartesian} = fig.\+add\+\_\+subplot(gs\mbox{[}0,3\mbox{]}, polar=True)
+\item 
+\Hypertarget{namespace_pipeline_a64b1675464af1bd1161b292b26b708b9}\label{namespace_pipeline_a64b1675464af1bd1161b292b26b708b9} 
+{\bfseries elev}
+\item 
+\Hypertarget{namespace_pipeline_a025f5ac1d22f07a43b31ee0ba1b10ae9}\label{namespace_pipeline_a025f5ac1d22f07a43b31ee0ba1b10ae9} 
+{\bfseries azim}
+\item 
+\Hypertarget{namespace_pipeline_a653b7b587fc65406075b2ac9d75bc193}\label{namespace_pipeline_a653b7b587fc65406075b2ac9d75bc193} 
+int {\bfseries curr\+\_\+num\+\_\+frame} = -\/1
+\item 
+\Hypertarget{namespace_pipeline_ab5f58689a48d7073769d616a35416fe3}\label{namespace_pipeline_ab5f58689a48d7073769d616a35416fe3} 
+{\bfseries ax\+\_\+slider} = plt.\+axes(\mbox{[}0.\+2, 0.\+01, 0.\+65, 0.\+03\mbox{]})
+\item 
+\Hypertarget{namespace_pipeline_a887340ff1b5da7b969e968332ca0a139}\label{namespace_pipeline_a887340ff1b5da7b969e968332ca0a139} 
+{\bfseries slider} = Slider(ax\+\_\+slider, \textquotesingle{}Frame\textquotesingle{}, 0, len(frames) -\/ 1, valinit=0, valstep=1)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}""! 
+    @file Pipeline.py
+    @brief Pipeline for real-time object detection and collision prevention using mmWave sensor.
+    @details This script processes radar sensor data to detect static obstacles, estimate velocity,
+    and trigger emergency braking when necessary.
+
+    @defgroup Pipeline_V1 Pipeline v1
+    @brief Original pipeline implementation.
+    @{
+\end{DoxyVerb}
+ 
