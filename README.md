@@ -19,7 +19,7 @@ This project aims to develop a real-time object detection and collision avoidanc
 - [Literature](Literature/): Contains literature resources.
   - [Notes](Literature/Notes): Contains information to understand the project and be able to replicate it.
   - [PDFResources](Literature/PDFResources): Contains multiple sources that can be found also in the web, to understand better the project and subject in general.
-  - [Doxygen](Literature/Doxygen/docs/html/index.html):
+  - [Doxygen](Literature/Doxygen/docs/html/index.html): Doxygen documentation to help navigate easier through the code.
   - [Presentation](Literature/Presentation): Final presentation explaining the whole cycle on how this project was conducted. Showing results and explaining the fundamentals that where used in this project.
 - [Logs](Logs/): Contain logs captured in the vehicle.
   - [LogsPart1](Logs/LogsPart1):
